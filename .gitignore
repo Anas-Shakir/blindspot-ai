@@ -1,0 +1,123 @@
+# =========================
+# Environment & Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.pyre/
+
+# =========================
+# FastAPI / Backend
+# =========================
+backend/uploads/
+backend/storage/
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# Node / Next.js
+# =========================
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Next.js
+.vercel/
+
+# npm / yarn / pnpm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# IDEs & Editors
+# =========================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+.idea/
+*.iml
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# Docker
+# =========================
+docker-compose.override.yml
+
+# =========================
+# AI / ML Artifacts
+# =========================
+models/
+checkpoints/
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Embeddings / vector data
+*.faiss
+*.index
+
+# =========================
+# Temporary Files
+# =========================
+tmp/
+temp/
+*.tmp
+*.temp
+
+# =========================
+# Generated Audio / Media
+# =========================
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.webm
+*.mp4
+
+# =========================
+# Coverage / Test Reports
+# =========================
+htmlcov/
+coverage.xml
+.pytest_cache/
