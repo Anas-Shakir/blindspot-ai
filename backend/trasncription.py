@@ -1,8 +1,6 @@
 """
 backend/ai/transcription.py
 
-Owner: Ayesha (Backend)
-
 Turns a raw uploaded file (audio OR video) into a list of TranscriptSegment
 objects, per backend/schemas.py. This is the ASR half of Task 1:
 
@@ -13,8 +11,7 @@ objects, per backend/schemas.py. This is the ASR half of Task 1:
        care that faster-whisper produced it.
 
 Per blueprint §7.3, this file's public function signature must stay stable
-even after the later swap to Alibaba Fun-ASR / Qwen-ASR — only what's
-*inside* transcribe() should change then.
+
 
 Requires: faster-whisper, ffmpeg-python (or the ffmpeg binary on PATH)
     pip install faster-whisper ffmpeg-python
