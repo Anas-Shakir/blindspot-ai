@@ -11,11 +11,7 @@ import {
   Sliders,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles,
   LogOut,
-  ChevronRight,
-  Headphones,
-  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +21,6 @@ export interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
-  shortcut?: string;
 }
 
 export interface SidebarProps {
@@ -41,7 +36,6 @@ const defaultNavItems: NavItem[] = [
     label: "Workspace",
     href: "/workspace",
     icon: Compass,
-    shortcut: "⌘1",
   },
   {
     id: "lectures",
@@ -49,21 +43,18 @@ const defaultNavItems: NavItem[] = [
     href: "#lectures",
     icon: AudioWaveform,
     badge: "3",
-    shortcut: "⌘2",
   },
   {
     id: "graph",
     label: "Knowledge Graph",
     href: "#graph",
     icon: Network,
-    shortcut: "⌘3",
   },
   {
     id: "settings",
     label: "Settings",
     href: "#settings",
     icon: Sliders,
-    shortcut: "⌘,",
   },
 ];
 
@@ -220,18 +211,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       >
                         <span className="truncate">{item.label}</span>
 
-                        <div className="flex items-center gap-1.5 ml-2">
-                          {item.badge && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-[#701a24]/25 text-stone-300 border border-[#701a24]/40">
-                              {item.badge}
-                            </span>
-                          )}
-                          {item.shortcut && (
-                            <kbd className="hidden sm:inline-block text-[10px] font-mono text-stone-500 group-hover:text-stone-400">
-                              {item.shortcut}
-                            </kbd>
-                          )}
-                        </div>
+                        {item.badge && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-[#701a24]/25 text-stone-300 border border-[#701a24]/40">
+                            {item.badge}
+                          </span>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -247,102 +231,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Bottom Section: Active Session Module & User Profile */}
-      <div className="p-3 space-y-3 border-t border-white/[0.07]">
-        {/* Active Session Module */}
-        <AnimatePresence mode="wait">
-          {!isCollapsed ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.16 }}
-              className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/[0.07] backdrop-blur-md shadow-sm relative overflow-hidden group"
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#701a24]/20 border border-[#701a24]/40 text-stone-300">
-                    <Headphones className="w-3 h-3" />
-                  </div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-stone-300 font-semibold">
-                    Active Session
-                  </span>
-                </div>
-
-                {/* Circular Progress Ring */}
-                <div className="relative flex items-center justify-center shrink-0">
-                  <svg className="w-6 h-6 transform -rotate-90" viewBox="0 0 36 36">
-                    <path
-                      className="text-stone-800"
-                      strokeWidth="3.5"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <path
-                      className="text-[#701a24] transition-all duration-500 ease-out"
-                      strokeDasharray="68, 100"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                      stroke="#701a24"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-                  <span className="absolute text-[8px] font-mono font-semibold text-stone-200">
-                    68%
-                  </span>
-                </div>
-              </div>
-
-              <h4 className="text-xs font-semibold text-stone-100 truncate mb-0.5 tracking-tight">
-                Dynamic Market Equilibria
-              </h4>
-              <p className="text-[11px] text-stone-400 font-normal truncate mb-2.5">
-                Phase 1: Supply & Demand
-              </p>
-
-              <Link
-                href="/workspace"
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-300 hover:text-white transition-colors"
-              >
-                <span>Resume Lecture</span>
-                <ChevronRight className="w-3 h-3" />
-              </Link>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center p-2 rounded-xl bg-zinc-900/60 border border-white/[0.07] text-stone-300"
-              title="Dynamic Market Equilibria (68% Complete)"
-            >
-              <div className="relative flex items-center justify-center">
-                <svg className="w-7 h-7 transform -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-stone-800"
-                    strokeWidth="4"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    strokeDasharray="68, 100"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    stroke="#701a24"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <div className="absolute h-2 w-2 rounded-full bg-[#701a24]" />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* User / Profile Footer */}
+      {/* Bottom Section: User Profile Footer */}
+      <div className="p-3 border-t border-white/[0.07]">
         <div
           className={cn(
             "flex items-center gap-3 p-2 rounded-xl bg-zinc-900/60 border border-white/[0.07]",
@@ -350,9 +240,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         >
           <div className="flex items-center gap-2.5 overflow-hidden">
-            {/* Minimalist Avatar with Burgundy Ring */}
+            {/* Minimalist Avatar with Oxblood Tone */}
             <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-[#701a24] to-zinc-800 text-white font-semibold text-xs border border-white/10 shadow-sm">
-              <span>UC</span>
+              <span>U</span>
               <div className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 border border-stone-950" />
             </div>
 
@@ -367,7 +257,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="flex flex-col text-left whitespace-nowrap overflow-hidden"
                 >
                   <span className="text-xs font-semibold text-stone-200 truncate">
-                    Umair Ch
+                    Umair
                   </span>
                   <span className="text-[10px] text-stone-500 font-mono truncate">
                     Student Scholar
