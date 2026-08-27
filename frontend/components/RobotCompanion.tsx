@@ -105,10 +105,10 @@ function RobotModel({ isFast = false }: RobotModelProps) {
       {/* Direct calibrated scale for robot.glb */}
       <primitive object={scene} scale={290} />
 
-      {/* Electric Blue Core Spotlight from underneath */}
+      {/* Wine/Crimson Core Spotlight from underneath */}
       <pointLight
         position={[0, 0.6, 0.8]}
-        color="#3b82f6"
+        color="#e11d48"
         intensity={isFast ? 5.0 : 3.0}
         distance={4.5}
       />
@@ -138,7 +138,7 @@ export default function RobotCompanionCanvas({
         style={{ width: "100%", height: "100%", minHeight: "300px" }}
       >
         <div className="w-full h-full flex items-center justify-center">
-          <div className="w-24 h-24 rounded-full border border-blue-500/20 bg-blue-500/5 animate-pulse" />
+          <div className="w-24 h-24 rounded-full border border-[#701a24]/30 bg-[#701a24]/10 animate-pulse" />
         </div>
       </div>
     );
@@ -164,12 +164,12 @@ export default function RobotCompanionCanvas({
           minHeight: "300px",
         }}
       >
-        {/* Crisp Studio Lighting */}
+        {/* Studio Lighting with Deep Oxblood Burgundy Rim */}
         <ambientLight intensity={1.6} />
         <directionalLight position={[5, 7, 5]} intensity={3.2} color="#ffffff" />
-        <directionalLight position={[-5, 4, 3]} intensity={2.2} color="#e0e7ff" />
-        <directionalLight position={[0, 4, -4]} intensity={3.5} color="#3b82f6" />
-        <pointLight position={[0, -2, 2]} intensity={2.0} color="#60a5fa" />
+        <directionalLight position={[-5, 4, 3]} intensity={2.0} color="#f5f5f4" />
+        <directionalLight position={[0, 4, -4]} intensity={2.5} color="#701a24" />
+        <pointLight position={[0, -2, 2]} intensity={1.5} color="#881337" />
 
         <Suspense fallback={null}>
           <Float speed={1.5} rotationIntensity={0.08} floatIntensity={0.15}>
