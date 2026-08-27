@@ -6,34 +6,27 @@ import { Github } from "lucide-react";
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="relative border-t border-white/[0.06] bg-[#07080a] text-neutral-400 py-16 sm:py-20 w-full overflow-hidden">
+    <footer className="relative border-t border-white/[0.07] bg-[#09090b] text-neutral-400 py-16 sm:py-20 w-full overflow-hidden">
       {/* Background soft ambient gradient */}
-      <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[250px] bg-blue-600/5 blur-[120px] rounded-full" />
+      <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[250px] bg-[#701a24]/10 blur-[120px] rounded-full" />
 
       <div className="max-w-7xl mx-auto px-6 sm:px-8 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-16 pb-14 border-b border-white/[0.06]">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-16 pb-14 border-b border-white/[0.07]">
           
           {/* Col 1: Brand & Tagline (5 cols) */}
           <div className="md:col-span-5 flex flex-col items-start">
             <Link href="/" className="flex items-center gap-2.5 mb-4 group">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200">
                 <span className="font-bold text-sm tracking-tighter">B</span>
               </div>
               <span className="text-xl font-bold tracking-tight text-white font-sans">
-                Blindspot <span className="text-blue-400 font-mono text-xs ml-0.5">AI</span>
+                Blindspot <span className="text-stone-400 font-mono text-xs ml-0.5">AI</span>
               </span>
             </Link>
 
-            <p className="text-sm text-neutral-400 max-w-sm leading-relaxed tracking-tight mb-6">
+            <p className="text-sm text-neutral-400 max-w-sm leading-relaxed tracking-tight">
               Turn passive lecture recordings into an active private tutor. Structured pedagogical planning, real-time voice office hours, and verifiable timestamps with receipts.
             </p>
-
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                All Systems Operational
-              </span>
-            </div>
           </div>
 
           {/* Col 2: Product (2 cols) */}
@@ -41,7 +34,7 @@ export const Footer: React.FC = () => {
             <span className="text-xs font-bold uppercase tracking-wider text-white">Product</span>
             <a href="#features" className="text-xs hover:text-white transition-colors">Features</a>
             <a href="#how-it-works" className="text-xs hover:text-white transition-colors">How it Works</a>
-            <a href="#traceability" className="text-xs hover:text-white transition-colors">Source Receipts</a>
+            <Link href="/workspace" className="text-xs hover:text-white transition-colors">Workspace</Link>
           </div>
 
           {/* Col 3: Architecture (3 cols) */}

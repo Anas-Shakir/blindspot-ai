@@ -10,21 +10,11 @@ export const CTASection: React.FC = () => {
   };
 
   return (
-    <section className="relative py-24 sm:py-32 w-full overflow-hidden border-t border-white/[0.06] bg-gradient-to-b from-neutral-950 via-neutral-950 to-[#07080a]">
+    <section className="relative py-24 sm:py-32 w-full overflow-hidden border-t border-white/[0.07] bg-gradient-to-b from-[#09090b] via-[#09090b] to-[#09090b]">
       {/* Glow highlight */}
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-blue-600/10 blur-[140px] rounded-full" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#701a24]/12 blur-[140px] rounded-full" />
 
       <div className="max-w-5xl mx-auto px-6 sm:px-8 relative z-10 text-center flex flex-col items-center">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 border border-blue-500/20 text-blue-400 mb-6"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Ready to transform your study flow?</span>
-        </motion.div>
-
         <motion.h2
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -49,15 +39,19 @@ export const CTASection: React.FC = () => {
           viewport={{ once: true }}
           className="flex flex-col sm:flex-row items-center gap-4"
         >
-          <button
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.01 }}
             onClick={scrollToTop}
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white text-neutral-950 hover:bg-neutral-200 text-sm font-semibold tracking-tight transition-all duration-150 active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.2)] cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white text-neutral-950 hover:bg-neutral-200 text-sm font-semibold tracking-tight transition-colors shadow-[0_0_30px_rgba(255,255,255,0.2)] cursor-pointer"
           >
             <span>Drop a lecture now</span>
             <ArrowUp className="w-4 h-4" />
-          </button>
+          </motion.button>
 
-          <a
+          <motion.a
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.01 }}
             href="https://github.com"
             target="_blank"
             rel="noopener noreferrer"
@@ -65,7 +59,7 @@ export const CTASection: React.FC = () => {
           >
             <span>View Architecture Blueprint</span>
             <ArrowRight className="w-4 h-4 text-neutral-400" />
-          </a>
+          </motion.a>
         </motion.div>
       </div>
     </section>

@@ -80,8 +80,8 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
     [mouseX, mouseY]
   );
 
-  const radialBackground = useMotionTemplate`radial-gradient(400px circle at ${mouseX}px ${mouseY}px, rgba(59, 130, 246, 0.12), transparent 80%)`;
-  const borderGlow = useMotionTemplate`radial-gradient(280px circle at ${mouseX}px ${mouseY}px, rgba(59, 130, 246, 0.35), transparent 70%)`;
+  const radialBackground = useMotionTemplate`radial-gradient(400px circle at ${mouseX}px ${mouseY}px, rgba(112, 26, 36, 0.1), transparent 80%)`;
+  const borderGlow = useMotionTemplate`radial-gradient(280px circle at ${mouseX}px ${mouseY}px, rgba(136, 19, 55, 0.35), transparent 70%)`;
 
   // Window drag listeners
   useEffect(() => {
@@ -257,10 +257,10 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
         }}
         className={cn(
           "relative w-full rounded-2xl p-6 sm:p-8",
-          "backdrop-blur-md bg-white/[0.04] sm:bg-neutral-900/40",
+          "backdrop-blur-md bg-zinc-900/60 border border-white/[0.07]",
           "transition-all duration-300 overflow-hidden select-none",
           isActive
-            ? "shadow-[0_0_60px_-10px_rgba(59,130,246,0.3)]"
+            ? "shadow-[0_0_50px_-10px_rgba(112,26,36,0.3)]"
             : "shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
         )}
       >
@@ -287,13 +287,13 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
           }}
         />
 
-        {/* Dashed Border -> Solid Glowing Blue Line on Drag/Active */}
+        {/* Dashed Border -> Solid Burgundy Line on Drag/Active */}
         <div
           className={cn(
             "pointer-events-none absolute inset-0 rounded-2xl transition-all duration-300",
             isActive
-              ? "border border-solid border-blue-500/90 shadow-[inset_0_0_20px_rgba(59,130,246,0.2)]"
-              : "border border-dashed border-white/15"
+              ? "border border-solid border-[#701a24] shadow-[inset_0_0_20px_rgba(112,26,36,0.2)]"
+              : "border border-dashed border-white/[0.08]"
           )}
         />
 
@@ -322,16 +322,16 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
                     "group relative mb-4 flex h-13 w-13 cursor-pointer items-center justify-center rounded-xl",
-                    "bg-white/[0.05] border border-white/10",
-                    "transition-all duration-300 hover:border-blue-500/50 hover:bg-blue-500/10"
+                    "bg-white/[0.04] border border-white/[0.07]",
+                    "transition-all duration-200 hover:border-[#701a24]/60 hover:bg-[#701a24]/10"
                   )}
                 >
                   <Upload
                     className={cn(
-                      "h-5 w-5 transition-colors duration-300",
+                      "h-5 w-5 transition-colors duration-200",
                       isActive
-                        ? "text-blue-400"
-                        : "text-zinc-400 group-hover:text-blue-400"
+                        ? "text-stone-200"
+                        : "text-zinc-400 group-hover:text-stone-200"
                     )}
                     strokeWidth={1.8}
                   />
@@ -357,18 +357,20 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                 />
 
                 {/* Local Browse Button */}
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.01 }}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium tracking-tight",
+                    "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium tracking-tight cursor-pointer",
                     "bg-white/[0.04] text-zinc-300 border border-white/[0.08]",
                     "hover:bg-white/[0.08] hover:text-white hover:border-white/[0.16]",
-                    "active:scale-95 transition-all duration-150"
+                    "transition-colors duration-150"
                   )}
                 >
                   <span>Or browse local files</span>
-                </button>
+                </motion.button>
 
                 {/* Subtle Divider */}
                 <div className="w-full flex items-center gap-3 my-5 px-2">
@@ -387,8 +389,8 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                   <div className="relative flex items-center">
                     <Link2
                       className={cn(
-                        "h-3.5 w-3.5 transition-colors duration-200 ml-0.5 mr-2.5 flex-shrink-0",
-                        isUrlFocused ? "text-blue-400" : "text-zinc-500"
+                        "h-3.5 w-3.5 transition-colors duration-150 ml-0.5 mr-2.5 flex-shrink-0",
+                        isUrlFocused ? "text-stone-300" : "text-zinc-500"
                       )}
                     />
 
@@ -402,7 +404,7 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                       className={cn(
                         "w-full bg-transparent py-2 pr-8 text-xs tracking-tight text-white placeholder-zinc-500",
                         "focus:outline-none border-none",
-                        "selection:bg-blue-600/40"
+                        "selection:bg-[#701a24]/50"
                       )}
                     />
 
@@ -417,8 +419,8 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                           disabled={isUrlSubmitting}
                           className={cn(
                             "flex h-6 w-6 items-center justify-center rounded-md",
-                            "bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)]",
-                            "hover:bg-blue-500 active:scale-95 transition-all duration-150"
+                            "bg-[#701a24] text-white shadow-none",
+                            "hover:bg-[#881337] active:scale-95 transition-colors duration-150 cursor-pointer"
                           )}
                           aria-label="Submit URL"
                         >
@@ -435,9 +437,9 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                   {/* Static minimal bottom base line */}
                   <div className="h-[1px] w-full bg-white/[0.08]" />
 
-                  {/* Animated glowing bottom accent border */}
+                  {/* Animated bottom accent border on focus */}
                   <motion.div
-                    className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-blue-600 via-blue-400 to-blue-600"
+                    className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#701a24]"
                     initial={{ scaleX: 0, opacity: 0 }}
                     animate={{
                       scaleX: isUrlFocused ? 1 : 0,
@@ -450,7 +452,6 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                     }}
                     style={{
                       transformOrigin: "center",
-                      boxShadow: "0 0 10px rgba(59, 130, 246, 0.6)",
                     }}
                   />
                 </form>
@@ -465,7 +466,7 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                 transition={{ duration: 0.2 }}
                 className="w-full flex flex-col items-center py-1"
               >
-                <div className="relative mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 shadow-inner">
+                <div className="relative mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200 shadow-inner">
                   {selectedFile.type.startsWith("video/") ||
                   selectedFile.name.endsWith(".mp4") ? (
                     <FileVideo className="h-7 w-7" strokeWidth={1.75} />
@@ -498,35 +499,34 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                 {/* Progress bar */}
                 <div className="relative w-full max-w-xs h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-6">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 rounded-full"
+                    className="h-full bg-[#701a24] rounded-full"
                     initial={{ width: "0%" }}
                     animate={{ width: `${uploadProgress}%` }}
                     transition={{ ease: "easeOut", duration: 0.2 }}
-                    style={{
-                      boxShadow: "0 0 10px rgba(59, 130, 246, 0.6)",
-                    }}
                   />
                 </div>
 
                 {/* Buttons */}
                 <div className="flex items-center gap-2.5">
-                  <button
+                  <motion.button
                     type="button"
+                    whileTap={{ scale: 0.96 }}
                     onClick={handleReset}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight bg-white/[0.04] border border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
                   >
                     <X className="h-3 w-3" />
                     <span>Cancel</span>
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
                     type="button"
+                    whileTap={{ scale: uploadProgress < 100 || isProcessing ? 1 : 0.96 }}
                     disabled={uploadProgress < 100 || isProcessing}
                     onClick={() => onFileSelect?.(selectedFile)}
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium tracking-tight",
-                      "bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]",
-                      "hover:bg-blue-500 active:scale-95 transition-all duration-150",
+                      "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium tracking-tight cursor-pointer",
+                      "bg-[#701a24] text-white",
+                      "hover:bg-[#881337] transition-colors duration-150",
                       (uploadProgress < 100 || isProcessing) &&
                         "opacity-50 cursor-not-allowed shadow-none"
                     )}
@@ -542,7 +542,7 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                         <span>Process Lecture</span>
                       </>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
               </motion.div>
             )}
