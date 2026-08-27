@@ -121,3 +121,9 @@ temp/
 htmlcov/
 coverage.xml
 .pytest_cache/
+
+# =========================
+# Repo Wiki
+# =========================
+
+.qoder/
