@@ -109,6 +109,11 @@ class Phase(BaseModel):
         description="Anything the student should already know before this "
                     "phase makes sense",
     )
+    difficulty: Optional[str] = Field(
+        default=None,
+        description="Estimated difficulty level (e.g. 'beginner', "
+                    "'intermediate', 'advanced')",
+    )
 
 
 class LearningPlan(BaseModel):
@@ -235,4 +240,29 @@ class SessionCommand(BaseModel):
     argument: Optional[str] = Field(
         default=None,
         description="e.g. the topic being asked about, for a 'show_me' command",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pipeline result — produced by backend/ai/planning.py run_full_pipeline()
+# ---------------------------------------------------------------------------
+
+class PipelineResult(BaseModel):
+    """The complete output of the AI/Planning offline pipeline for one lecture.
+
+    This is what the background job produces after a lecture upload: a
+    learning plan, detected gaps, quiz bank, knowledge graph data, and
+    the transcript with embeddings attached. The AI Orchestrator reads
+    this at runtime to drive the live teaching session.
+    """
+    lecture_id: int
+    plan: LearningPlan
+    gaps: list[GapConcept] = Field(default_factory=list)
+    quizzes: list[QuizItem] = Field(default_factory=list)
+    graph_nodes: list[GraphNode] = Field(default_factory=list)
+    graph_edges: list[GraphEdge] = Field(default_factory=list)
+    transcript_with_embeddings: list[TranscriptSegment] = Field(
+        default_factory=list,
+        description="The original transcript segments with embedding "
+                    "vectors populated",
     )

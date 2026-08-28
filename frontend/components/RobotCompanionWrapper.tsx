@@ -29,7 +29,7 @@ export default function RobotCompanionWrapper({
   if (!Component) {
     return (
       <div className="w-full h-full min-h-[300px] flex items-center justify-center">
-        <div className="w-24 h-24 rounded-full border border-blue-500/20 bg-blue-500/5 animate-pulse" />
+        <div className="w-24 h-24 rounded-full border border-[#701a24]/30 bg-[#701a24]/10 animate-pulse" />
       </div>
     );
   }

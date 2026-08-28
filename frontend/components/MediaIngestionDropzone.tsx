@@ -73,8 +73,8 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
   );
 
   // Radial glow spotlight dynamic styling
-  const radialBackground = useMotionTemplate`radial-gradient(450px circle at ${mouseX}px ${mouseY}px, rgba(37, 99, 235, 0.15), transparent 80%)`;
-  const borderGlow = useMotionTemplate`radial-gradient(300px circle at ${mouseX}px ${mouseY}px, rgba(59, 130, 246, 0.4), transparent 70%)`;
+  const radialBackground = useMotionTemplate`radial-gradient(450px circle at ${mouseX}px ${mouseY}px, rgba(112, 26, 36, 0.1), transparent 80%)`;
+  const borderGlow = useMotionTemplate`radial-gradient(300px circle at ${mouseX}px ${mouseY}px, rgba(136, 19, 55, 0.35), transparent 70%)`;
 
   // Window-level drag event listeners to detect drag initiation from anywhere
   useEffect(() => {
@@ -474,7 +474,6 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                     }}
                     style={{
                       transformOrigin: "center",
-                      boxShadow: "0 0 10px rgba(59, 130, 246, 0.6)",
                     }}
                   />
                 </form>
@@ -521,15 +520,14 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                   </p>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="relative w-full max-w-[400px] h-2 rounded-full bg-white/[0.06] overflow-hidden mb-8">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-blue-400 rounded-full"
+                    className="h-full bg-gradient-to-r from-brand-700 via-brand-500 to-rose-400 rounded-full"
                     initial={{ width: "0%" }}
                     animate={{ width: `${uploadProgress}%` }}
                     transition={{ ease: "easeOut", duration: 0.2 }}
                     style={{
-                      boxShadow: "0 0 12px rgba(59, 130, 246, 0.6)",
+                      boxShadow: "0 0 12px rgba(185, 28, 61, 0.6)",
                     }}
                   />
                 </div>
