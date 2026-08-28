@@ -1,8 +1,6 @@
 """
 backend/models.py
 
-Owner: Ayesha (Backend)
-
 SQLAlchemy ORM models — the actual DB tables. These mirror the Pydantic
 shapes in schemas.py (Lecture, TranscriptSegment) but are the persistence
 layer, not the API/interchange layer. Per blueprint §8, more tables

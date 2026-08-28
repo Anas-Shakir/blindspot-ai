@@ -5,8 +5,6 @@ Runs Task 1 end to end: save audio, transcribe it, store the timestamped
 segments in the DB. This is the thing to run to prove "audio + timestamps
 stored" actually works.
 
-Usage:
-    python backend/test_pipeline.py backend/lecture1.mp4
 """
 
 import sys
@@ -20,7 +18,7 @@ if str(ROOT) not in sys.path:
 
 from backend.db import SessionLocal, init_db
 from backend.models import Lecture, LectureStatus, TranscriptChunk
-from backend.storage import get_url, save
+from backend.storage_R2 import get_url, save
 from backend.transcription import transcribe
 
 if __name__ == "__main__":

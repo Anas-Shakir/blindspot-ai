@@ -1,9 +1,5 @@
 """
-Standalone test for backend/ai/transcription.py — no DB, no FastAPI needed.
-
-Usage:
-    python test_transcription.py /path/to/your/lecture.mp3
-    python test_transcription.py /path/to/your/lecture.mp4   # video works too
+Standalone test for backend/ai/transcription.py
 """
 
 from pathlib import Path
@@ -56,9 +52,3 @@ if __name__ == "__main__":
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
         print(f"Transcription failed: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    # Sanity checks worth eyeballing:
-    # 1. Do timestamps look right? Play the file at segment[3].start and
-    #    confirm the audio there actually matches segment[3].text.
-    # 2. Are segments in order with no big overlaps/gaps?
-    # 3. How's accuracy on the rough parts (background noise, accents)?
