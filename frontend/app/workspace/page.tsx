@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -16,6 +17,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api, Lecture } from "@/lib/api";
 import RobotCompanionWrapper from "@/components/RobotCompanionWrapper";
 import QuizCard, { QuizOption } from "@/components/QuizCard";
 import Sidebar from "@/components/Sidebar";
@@ -240,6 +242,10 @@ const phases: PhaseData[] = [
 ];
 
 export default function WorkspacePage() {
+  const params = useParams();
+  const lectureId = params?.id ? String(params.id) : null;
+  const [lecture, setLecture] = useState<Lecture | null>(null);
+
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState<number>(0);
   const [isQuizMode, setIsQuizMode] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
@@ -247,6 +253,15 @@ export default function WorkspacePage() {
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [playbackSeconds, setPlaybackSeconds] = useState<number>(0);
+
+  // Fetch lecture if lectureId exists in route
+  useEffect(() => {
+    if (lectureId) {
+      api.getLecture(lectureId).then(setLecture).catch(() => {
+        // Fallback gracefully
+      });
+    }
+  }, [lectureId]);
 
   // User question / query state
   const [userQuery, setUserQuery] = useState<string>("");
@@ -383,11 +398,11 @@ export default function WorkspacePage() {
             <div className="h-3 w-[1px] bg-white/[0.07]" />
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-neutral-200 tracking-tight">
-                Blindspot // Dynamic Market Equilibria
+              <span className="text-xs font-semibold text-neutral-200 tracking-tight truncate max-w-[240px] sm:max-w-[360px]">
+                {lecture?.filename ? `Blindspot // ${lecture.filename}` : "Blindspot // Dynamic Market Equilibria"}
               </span>
               <span className="hidden sm:inline-block text-[10px] font-mono text-neutral-500">
-                ECON 101 • Lecture 04
+                {lecture?.status ? `STATUS: ${lecture.status.toUpperCase()}` : "ECON 101 • Lecture 04"}
               </span>
             </div>
           </div>

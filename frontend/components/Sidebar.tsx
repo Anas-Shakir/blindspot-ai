@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,8 +12,15 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
+  Clock,
+  FileAudio,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api, Lecture } from "@/lib/api";
 
 export interface NavItem {
   id: string;
@@ -39,10 +46,9 @@ const defaultNavItems: NavItem[] = [
   },
   {
     id: "lectures",
-    label: "Lectures",
+    label: "All Lectures",
     href: "#lectures",
     icon: AudioWaveform,
-    badge: "3",
   },
   {
     id: "graph",
@@ -65,6 +71,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
+  const [lectures, setLectures] = useState<Lecture[]>([]);
+  const [isLoadingLectures, setIsLoadingLectures] = useState<boolean>(false);
   const pathname = usePathname();
   const activePath = currentPathOverride || pathname || "/workspace";
 
@@ -79,11 +87,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
     damping: 28,
   };
 
+  // Fetch lectures history from GET /api/lectures
+  const fetchLectures = useCallback(async () => {
+    setIsLoadingLectures(true);
+    try {
+      const data = await api.listLectures();
+      setLectures(data);
+    } catch {
+      // Graceful fallback if backend is offline or empty
+      setLectures([]);
+    } finally {
+      setIsLoadingLectures(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLectures();
+  }, [fetchLectures]);
+
   return (
     <motion.aside
       initial={false}
       animate={{
-        width: isCollapsed ? 72 : 256,
+        width: isCollapsed ? 72 : 264,
       }}
       transition={springTransition}
       className={cn(
@@ -93,10 +119,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className
       )}
     >
-      {/* Top Section: Brand Header & Navigation */}
+      {/* Top Section: Brand Header, Main Nav & History */}
       <div className="flex flex-col flex-1 min-h-0">
         {/* Brand Header */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-white/[0.07]">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-white/[0.07] shrink-0">
           <Link
             href="/"
             className="flex items-center gap-3 overflow-hidden group focus:outline-none"
@@ -148,8 +174,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </motion.button>
         </div>
 
-        {/* Section Label */}
-        <div className="px-4 pt-5 pb-2">
+        {/* Section Label: Navigation */}
+        <div className="px-4 pt-4 pb-1.5 shrink-0">
           <AnimatePresence mode="wait">
             {!isCollapsed ? (
               <motion.span
@@ -159,7 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 transition={{ duration: 0.12 }}
                 className="text-[10px] font-mono font-semibold uppercase tracking-widest text-stone-500 block px-2"
               >
-                Navigation
+                Menu
               </motion.span>
             ) : (
               <div className="h-[1px] w-6 mx-auto bg-white/[0.08]" />
@@ -168,7 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Items List */}
-        <nav className="px-2 space-y-1 overflow-y-auto overflow-x-hidden flex-1 py-1">
+        <nav className="px-2 space-y-1 shrink-0">
           {defaultNavItems.map((item) => {
             const isActive =
               activePath === item.href ||
@@ -182,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   href={item.href}
                   onClick={() => onNavigate?.(item.href)}
                   className={cn(
-                    "group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium tracking-tight",
+                    "group relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium tracking-tight",
                     "transition-colors duration-150 cursor-pointer focus:outline-none",
                     isActive
                       ? "bg-zinc-900/80 text-stone-100 border-l-2 border-[#701a24]"
@@ -229,10 +255,114 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
         </nav>
+
+        {/* Section Divider & History List Label */}
+        <div className="px-4 pt-5 pb-1.5 flex items-center justify-between shrink-0">
+          <AnimatePresence mode="wait">
+            {!isCollapsed ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+                className="flex items-center justify-between w-full px-2"
+              >
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-stone-500">
+                  Recent Lectures
+                </span>
+                {lectures.length > 0 && (
+                  <span className="text-[10px] font-mono text-stone-400 px-1.5 py-0.2 rounded bg-white/[0.04] border border-white/[0.06]">
+                    {lectures.length}
+                  </span>
+                )}
+              </motion.div>
+            ) : (
+              <div className="h-[1px] w-6 mx-auto bg-white/[0.08]" />
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Dynamic Lecture History List (fetched from GET /api/lectures) */}
+        <div className="px-2 overflow-y-auto overflow-x-hidden flex-1 py-1 space-y-1">
+          {isLoadingLectures && lectures.length === 0 ? (
+            <div className="flex items-center justify-center py-4 text-stone-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            </div>
+          ) : lectures.length === 0 ? (
+            !isCollapsed && (
+              <div className="px-3 py-3 text-center rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                <Clock className="w-3.5 h-3.5 mx-auto text-stone-600 mb-1" />
+                <p className="text-[11px] text-stone-500 font-normal">
+                  No lectures uploaded yet.
+                </p>
+              </div>
+            )
+          ) : (
+            lectures.map((lecture) => {
+              const lectureHref = `/workspace/${lecture.id ?? ""}`;
+              const isLectureActive =
+                activePath === lectureHref ||
+                activePath === `/workspace?id=${lecture.id}`;
+
+              return (
+                <motion.div key={lecture.id ?? lecture.filename} whileTap={{ scale: 0.97 }}>
+                  <Link
+                    href={lectureHref}
+                    onClick={() => onNavigate?.(lectureHref)}
+                    title={lecture.filename}
+                    className={cn(
+                      "group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-normal tracking-tight",
+                      "transition-colors duration-150 cursor-pointer focus:outline-none",
+                      isLectureActive
+                        ? "bg-zinc-900/90 text-stone-100 border-l-2 border-[#701a24]"
+                        : "text-stone-400 hover:text-stone-200 hover:bg-white/[0.04] border-l-2 border-transparent"
+                    )}
+                  >
+                    {/* Status Dot / File Icon */}
+                    <div className="relative shrink-0 flex items-center justify-center">
+                      <FileAudio className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-200 transition-colors" />
+                      {lecture.status === "processing" ? (
+                        <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                      ) : lecture.status === "ready" ? (
+                        <div className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      ) : (
+                        <div className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-rose-500" />
+                      )}
+                    </div>
+
+                    {/* Lecture Filename & Metadata */}
+                    <AnimatePresence mode="wait">
+                      {!isCollapsed && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -4 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -4 }}
+                          transition={{ duration: 0.14 }}
+                          className="flex flex-col flex-1 min-w-0"
+                        >
+                          <span className="truncate text-xs font-medium text-stone-300 group-hover:text-stone-100">
+                            {lecture.filename}
+                          </span>
+                          <span className="text-[10px] font-mono text-stone-500 capitalize truncate">
+                            {lecture.status}
+                          </span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {isCollapsed && isLectureActive && (
+                      <div className="absolute right-2 h-1.5 w-1.5 rounded-full bg-[#701a24]" />
+                    )}
+                  </Link>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Bottom Section: User Profile Footer */}
-      <div className="p-3 border-t border-white/[0.07]">
+      <div className="p-3 border-t border-white/[0.07] shrink-0">
         <div
           className={cn(
             "flex items-center gap-3 p-2 rounded-xl bg-zinc-900/60 border border-white/[0.07]",

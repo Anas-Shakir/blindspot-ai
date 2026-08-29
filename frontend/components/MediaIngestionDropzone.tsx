@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   motion,
   AnimatePresence,
@@ -21,9 +22,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn, formatFileSize } from "@/lib/utils";
+import { api, Lecture } from "@/lib/api";
 
 export interface MediaIngestionDropzoneProps {
-  onFileSelect?: (file: File) => void;
+  onFileSelect?: (file: File, lecture?: Lecture) => void;
   onUrlSubmit?: (url: string) => void;
   isProcessing?: boolean;
   className?: string;
@@ -34,11 +36,13 @@ export interface MediaIngestionDropzoneProps {
 export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
   onFileSelect,
   onUrlSubmit,
-  isProcessing = false,
+  isProcessing: externalIsProcessing = false,
   className,
   maxFileSizeBytes = 500 * 1024 * 1024, // 500 MB
   acceptedFormats = [".mp3", ".mp4", ".wav", ".m4a", ".webm", ".aac"],
 }) => {
+  const router = useRouter();
+
   // Drag states
   const [isWindowDragging, setIsWindowDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -47,6 +51,7 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
 
   // URL state
   const [mediaUrl, setMediaUrl] = useState("");
@@ -61,6 +66,8 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef<number>(0);
+
+  const isBusy = isUploading || externalIsProcessing;
 
   // Mouse move handler for the radial glow
   const handleMouseMove = useCallback(
@@ -120,7 +127,6 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
     };
   }, []);
 
-  // Validation
   const validateFile = (file: File): string | null => {
     const fileExt = `.${file.name.split(".").pop()?.toLowerCase()}`;
     const isValidFormat =
@@ -139,7 +145,14 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
     return null;
   };
 
-  const handleFileProcess = (file: File) => {
+  /**
+   * Process dropped/selected file:
+   * 1. Validate file
+   * 2. Animate upload progress
+   * 3. Send POST /api/lectures
+   * 4. Navigate to /workspace/[id]
+   */
+  const handleFileProcess = async (file: File) => {
     const error = validateFile(file);
     if (error) {
       setErrorMessage(error);
@@ -149,21 +162,49 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
 
     setErrorMessage(null);
     setSelectedFile(file);
-    setUploadProgress(0);
+    setUploadProgress(15);
+    setIsUploading(true);
 
-    // Simulate progress animation for realistic UI feel
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          if (onFileSelect) {
-            onFileSelect(file);
+    try {
+      // Progress ticker for smooth visual feedback
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
           }
-          return 100;
+          return prev + 16;
+        });
+      }, 75);
+
+      // Hit FastAPI backend POST /api/lectures
+      const lecture = await api.uploadLecture(file);
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if (onFileSelect) {
+        onFileSelect(file, lecture);
+      }
+
+      // Small spring settling delay before navigating
+      setTimeout(() => {
+        if (lecture.id) {
+          router.push(`/workspace/${lecture.id}`);
+        } else {
+          router.push("/workspace");
         }
-        return prev + 12;
-      });
-    }, 90);
+      }, 400);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to upload lecture to server. Please ensure backend is running.";
+      setErrorMessage(msg);
+      setIsUploading(false);
+      setUploadProgress(0);
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
   };
 
   // Drag over dropzone handlers
@@ -231,6 +272,7 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
     setUploadProgress(0);
     setMediaUrl("");
     setErrorMessage(null);
+    setIsUploading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -266,7 +308,7 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
         }}
         className={cn(
           "relative w-full max-w-[560px] rounded-3xl p-8 md:p-10",
-          "backdrop-blur-2xl bg-[#0e1017]/70",
+          "backdrop-blur-2xl bg-zinc-900/60 border border-white/[0.07]",
           "shadow-sprawling transition-shadow duration-500",
           isHovered && "shadow-sprawling-hover",
           isDraggingState && "shadow-sprawling-drag",
@@ -295,13 +337,13 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
           }}
         />
 
-        {/* Outer Border Layer: Ultra-thin Low-opacity Dashed Border -> Solid Glowing Blue Line on Drag */}
+        {/* Outer Border Layer: Dashed -> Solid Oxblood Burgundy on Drag */}
         <div
           className={cn(
             "pointer-events-none absolute inset-0 rounded-3xl transition-all duration-300",
             isDraggingState
-              ? "border border-solid border-brand-500/90 shadow-[inset_0_0_24px_rgba(37,99,235,0.25)]"
-              : "border border-dashed border-white/[0.12]"
+              ? "border border-solid border-[#701a24] shadow-[inset_0_0_24px_rgba(112,26,36,0.25)]"
+              : "border border-dashed border-white/[0.08]"
           )}
         />
 
@@ -333,7 +375,7 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                     "group relative mb-6 flex h-16 w-16 cursor-pointer items-center justify-center rounded-2xl",
                     "bg-gradient-to-b from-white/[0.08] to-white/[0.02]",
                     "border border-white/[0.1] shadow-inner-glow",
-                    "transition-all duration-300 hover:border-brand-500/50 hover:bg-brand-500/10"
+                    "transition-all duration-300 hover:border-[#701a24]/60 hover:bg-[#701a24]/10"
                   )}
                 >
                   {/* Subtle Pulse Rings when Dragging */}
@@ -346,7 +388,7 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                         duration: 1.6,
                         ease: "easeOut",
                       }}
-                      className="absolute inset-0 rounded-2xl border border-brand-500/60"
+                      className="absolute inset-0 rounded-2xl border border-[#701a24]/60"
                     />
                   )}
 
@@ -354,8 +396,8 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                     className={cn(
                       "h-7 w-7 transition-colors duration-300",
                       isDraggingState
-                        ? "text-brand-400"
-                        : "text-zinc-300 group-hover:text-brand-400"
+                        ? "text-stone-200"
+                        : "text-zinc-300 group-hover:text-stone-200"
                     )}
                     strokeWidth={1.75}
                   />
@@ -380,39 +422,40 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                   aria-label="Upload lecture file"
                 />
 
-                {/* Browse Button Trigger */}
-                <button
+                {/* Button for native file picker */}
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.01 }}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium tracking-tight",
-                    "bg-white/[0.04] text-zinc-300 border border-white/[0.08]",
-                    "hover:bg-white/[0.08] hover:text-white hover:border-white/[0.15]",
-                    "active:scale-95 transition-all duration-200"
+                    "inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold tracking-tight cursor-pointer",
+                    "bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white transition-colors duration-150"
                   )}
                 >
-                  <span>Or browse local files</span>
-                </button>
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Choose local file</span>
+                </motion.button>
 
-                {/* Minimalist Divider */}
-                <div className="w-full flex items-center gap-3 my-7 px-4">
+                {/* Divider */}
+                <div className="relative w-full max-w-[320px] flex items-center justify-center my-6">
                   <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
-                  <span className="text-[11px] font-medium uppercase tracking-widest text-zinc-500/80">
-                    or
+                  <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+                    OR
                   </span>
                   <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
                 </div>
 
-                {/* URL Input: Sleek, Borderless with Bottom Accent Line */}
+                {/* URL Input Form */}
                 <form
                   onSubmit={handleUrlSubmit}
-                  className="relative w-full max-w-[440px] px-2"
+                  className="relative w-full max-w-[360px] px-1"
                 >
                   <div className="relative flex items-center">
                     <Link2
                       className={cn(
                         "h-4 w-4 transition-colors duration-200 ml-1 mr-3 flex-shrink-0",
-                        isUrlFocused ? "text-brand-400" : "text-zinc-500"
+                        isUrlFocused ? "text-stone-200" : "text-zinc-500"
                       )}
                     />
 
@@ -424,14 +467,14 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                       onBlur={() => setIsUrlFocused(false)}
                       placeholder="Paste YouTube, Zoom, or media link..."
                       className={cn(
-                        "w-full bg-transparent py-2.5 pr-10 text-sm tracking-tight text-white placeholder-zinc-500",
+                        "w-full bg-transparent py-2.5 pr-8 text-xs tracking-tight text-white placeholder-zinc-500",
                         "focus:outline-none border-none",
-                        "selection:bg-brand-600/40"
+                        "selection:bg-[#701a24]/50"
                       )}
                     />
 
-                    {/* Submit / Action indicator */}
-                    <div className="absolute right-1 flex items-center gap-1.5">
+                    {/* Submit Arrow Button */}
+                    <div className="absolute right-0 flex items-center">
                       {mediaUrl.trim().length > 0 && (
                         <motion.button
                           initial={{ opacity: 0, scale: 0.8 }}
@@ -441,10 +484,10 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                           disabled={isUrlSubmitting}
                           className={cn(
                             "flex h-7 w-7 items-center justify-center rounded-lg",
-                            "bg-brand-600 text-white shadow-[0_0_12px_rgba(37,99,235,0.4)]",
-                            "hover:bg-brand-500 active:scale-95 transition-all duration-150"
+                            "bg-[#701a24] text-white",
+                            "hover:bg-[#881337] active:scale-95 transition-all duration-150 cursor-pointer"
                           )}
-                          aria-label="Submit URL"
+                          aria-label="Submit media URL"
                         >
                           {isUrlSubmitting ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -456,12 +499,12 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                     </div>
                   </div>
 
-                  {/* Static minimal bottom base line */}
+                  {/* Underline Base Line */}
                   <div className="h-[1px] w-full bg-white/[0.08]" />
 
-                  {/* Animated Glowing Bottom Accent Border on Focus */}
+                  {/* Animated Glowing Accent Line */}
                   <motion.div
-                    className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-brand-600 via-brand-400 to-brand-600"
+                    className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#701a24]"
                     initial={{ scaleX: 0, opacity: 0 }}
                     animate={{
                       scaleX: isUrlFocused ? 1 : 0,
@@ -479,7 +522,7 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                 </form>
               </motion.div>
             ) : (
-              /* File Selected / Uploading Progress Mode */
+              /* Selected / Progress Mode */
               <motion.div
                 key="uploading-state"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -488,14 +531,16 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                 transition={{ duration: 0.25 }}
                 className="w-full flex flex-col items-center py-2"
               >
-                {/* File Icon Badge */}
-                <div className="relative mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-500/10 border border-brand-500/30 text-brand-400 shadow-inner-glow">
+                {/* File Format Icon */}
+                <div className="relative mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200 shadow-inner">
                   {selectedFile.type.startsWith("video/") ||
                   selectedFile.name.endsWith(".mp4") ? (
-                    <FileVideo className="h-8 w-8" strokeWidth={1.75} />
+                    <FileVideo className="h-8 w-8 text-stone-200" strokeWidth={1.75} />
                   ) : (
-                    <FileAudio className="h-8 w-8" strokeWidth={1.75} />
+                    <FileAudio className="h-8 w-8 text-stone-200" strokeWidth={1.75} />
                   )}
+
+                  {/* Upload complete tick */}
                   {uploadProgress === 100 && (
                     <motion.div
                       initial={{ scale: 0 }}
@@ -514,21 +559,20 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                   </h3>
                   <p className="text-xs text-zinc-400 font-mono tracking-tight">
                     {formatFileSize(selectedFile.size)} •{" "}
-                    {uploadProgress < 100
+                    {isBusy
+                      ? `Uploading & Processing ${uploadProgress}%`
+                      : uploadProgress < 100
                       ? `Uploading ${uploadProgress}%`
-                      : "Ready for processing"}
+                      : "Redirecting to Workspace..."}
                   </p>
                 </div>
 
                 <div className="relative w-full max-w-[400px] h-2 rounded-full bg-white/[0.06] overflow-hidden mb-8">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-brand-700 via-brand-500 to-rose-400 rounded-full"
+                    className="h-full bg-[#701a24] rounded-full"
                     initial={{ width: "0%" }}
                     animate={{ width: `${uploadProgress}%` }}
                     transition={{ ease: "easeOut", duration: 0.2 }}
-                    style={{
-                      boxShadow: "0 0 12px rgba(185, 28, 61, 0.6)",
-                    }}
                   />
                 </div>
 
@@ -537,7 +581,8 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium tracking-tight bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                    disabled={isBusy}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium tracking-tight bg-white/[0.04] border border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
                   >
                     <X className="h-3.5 w-3.5" />
                     <span>Cancel</span>
@@ -545,20 +590,19 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
 
                   <button
                     type="button"
-                    disabled={uploadProgress < 100 || isProcessing}
-                    onClick={() => onFileSelect && onFileSelect(selectedFile)}
+                    disabled={isBusy}
+                    onClick={() => handleFileProcess(selectedFile)}
                     className={cn(
-                      "inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium tracking-tight",
-                      "bg-brand-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]",
-                      "hover:bg-brand-500 active:scale-95 transition-all duration-150",
-                      (uploadProgress < 100 || isProcessing) &&
-                        "opacity-50 cursor-not-allowed shadow-none"
+                      "inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium tracking-tight cursor-pointer",
+                      "bg-[#701a24] text-white",
+                      "hover:bg-[#881337] active:scale-95 transition-all duration-150",
+                      isBusy && "opacity-75 cursor-not-allowed shadow-none"
                     )}
                   >
-                    {isProcessing ? (
+                    {isBusy ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Analyzing Lecture...</span>
+                        <span>Uploading...</span>
                       </>
                     ) : (
                       <>
@@ -594,4 +638,3 @@ export const MediaIngestionDropzone: React.FC<MediaIngestionDropzoneProps> = ({
 };
 
 export default MediaIngestionDropzone;
-

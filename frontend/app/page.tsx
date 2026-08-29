@@ -17,6 +17,7 @@ import HowItWorksSection from "@/components/HowItWorksSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 import GradientWaves from "@/components/GradientWaves";
+import { Lecture } from "@/lib/api";
 
 export default function BlindspotLandingPage() {
   const [isDropzoneActive, setIsDropzoneActive] = useState(false);
@@ -27,15 +28,11 @@ export default function BlindspotLandingPage() {
     url?: string;
   } | null>(null);
 
-  const handleFileSelect = (file: File) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIngestedLecture({
-        type: "file",
-        name: file.name,
-      });
-    }, 1200);
+  const handleFileSelect = (file: File, lecture?: Lecture) => {
+    setIngestedLecture({
+      type: "file",
+      name: lecture?.filename || file.name,
+    });
   };
 
   const handleUrlSubmit = (url: string) => {

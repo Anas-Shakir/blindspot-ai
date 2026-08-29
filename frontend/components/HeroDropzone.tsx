@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   motion,
   AnimatePresence,
@@ -21,10 +22,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn, formatFileSize } from "@/lib/utils";
+import { api, Lecture } from "@/lib/api";
 
 export interface HeroDropzoneProps {
   onActiveStateChange?: (isActive: boolean) => void;
-  onFileSelect?: (file: File) => void;
+  onFileSelect?: (file: File, lecture?: Lecture) => void;
   onUrlSubmit?: (url: string) => void;
   isProcessing?: boolean;
   className?: string;
@@ -36,11 +38,13 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
   onActiveStateChange,
   onFileSelect,
   onUrlSubmit,
-  isProcessing = false,
+  isProcessing: externalIsProcessing = false,
   className,
   maxFileSizeBytes = 500 * 1024 * 1024, // 500 MB
   acceptedFormats = [".mp3", ".mp4", ".wav", ".m4a", ".webm", ".aac"],
 }) => {
+  const router = useRouter();
+
   // Drag states
   const [isWindowDragging, setIsWindowDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -49,6 +53,7 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
 
   // URL state
   const [mediaUrl, setMediaUrl] = useState("");
@@ -63,6 +68,8 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef<number>(0);
+
+  const isBusy = isUploading || externalIsProcessing;
 
   // Active state to trigger 3D orb speed up and glowing border
   const isActive = isHovered || isDragOver || isWindowDragging;
@@ -145,7 +152,14 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
     return null;
   };
 
-  const handleFileProcess = (file: File) => {
+  /**
+   * Process dropped/selected file:
+   * 1. Validate file
+   * 2. Animate upload progress
+   * 3. Send POST /api/lectures
+   * 4. Navigate to /workspace/[id]
+   */
+  const handleFileProcess = async (file: File) => {
     const error = validateFile(file);
     if (error) {
       setErrorMessage(error);
@@ -155,18 +169,49 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
 
     setErrorMessage(null);
     setSelectedFile(file);
-    setUploadProgress(0);
+    setUploadProgress(15);
+    setIsUploading(true);
 
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          onFileSelect?.(file);
-          return 100;
+    try {
+      // Progress ticker for smooth visual feedback
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 18;
+        });
+      }, 70);
+
+      // Hit FastAPI backend POST /api/lectures
+      const lecture = await api.uploadLecture(file);
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if (onFileSelect) {
+        onFileSelect(file, lecture);
+      }
+
+      // Small spring settling delay before navigating
+      setTimeout(() => {
+        if (lecture.id) {
+          router.push(`/workspace/${lecture.id}`);
+        } else {
+          router.push("/workspace");
         }
-        return prev + 14;
-      });
-    }, 85);
+      }, 400);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to upload lecture to server. Please ensure backend is running.";
+      setErrorMessage(msg);
+      setIsUploading(false);
+      setUploadProgress(0);
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -228,6 +273,7 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
     setUploadProgress(0);
     setMediaUrl("");
     setErrorMessage(null);
+    setIsUploading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -343,45 +389,43 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                 </h3>
 
                 <p className="text-xs sm:text-sm text-neutral-400 tracking-tight max-w-xs mb-5 font-normal">
-                  Supports MP3, MP4, WAV, or paste a URL.
+                  Drop MP3, MP4, or WAV to generate your structured learning plan.
                 </p>
 
-                {/* Hidden File Input */}
+                {/* Hidden Native File Input */}
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept={acceptedFormats.join(",")}
                   onChange={handleFileInputChange}
                   className="hidden"
-                  aria-label="Upload lecture file"
                 />
 
-                {/* Local Browse Button */}
+                {/* Manual File Select Action Button */}
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.97 }}
                   whileHover={{ scale: 1.01 }}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium tracking-tight cursor-pointer",
-                    "bg-white/[0.04] text-zinc-300 border border-white/[0.08]",
-                    "hover:bg-white/[0.08] hover:text-white hover:border-white/[0.16]",
-                    "transition-colors duration-150"
+                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold tracking-tight cursor-pointer",
+                    "bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white transition-colors duration-150"
                   )}
                 >
-                  <span>Or browse local files</span>
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Choose local file</span>
                 </motion.button>
 
-                {/* Subtle Divider */}
-                <div className="w-full flex items-center gap-3 my-5 px-2">
+                {/* Minimal Subtle Divider */}
+                <div className="relative w-full max-w-xs flex items-center justify-center my-5">
                   <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-                    or
+                  <span className="px-3 text-[10px] font-mono uppercase tracking-widest text-neutral-500">
+                    OR
                   </span>
                   <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
                 </div>
 
-                {/* Borderless URL Input with Glowing Bottom Accent on Focus */}
+                {/* Borderless URL Input with Accent Bottom Line on Focus */}
                 <form
                   onSubmit={handleUrlSubmit}
                   className="relative w-full max-w-sm px-1"
@@ -490,9 +534,11 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                   </h4>
                   <p className="text-[11px] text-zinc-400 font-mono tracking-tight">
                     {formatFileSize(selectedFile.size)} •{" "}
-                    {uploadProgress < 100
+                    {isBusy
+                      ? `Uploading & Processing ${uploadProgress}%`
+                      : uploadProgress < 100
                       ? `Uploading ${uploadProgress}%`
-                      : "Ready for processing"}
+                      : "Redirecting to Workspace..."}
                   </p>
                 </div>
 
@@ -512,7 +558,8 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                     type="button"
                     whileTap={{ scale: 0.96 }}
                     onClick={handleReset}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight bg-white/[0.04] border border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    disabled={isBusy}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight bg-white/[0.04] border border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <X className="h-3 w-3" />
                     <span>Cancel</span>
@@ -520,21 +567,20 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
 
                   <motion.button
                     type="button"
-                    whileTap={{ scale: uploadProgress < 100 || isProcessing ? 1 : 0.96 }}
-                    disabled={uploadProgress < 100 || isProcessing}
-                    onClick={() => onFileSelect?.(selectedFile)}
+                    whileTap={{ scale: isBusy ? 1 : 0.96 }}
+                    disabled={isBusy}
+                    onClick={() => handleFileProcess(selectedFile)}
                     className={cn(
                       "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium tracking-tight cursor-pointer",
                       "bg-[#701a24] text-white",
                       "hover:bg-[#881337] transition-colors duration-150",
-                      (uploadProgress < 100 || isProcessing) &&
-                        "opacity-50 cursor-not-allowed shadow-none"
+                      isBusy && "opacity-75 cursor-not-allowed shadow-none"
                     )}
                   >
-                    {isProcessing ? (
+                    {isBusy ? (
                       <>
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>Analyzing...</span>
+                        <span>Uploading...</span>
                       </>
                     ) : (
                       <>
@@ -569,4 +615,3 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
 };
 
 export default HeroDropzone;
-
