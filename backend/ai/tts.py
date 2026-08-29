@@ -1,0 +1,201 @@
+"""
+backend/ai/tts.py
+
+Owner: Anas (AI Orchestrator & Team Lead)
+
+The swappable Text-to-Speech (TTS) engine for Blindspot AI.
+Synthesizes spoken audio from teaching scripts, explanations, and feedback.
+
+Architecture & Adapter Strategy (per MVP Blueprint §7.2 & §7.3):
+    1. Primary Open-Source Engine: `edge-tts` (high-quality Microsoft Edge
+       neural voices like 'en-US-ChristopherNeural' or 'en-US-GuyNeural').
+       - Free, studio-grade quality, zero GPU load.
+    2. Alibaba Cloud Migration Hook: Automatically routes to Alibaba Model Studio
+       (CosyVoice / Qwen-TTS / Sambert) when DASHSCOPE_API_KEY is configured.
+    3. Fallback Providers: `gTTS` or offline audio generation if network
+       or primary dependencies are unavailable.
+    4. Caching: Caches synthesized audio files by text+voice hash to prevent
+       redundant synthesis across repeated commands ("explain again").
+
+Public Interface:
+    speak(text: str, voice: Optional[str] = None, output_path: Optional[str] = None) -> str
+    async_speak(text: str, voice: Optional[str] = None, output_path: Optional[str] = None) -> str
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import logging
+import os
+import sys
+from pathlib import Path
+from typing import Optional
+
+# Ensure project root is on sys.path
+_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+logger = logging.getLogger(__name__)
+
+# Directory where generated TTS audio files will be stored
+TTS_CACHE_DIR = Path(__file__).resolve().parent.parent / "storage_data" / "tts"
+TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Default voices
+DEFAULT_EDGE_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-ChristopherNeural")
+DEFAULT_ALIBABA_VOICE = os.getenv("ALIBABA_TTS_VOICE", "cosyvoice-v1")
+
+
+# ---------------------------------------------------------------------------
+# Cache Helper
+# ---------------------------------------------------------------------------
+
+def _get_cache_path(text: str, voice: str, ext: str = "mp3") -> Path:
+    """Computes a deterministic hash filename for a given text + voice combination."""
+    content_hash = hashlib.sha256(f"{voice}:{text.strip()}".encode("utf-8")).hexdigest()[:16]
+    return TTS_CACHE_DIR / f"tts_{content_hash}.{ext}"
+
+
+# ---------------------------------------------------------------------------
+# Provider: Edge TTS (Primary Open Source)
+# ---------------------------------------------------------------------------
+
+async def _speak_edge_tts(text: str, voice: Optional[str], output_path: Path) -> str:
+    """Generates audio using edge-tts."""
+    import edge_tts
+
+    selected_voice = voice or DEFAULT_EDGE_VOICE
+    communicate = edge_tts.Communicate(text, selected_voice)
+    await communicate.save(str(output_path))
+    return str(output_path)
+
+
+# ---------------------------------------------------------------------------
+# Provider: Alibaba Cloud / DashScope (CosyVoice / Sambert / Qwen-TTS)
+# ---------------------------------------------------------------------------
+
+def _speak_alibaba(text: str, voice: Optional[str], output_path: Path) -> str:
+    """Generates audio using Alibaba Cloud DashScope API."""
+    import dashscope
+    from dashscope.audio.tts_v2 import SpeechSynthesizer
+
+    api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("ALIBABA_API_KEY")
+    if not api_key:
+        raise ValueError("DASHSCOPE_API_KEY not configured")
+
+    dashscope.api_key = api_key
+    selected_voice = voice or DEFAULT_ALIBABA_VOICE
+    synthesizer = SpeechSynthesizer(model=selected_voice)
+    audio_data = synthesizer.call(text)
+
+    with open(output_path, "wb") as f:
+        f.write(audio_data)
+
+    return str(output_path)
+
+
+# ---------------------------------------------------------------------------
+# Provider: gTTS (Secondary Fallback)
+# ---------------------------------------------------------------------------
+
+def _speak_gtts(text: str, output_path: Path) -> str:
+    """Generates audio using gTTS."""
+    from gtts import gTTS
+
+    tts = gTTS(text=text, lang="en", slow=False)
+    tts.save(str(output_path))
+    return str(output_path)
+
+
+# ---------------------------------------------------------------------------
+# Main Synthesis Dispatcher
+# ---------------------------------------------------------------------------
+
+async def async_speak(
+    text: str,
+    voice: Optional[str] = None,
+    output_path: Optional[str] = None,
+) -> str:
+    """Asynchronously synthesizes speech from text and returns the audio file path.
+    
+    Checks cache first, then attempts synthesis in order:
+    1. Alibaba Cloud (if configured via DASHSCOPE_API_KEY)
+    2. Edge-TTS (primary open-source neural engine)
+    3. gTTS (lightweight fallback)
+    """
+    clean_text = (text or "").strip()
+    if not clean_text:
+        return ""
+
+    selected_voice = voice or DEFAULT_EDGE_VOICE
+    target_path = Path(output_path) if output_path else _get_cache_path(clean_text, selected_voice)
+
+    # 1. Return cached audio if already generated and non-empty
+    if target_path.exists() and target_path.stat().st_size > 0:
+        logger.debug("TTS Cache hit for: %s", target_path)
+        return str(target_path)
+
+    # Ensure parent directory exists
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 2. Check for Alibaba Cloud credentials
+    if os.getenv("DASHSCOPE_API_KEY") or os.getenv("ALIBABA_API_KEY"):
+        try:
+            return _speak_alibaba(clean_text, voice, target_path)
+        except Exception as e:
+            logger.warning("Alibaba TTS synthesis failed, falling back to Edge-TTS: %s", e)
+
+    # 3. Edge-TTS (Primary Open Source)
+    try:
+        return await _speak_edge_tts(clean_text, selected_voice, target_path)
+    except ImportError:
+        logger.debug("edge-tts not installed, attempting fallback.")
+    except Exception as e:
+        logger.warning("Edge-TTS synthesis error: %s. Attempting fallback.", e)
+
+    # 4. gTTS Fallback
+    try:
+        return _speak_gtts(clean_text, target_path)
+    except ImportError:
+        logger.debug("gTTS not installed.")
+    except Exception as e:
+        logger.warning("gTTS fallback failed: %s", e)
+
+    # 5. Last-resort placeholder audio file so callers always get a valid file path
+    logger.error("No TTS engines succeeded. Writing empty placeholder audio.")
+    with open(target_path, "wb") as f:
+        # Minimal silent MP3 frame header / placeholder
+        f.write(b"\xff\xfb\x90\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+
+    return str(target_path)
+
+
+def speak(
+    text: str,
+    voice: Optional[str] = None,
+    output_path: Optional[str] = None,
+) -> str:
+    """Synchronous entrypoint for TTS synthesis.
+    
+    Compatible with synchronous callers (e.g. orchestrator.py, test scripts).
+    Handles both running event loops and standard execution threads.
+    """
+    clean_text = (text or "").strip()
+    if not clean_text:
+        return ""
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # If already inside an async loop, execute in thread pool to avoid blocking
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(asyncio.run, async_speak(clean_text, voice, output_path))
+            return future.result()
+    else:
+        return asyncio.run(async_speak(clean_text, voice, output_path))
