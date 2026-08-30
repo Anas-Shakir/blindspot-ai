@@ -440,3 +440,125 @@ class SessionStore:
 
 # Global singleton store instance
 session_store = SessionStore()
+
+
+# ---------------------------------------------------------------------------
+# Database Loader Helper
+# ---------------------------------------------------------------------------
+
+def load_session_from_db(
+    lecture_id: int,
+    session_id: Optional[str] = None,
+    db: Optional[any] = None,
+) -> TeachingSession:
+    """Loads a lecture's LearningPlan, QuizItems, and TranscriptChunks from the database
+    and creates/registers an active TeachingSession.
+    """
+    import uuid
+    from backend.db import SessionLocal
+    from backend.models import (
+        LearningPlan as LearningPlanModel,
+        QuizItem as QuizItemModel,
+        TranscriptChunk as TranscriptChunkModel,
+    )
+
+    should_close = False
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+
+    try:
+        actual_session_id = session_id or f"sess_{uuid.uuid4().hex[:12]}"
+
+        # Reuse session if already active in store
+        existing_session = session_store.get_session(actual_session_id)
+        if existing_session and existing_session.lecture_id == lecture_id:
+            return existing_session
+
+        # 1. Load Learning Plan + Phases from DB
+        plan_model = (
+            db.query(LearningPlanModel)
+            .filter(LearningPlanModel.lecture_id == lecture_id)
+            .first()
+        )
+        phases: List[Phase] = []
+        if plan_model:
+            for p in plan_model.phases:
+                phases.append(
+                    Phase(
+                        order=p.order,
+                        title=p.title,
+                        teaching_script=p.teaching_script,
+                        source_timestamps=[
+                            TimeRange(start=t["start"], end=t["end"])
+                            for t in (p.source_timestamps or [])
+                        ],
+                        prerequisite_note=p.prerequisite_note,
+                        difficulty=p.difficulty,
+                    )
+                )
+
+        plan = LearningPlan(
+            id=plan_model.id if plan_model else None,
+            lecture_id=lecture_id,
+            phases=phases,
+        )
+
+        # 2. Load Quizzes from DB
+        quiz_models = (
+            db.query(QuizItemModel)
+            .filter(QuizItemModel.lecture_id == lecture_id)
+            .all()
+        )
+        quizzes = [
+            QuizItem(
+                id=q.id,
+                lecture_id=q.lecture_id,
+                question=q.question,
+                options=q.options or [],
+                correct_answer=q.correct_answer,
+                source_timestamp=(
+                    TimeRange(
+                        start=q.source_timestamp["start"],
+                        end=q.source_timestamp["end"],
+                    )
+                    if q.source_timestamp
+                    else None
+                ),
+            )
+            for q in quiz_models
+        ]
+
+        # 3. Load Transcript Segments from DB
+        chunk_models = (
+            db.query(TranscriptChunkModel)
+            .filter(TranscriptChunkModel.lecture_id == lecture_id)
+            .order_by(TranscriptChunkModel.start)
+            .all()
+        )
+        transcripts = [
+            TranscriptSegment(
+                id=c.id,
+                lecture_id=c.lecture_id,
+                start=c.start,
+                end=c.end,
+                text=c.text,
+                speaker=c.speaker,
+            )
+            for c in chunk_models
+        ]
+
+        # 4. Create and store TeachingSession
+        session = session_store.create_session(
+            session_id=actual_session_id,
+            lecture_id=lecture_id,
+            plan=plan,
+            quizzes=quizzes,
+            transcript_segments=transcripts,
+        )
+        return session
+
+    finally:
+        if should_close:
+            db.close()
+
