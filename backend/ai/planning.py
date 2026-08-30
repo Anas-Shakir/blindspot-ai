@@ -105,19 +105,38 @@ class _LLMQuizResponse(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _format_transcript(segments: list[TranscriptSegment]) -> str:
+def _format_transcript(segments: list[TranscriptSegment], max_chars: int = 8000) -> str:
     """Formats transcript segments into a timestamped text block for the LLM.
 
-    Each segment becomes a line like:
-        [12.5s - 18.3s] The professor explains the concept of...
-
-    This gives the LLM enough context to both understand the content and
-    reference specific timestamps when building the plan.
+    Merges contiguous small segments into coherent ~20s time windows to optimize
+    token usage while preserving precise timestamps.
     """
-    lines = []
-    for seg in segments:
-        lines.append(f"[{seg.start:.1f}s - {seg.end:.1f}s] {seg.text}")
-    return "\n".join(lines)
+    if not segments:
+        return ""
+
+    merged_lines = []
+    curr_start = segments[0].start
+    curr_end = segments[0].end
+    curr_texts = [segments[0].text]
+
+    for seg in segments[1:]:
+        # Group if within 2s gap and total window under 25 seconds
+        if (seg.start - curr_end <= 2.0) and (seg.end - curr_start < 25.0):
+            curr_end = seg.end
+            curr_texts.append(seg.text)
+        else:
+            merged_lines.append(f"[{curr_start:.1f}s - {curr_end:.1f}s] {' '.join(curr_texts)}")
+            curr_start = seg.start
+            curr_end = seg.end
+            curr_texts = [seg.text]
+
+    if curr_texts:
+        merged_lines.append(f"[{curr_start:.1f}s - {curr_end:.1f}s] {' '.join(curr_texts)}")
+
+    full_text = "\n".join(merged_lines)
+    if len(full_text) > max_chars:
+        full_text = full_text[:max_chars] + "\n... [transcript continues]"
+    return full_text
 
 
 def _format_plan_summary(plan: LearningPlan) -> str:

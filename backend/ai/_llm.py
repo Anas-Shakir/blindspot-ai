@@ -28,6 +28,9 @@ import json
 import os
 from typing import Any, Optional, Type, TypeVar
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from openai import OpenAI
 from pydantic import BaseModel
 
@@ -98,11 +101,13 @@ def chat_completion(
     model = _get_model()
 
     # When we need structured output, instruct the LLM in the system prompt
+    extra_kwargs = {}
     if response_model is not None:
         system_prompt += (
             "\n\nYou MUST respond with valid JSON only. No markdown, "
             "no code fences, no explanation outside the JSON."
         )
+        extra_kwargs["response_format"] = {"type": "json_object"}
 
     response = client.chat.completions.create(
         model=model,
@@ -112,6 +117,7 @@ def chat_completion(
         ],
         temperature=temperature,
         max_tokens=max_tokens,
+        **extra_kwargs,
     )
 
     raw_text = response.choices[0].message.content or ""
@@ -119,20 +125,31 @@ def chat_completion(
     if response_model is None:
         return raw_text
 
-    # Parse structured output — strip markdown code fences if the LLM
-    # wrapped the JSON anyway (they sometimes do despite instructions).
+    # Parse structured output — strip markdown code fences if wrapped
     text = raw_text.strip()
-    if text.startswith("```"):
-        # Remove opening fence (with optional language tag) and closing fence
-        lines = text.split("\n")
-        lines = [l for l in lines if not l.startswith("```")]
-        text = "\n".join(lines)
+    if "```" in text:
+        import re
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+        if match:
+            text = match.group(1).strip()
+        else:
+            lines = [l for l in text.split("\n") if not l.startswith("```")]
+            text = "\n".join(lines).strip()
 
     try:
         parsed = json.loads(text)
         return response_model.model_validate(parsed)
-    except (json.JSONDecodeError, Exception) as exc:
+    except Exception as exc:
+        # Fallback regex search for outer JSON object if extra text surrounded it
+        import re
+        obj_match = re.search(r"(\{[\s\S]*\})", text)
+        if obj_match:
+            try:
+                parsed = json.loads(obj_match.group(1))
+                return response_model.model_validate(parsed)
+            except Exception:
+                pass
         raise ValueError(
-            f"LLM response could not be parsed as {response_model.__name__}: "
-            f"{exc}\n\nRaw response:\n{raw_text[:500]}"
+            f"LLM response could not be parsed as {response_model.__name__}: {exc}\n\n"
+            f"Raw response:\n{raw_text}"
         ) from exc

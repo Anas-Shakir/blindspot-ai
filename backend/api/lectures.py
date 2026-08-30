@@ -1,43 +1,66 @@
 """
 backend/api/lectures.py
 
-
 Lecture management endpoints:
-- POST /lectures — upload audio/video, start transcription
+- POST /lectures — upload audio/video, start background transcription & planning
 - GET /lectures — list all lectures
 - GET /lectures/{id} — get one lecture with transcript status
-- GET /lectures/{id}/transcripts — get the transcript segments (once ready)
+- GET /lectures/{id}/transcripts — get the transcript segments
+- GET /lectures/{id}/plan — get the generated learning plan with phases
+- GET /lectures/{id}/quiz — get the generated quiz bank
+- GET /lectures/{id}/gaps — get the detected gap concepts
+- GET /lectures/{id}/graph — get the knowledge graph (nodes + edges)
 
-Background task handling: transcription runs async so the upload endpoint
-returns immediately (status=PROCESSING) and flips to READY once done.
+Background task handling: transcription and AI planning run async so the upload
+endpoint returns immediately (status=PROCESSING) and flips to READY once done.
 """
 
 from fastapi import APIRouter, BackgroundTasks, File, UploadFile, HTTPException, Depends
 from sqlalchemy.orm import Session
+from typing import Optional
 
-from backend.db import get_db
-from backend.models import Lecture, LectureStatus, TranscriptChunk
-from backend.schemas import Lecture as LectureSchema, TranscriptSegment
+from backend.db import get_db, SessionLocal
+from backend.models import (
+    Lecture,
+    LectureStatus,
+    TranscriptChunk,
+    LearningPlan as LearningPlanModel,
+    Phase as PhaseModel,
+    GapConcept as GapConceptModel,
+    QuizItem as QuizItemModel,
+    GraphNode as GraphNodeModel,
+    GraphEdge as GraphEdgeModel,
+)
+from backend.schemas import (
+    Lecture as LectureSchema,
+    TranscriptSegment,
+    LearningPlan as LearningPlanSchema,
+    Phase as PhaseSchema,
+    GapConcept as GapConceptSchema,
+    QuizItem as QuizItemSchema,
+    GraphNode as GraphNodeSchema,
+    GraphEdge as GraphEdgeSchema,
+    TimeRange,
+)
 from backend.storage_R2 import save
 from backend.ai.transcription import transcribe
 
 router = APIRouter()
 
 
-async def _transcribe_background(
+def _transcribe_and_plan_background(
     lecture_id: int,
     stored_ref: str,
-    db: Session,
 ):
-    """Background task: transcribes the lecture and stores segments.
-    
-    Runs asynchronously so the upload endpoint can return immediately.
+    """Background task: transcribes the lecture, stores segments in DB,
+    and runs the AI planning pipeline (learning plan, gaps, quiz bank, graph).
     """
+    db = SessionLocal()
     try:
-        # Transcribe
+        # 1. Transcribe audio/video
         segments = transcribe(stored_ref, lecture_id=lecture_id)
 
-        # Store each segment
+        # 2. Store each transcript segment in DB
         for seg in segments:
             db.add(TranscriptChunk(
                 lecture_id=lecture_id,
@@ -46,19 +69,88 @@ async def _transcribe_background(
                 text=seg.text,
                 speaker=seg.speaker,
             ))
+        db.commit()
 
-        # Mark lecture ready
+        # 3. Handoff to AI Planning pipeline
+        try:
+            from backend.ai.planning import run_full_pipeline
+            pipeline_result = run_full_pipeline(segments, lecture_id=lecture_id)
+
+            # Store LearningPlan + Phases
+            plan_record = LearningPlanModel(lecture_id=lecture_id)
+            db.add(plan_record)
+            db.flush()
+
+            for ph in pipeline_result.plan.phases:
+                db.add(PhaseModel(
+                    plan_id=plan_record.id,
+                    order=ph.order,
+                    title=ph.title,
+                    teaching_script=ph.teaching_script,
+                    source_timestamps=[t.model_dump() for t in ph.source_timestamps],
+                    prerequisite_note=ph.prerequisite_note,
+                    difficulty=ph.difficulty,
+                ))
+
+            # Store GapConcepts
+            for gap in pipeline_result.gaps:
+                db.add(GapConceptModel(
+                    lecture_id=lecture_id,
+                    name=gap.name,
+                    why_its_a_gap=gap.why_its_a_gap,
+                    related_phase_order=gap.related_phase_order,
+                    source_timestamp=gap.source_timestamp.model_dump() if gap.source_timestamp else None,
+                ))
+
+            # Store QuizItems
+            for q in pipeline_result.quizzes:
+                db.add(QuizItemModel(
+                    lecture_id=lecture_id,
+                    question=q.question,
+                    options=q.options,
+                    correct_answer=q.correct_answer,
+                    source_timestamp=q.source_timestamp.model_dump() if q.source_timestamp else None,
+                ))
+
+            # Store GraphNodes
+            for node in pipeline_result.graph_nodes:
+                db.add(GraphNodeModel(
+                    id=node.id,
+                    lecture_id=lecture_id,
+                    label=node.label,
+                    is_gap=node.is_gap,
+                    source_timestamp=node.source_timestamp.model_dump() if node.source_timestamp else None,
+                ))
+
+            # Store GraphEdges
+            for edge in pipeline_result.graph_edges:
+                db.add(GraphEdgeModel(
+                    lecture_id=lecture_id,
+                    source=edge.source,
+                    target=edge.target,
+                    relation=edge.relation,
+                ))
+
+            db.commit()
+            print(f"[pipeline] Successfully stored planning data for lecture {lecture_id}")
+
+        except Exception as plan_err:
+            print(f"[warning] Planning pipeline failed for lecture {lecture_id}: {plan_err}")
+
+        # 4. Mark lecture ready
         lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
         if lecture:
             lecture.status = LectureStatus.READY
             db.commit()
+
     except Exception as e:
-        # Mark failed and log error
         lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
         if lecture:
             lecture.status = LectureStatus.FAILED
             db.commit()
-        print(f"Transcription failed for lecture {lecture_id}: {e}")
+        print(f"Transcription/Planning pipeline failed for lecture {lecture_id}: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/lectures", response_model=LectureSchema)
@@ -67,20 +159,12 @@ async def upload_lecture(
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
 ):
-    """Upload an audio or video file to be transcribed.
+    """Upload an audio or video file to be transcribed and planned.
 
     Returns immediately with status=PROCESSING. The actual transcription
-    runs in the background and marks the lecture READY once done.
-    
-    Args:
-        file: Audio (mp3, wav, m4a, etc.) or video (mp4, mov, etc.)
-    
-    Returns:
-        Lecture object with id, filename, status (PROCESSING), audio_url
+    and AI planning pipeline run in the background and mark the lecture READY.
     """
     try:
-        # Save uploaded file to storage (R2 / local disk)
-        # UploadFile.file is a SpooledTemporaryFile we can read
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             contents = await file.read()
@@ -88,7 +172,7 @@ async def upload_lecture(
             tmp_path = tmp.name
 
         stored_ref = save(tmp_path, file.filename)
-        audio_url = stored_ref  # For R2, this is the object key; storage.get_url() returns the URL
+        audio_url = stored_ref
 
         # Create lecture row with PROCESSING status
         lecture = Lecture(
@@ -100,12 +184,11 @@ async def upload_lecture(
         db.commit()
         db.refresh(lecture)
 
-        # Queue the transcription to run in the background
+        # Queue background transcription + planning
         background_tasks.add_task(
-            _transcribe_background,
+            _transcribe_and_plan_background,
             lecture_id=lecture.id,
             stored_ref=stored_ref,
-            db=db,
         )
 
         return LectureSchema(
@@ -154,11 +237,7 @@ def get_lecture(lecture_id: int, db: Session = Depends(get_db)):
 
 @router.get("/lectures/{lecture_id}/transcripts", response_model=list[TranscriptSegment])
 def get_transcripts(lecture_id: int, db: Session = Depends(get_db)):
-    """Get transcript segments for a lecture (once transcription is done).
-    
-    Returns 200 even if transcription is still PROCESSING (empty list).
-    Returns 404 if the lecture doesn't exist.
-    """
+    """Get transcript segments for a lecture."""
     lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
     if not lecture:
         raise HTTPException(status_code=404, detail="Lecture not found")
@@ -178,3 +257,111 @@ def get_transcripts(lecture_id: int, db: Session = Depends(get_db)):
         )
         for seg in segments
     ]
+
+
+@router.get("/lectures/{lecture_id}/plan", response_model=Optional[LearningPlanSchema])
+def get_learning_plan(lecture_id: int, db: Session = Depends(get_db)):
+    """Get the AI-generated learning plan for a lecture."""
+    plan_record = db.query(LearningPlanModel).filter(
+        LearningPlanModel.lecture_id == lecture_id
+    ).first()
+    if not plan_record:
+        return None
+
+    phases = [
+        PhaseSchema(
+            order=p.order,
+            title=p.title,
+            teaching_script=p.teaching_script,
+            source_timestamps=[
+                TimeRange(start=t["start"], end=t["end"]) for t in (p.source_timestamps or [])
+            ],
+            prerequisite_note=p.prerequisite_note,
+            difficulty=p.difficulty,
+        )
+        for p in plan_record.phases
+    ]
+
+    return LearningPlanSchema(
+        id=plan_record.id,
+        lecture_id=plan_record.lecture_id,
+        phases=phases,
+    )
+
+
+@router.get("/lectures/{lecture_id}/quiz", response_model=list[QuizItemSchema])
+def get_quizzes(lecture_id: int, db: Session = Depends(get_db)):
+    """Get the quiz questions for a lecture."""
+    quizzes = db.query(QuizItemModel).filter(
+        QuizItemModel.lecture_id == lecture_id
+    ).all()
+
+    return [
+        QuizItemSchema(
+            id=q.id,
+            lecture_id=q.lecture_id,
+            question=q.question,
+            options=q.options or [],
+            correct_answer=q.correct_answer,
+            source_timestamp=(
+                TimeRange(start=q.source_timestamp["start"], end=q.source_timestamp["end"])
+                if q.source_timestamp else None
+            ),
+        )
+        for q in quizzes
+    ]
+
+
+@router.get("/lectures/{lecture_id}/gaps", response_model=list[GapConceptSchema])
+def get_gaps(lecture_id: int, db: Session = Depends(get_db)):
+    """Get under-explained gap concepts for a lecture."""
+    gaps = db.query(GapConceptModel).filter(
+        GapConceptModel.lecture_id == lecture_id
+    ).all()
+
+    return [
+        GapConceptSchema(
+            id=g.id,
+            lecture_id=g.lecture_id,
+            name=g.name,
+            why_its_a_gap=g.why_its_a_gap,
+            related_phase_order=g.related_phase_order,
+            source_timestamp=(
+                TimeRange(start=g.source_timestamp["start"], end=g.source_timestamp["end"])
+                if g.source_timestamp else None
+            ),
+        )
+        for g in gaps
+    ]
+
+
+@router.get("/lectures/{lecture_id}/graph")
+def get_knowledge_graph(lecture_id: int, db: Session = Depends(get_db)):
+    """Get knowledge graph nodes and edges for visualization."""
+    nodes = db.query(GraphNodeModel).filter(GraphNodeModel.lecture_id == lecture_id).all()
+    edges = db.query(GraphEdgeModel).filter(GraphEdgeModel.lecture_id == lecture_id).all()
+
+    return {
+        "nodes": [
+            GraphNodeSchema(
+                id=n.id,
+                lecture_id=n.lecture_id,
+                label=n.label,
+                is_gap=n.is_gap,
+                source_timestamp=(
+                    TimeRange(start=n.source_timestamp["start"], end=n.source_timestamp["end"])
+                    if n.source_timestamp else None
+                ),
+            ).model_dump()
+            for n in nodes
+        ],
+        "edges": [
+            GraphEdgeSchema(
+                lecture_id=e.lecture_id,
+                source=e.source,
+                target=e.target,
+                relation=e.relation,
+            ).model_dump()
+            for e in edges
+        ],
+    }
