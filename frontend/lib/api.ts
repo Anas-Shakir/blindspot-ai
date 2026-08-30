@@ -250,6 +250,113 @@ export async function getTranscripts(
 }
 
 /**
+ * Get the AI-generated learning plan for a lecture from GET /api/lectures/{id}/plan.
+ */
+export async function getLearningPlan(
+  lectureId: number | string
+): Promise<LearningPlan | null> {
+  return fetchJson<LearningPlan | null>(`/api/lectures/${lectureId}/plan`, {
+    method: "GET",
+    cache: "no-store",
+  });
+}
+
+/**
+ * Get the quiz questions for a lecture from GET /api/lectures/{id}/quiz.
+ */
+export async function getQuizzes(
+  lectureId: number | string
+): Promise<QuizItem[]> {
+  return fetchJson<QuizItem[]>(`/api/lectures/${lectureId}/quiz`, {
+    method: "GET",
+    cache: "no-store",
+  });
+}
+
+/**
+ * Get under-explained gap concepts for a lecture from GET /api/lectures/{id}/gaps.
+ */
+export async function getGaps(
+  lectureId: number | string
+): Promise<GapConcept[]> {
+  return fetchJson<GapConcept[]>(`/api/lectures/${lectureId}/gaps`, {
+    method: "GET",
+    cache: "no-store",
+  });
+}
+
+/**
+ * Get knowledge graph nodes and edges from GET /api/lectures/{id}/graph.
+ */
+export async function getGraph(
+  lectureId: number | string
+): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
+  return fetchJson<{ nodes: GraphNode[]; edges: GraphEdge[] }>(
+    `/api/lectures/${lectureId}/graph`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+}
+
+/**
+ * Starts/initializes a live teaching session on the backend orchestrator.
+ */
+export async function startSession(
+  lectureId: number | string,
+  sessionId?: string
+): Promise<SessionEvent[]> {
+  const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
+  return fetchJson<SessionEvent[]>(`/api/lectures/${lectureId}/session${query}`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+/**
+ * Dispatches a command to the active teaching session state machine.
+ */
+export async function sendCommand(
+  lectureId: number | string,
+  sessionId: string,
+  command: string,
+  argument?: string
+): Promise<SessionEvent[]> {
+  return fetchJson<SessionEvent[]>(
+    `/api/lectures/${lectureId}/session/${sessionId}/command`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId,
+        command,
+        argument: argument || null,
+      }),
+    }
+  );
+}
+
+/**
+ * Resolves a local or backend audio path into a playable browser URL.
+ */
+export function resolveAudioUrl(pathOrUrl?: string | null): string | null {
+  if (!pathOrUrl) return null;
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") || pathOrUrl.startsWith("blob:")) {
+    return pathOrUrl;
+  }
+  // If it's a relative storage path or local file path
+  const normalized = pathOrUrl.replace(/\\/g, "/");
+  const match = normalized.match(/storage_data\/(.+)$/);
+  if (match) {
+    return `${API_BASE_URL}/storage/${match[1]}`;
+  }
+  if (normalized.startsWith("/storage/")) {
+    return `${API_BASE_URL}${normalized}`;
+  }
+  return pathOrUrl;
+}
+
+/**
  * Check backend health status from GET /health.
  */
 export async function checkHealth(): Promise<HealthStatus> {
@@ -267,6 +374,13 @@ export const api = {
   listLectures,
   getLecture,
   getTranscripts,
+  getLearningPlan,
+  getQuizzes,
+  getGaps,
+  getGraph,
+  startSession,
+  sendCommand,
+  resolveAudioUrl,
   checkHealth,
 };
 
