@@ -81,44 +81,23 @@ def set_tts_engine(engine: TTSCallable) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Optional LLM Hook for Free Q&A
+# Student Q&A Hook (Delegates to backend/ai/qa.py)
 # ---------------------------------------------------------------------------
 
-def _answer_free_question(question: str, current_phase: Optional[Phase]) -> str:
+def _answer_free_question(
+    question: str,
+    current_phase: Optional[Phase],
+    transcript_segments: Optional[List[TranscriptSegment]] = None,
+) -> str:
     """Answers a student's question in the context of the current phase.
-
-    Tries calling backend.ai._llm if available; falls back to a clear context answer.
+    Delegates to backend.ai.qa for a comprehensive, pedagogical response.
     """
-    context = ""
-    if current_phase:
-        context = (
-            f"Current Topic: {current_phase.title}\n"
-            f"Teaching Content: {current_phase.teaching_script}\n"
-        )
-
-    try:
-        from backend.ai._llm import chat_completion
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are Blindspot AI, an empathetic and clear voice teaching assistant. "
-                    "A student is listening to a lecture and paused to ask a question. "
-                    "Answer concisely (2-3 sentences), strictly grounded in the current lesson context. "
-                    f"\nContext:\n{context}"
-                ),
-            },
-            {"role": "user", "content": question},
-        ]
-        return chat_completion(messages=messages, temperature=0.5)
-    except Exception as e:
-        logger.debug("LLM free Q&A fallback triggered: %s", e)
-        if current_phase:
-            return (
-                f"Regarding {current_phase.title}: In this phase we focus on {current_phase.teaching_script[:120]}... "
-                f"To answer '{question}': this connects directly to the core lecture points discussed here."
-            )
-        return f"Regarding your question '{question}': let's review the lecture material."
+    from backend.ai.qa import answer_phase_question
+    return answer_phase_question(
+        question=question,
+        current_phase=current_phase,
+        transcript_segments=transcript_segments,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +361,11 @@ class TeachingSession:
 
     def handle_question(self, question: str) -> List[SessionEvent]:
         """Answers a free-form student question using the current phase context."""
-        answer_text = _answer_free_question(question, self.current_phase)
+        answer_text = _answer_free_question(
+            question=question,
+            current_phase=self.current_phase,
+            transcript_segments=self.transcript_segments,
+        )
         audio_url = _current_tts_engine(answer_text)
 
         events: List[SessionEvent] = []
