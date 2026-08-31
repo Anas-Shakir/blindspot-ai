@@ -177,11 +177,24 @@ export default function WorkspacePage() {
       if (ev.type === "phase_started") {
         if (typeof ev.phase_order === "number") {
           setCurrentPhaseIndex(ev.phase_order);
+          setCustomResponse(null);
+          setIsQuizMode(false);
+          setIsAlternativeView(false);
+          setPlaybackSeconds(0);
+          setUserQuery("");
         }
       } else if (ev.type === "speaking") {
         const text = (ev.payload?.text as string) || "";
         const audioUrl = (ev.payload?.audio_url as string) || null;
-        setActiveSpeechText(text);
+        const inResponseTo = ev.payload?.in_response_to;
+
+        if (inResponseTo) {
+          setCustomResponse(text);
+        } else {
+          setCustomResponse(null);
+          setActiveSpeechText(text);
+        }
+
         if (audioUrl) {
           playAudio(audioUrl);
         }
@@ -194,6 +207,7 @@ export default function WorkspacePage() {
       } else if (ev.type === "quiz_started") {
         setIsQuizMode(true);
       } else if (ev.type === "session_ended") {
+        setCustomResponse(null);
         setActiveSpeechText("All lecture phases have been completed. Great work!");
       }
     }
@@ -343,6 +357,12 @@ export default function WorkspacePage() {
 
   // Button Action 1: Next Phase (Dispatches to Orchestrator)
   const handleNextPhase = async () => {
+    setCustomResponse(null);
+    setIsQuizMode(false);
+    setIsAlternativeView(false);
+    setPlaybackSeconds(0);
+    setUserQuery("");
+
     if (lectureId) {
       try {
         const events = await api.sendCommand(lectureId, sessionId, "next");
