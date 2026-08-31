@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   Volume2,
   VolumeX,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -128,9 +130,12 @@ export default function WorkspacePage() {
   // Audio elements & speech text
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [activeSpeechText, setActiveSpeechText] = useState<string>("");
+
+  // User query & AI Thinking state
   const [userQuery, setUserQuery] = useState<string>("");
   const [customResponse, setCustomResponse] = useState<string | null>(null);
   const [isAnsweringQuery, setIsAnsweringQuery] = useState<boolean>(false);
+  const [thinkingStatus, setThinkingStatus] = useState<string>("Analyzing lecture context...");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const formatSeconds = (sec: number): string => {
@@ -138,6 +143,14 @@ export default function WorkspacePage() {
     const remaining = Math.floor(sec % 60);
     return `${mins.toString().padStart(2, "0")}:${remaining.toString().padStart(2, "0")}`;
   };
+
+  // Dynamic Thinking Status Messages
+  const THINKING_STEPS = [
+    "Analyzing lecture context & timestamps...",
+    "Connecting core phase concepts...",
+    "Formulating intuitive analogy...",
+    "Synthesizing voice response...",
+  ];
 
   // Helper to play synthesized voice audio
   const playAudio = useCallback((audioUrl?: string | null) => {
@@ -395,19 +408,28 @@ export default function WorkspacePage() {
     }
   };
 
-  // Student Query Submission (Free Q&A via Orchestrator)
+  // Student Query Submission (Free Q&A via Orchestrator with animated thinking status)
   const handleQuerySubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const query = userQuery.trim();
-    if (!query) return;
+    if (!query || isAnsweringQuery) return;
 
     setIsAnsweringQuery(true);
     setIsSpeaking(true);
     setIsQuizMode(false);
+    setThinkingStatus(THINKING_STEPS[0]);
 
-    if (lectureId) {
-      try {
+    // Rotate through thinking stages while awaiting backend
+    let stepIndex = 0;
+    const thinkingInterval = setInterval(() => {
+      stepIndex = (stepIndex + 1) % THINKING_STEPS.length;
+      setThinkingStatus(THINKING_STEPS[stepIndex]);
+    }, 1400);
+
+    try {
+      if (lectureId) {
         const events = await api.sendCommand(lectureId, sessionId, query);
+        clearInterval(thinkingInterval);
         processEvents(events);
         const speakEv = events.find((ev) => ev.type === "speaking");
         if (speakEv?.payload?.text) {
@@ -417,9 +439,11 @@ export default function WorkspacePage() {
         setIsAnsweringQuery(false);
         setIsSpeaking(false);
         return;
-      } catch (err) {
-        console.warn("Free Q&A failed on backend; using local response:", err);
       }
+    } catch (err) {
+      console.warn("Free Q&A failed on backend; using local fallback:", err);
+    } finally {
+      clearInterval(thinkingInterval);
     }
 
     setTimeout(() => {
@@ -691,24 +715,53 @@ export default function WorkspacePage() {
                 <RobotCompanionWrapper isFast={isSpeaking || isAnsweringQuery} />
               </div>
 
-              {/* Clean Minimal Dialogue Box */}
+              {/* Clean Minimal Dialogue Box with Dynamic Thinking State */}
               <motion.div
                 layout
-                key={`speech-${currentPhaseIndex}-${isQuizMode}-${isAlternativeView}-${customResponse}`}
+                key={`speech-${currentPhaseIndex}-${isQuizMode}-${isAlternativeView}-${customResponse}-${isAnsweringQuery}`}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.18 }}
-                className="w-full p-4 rounded-xl bg-zinc-900/60 border border-white/[0.07] text-xs sm:text-sm text-neutral-300 leading-relaxed shadow-sm mb-3"
+                className={cn(
+                  "w-full p-4 rounded-xl border text-xs sm:text-sm leading-relaxed shadow-sm mb-3 transition-colors",
+                  isAnsweringQuery
+                    ? "bg-zinc-900/90 border-emerald-500/30 text-neutral-200"
+                    : "bg-zinc-900/60 border-white/[0.07] text-neutral-300"
+                )}
               >
-                <p>
-                  {customResponse
-                    ? customResponse
-                    : isQuizMode
-                    ? "Test your understanding of this phase before moving forward."
-                    : isAlternativeView
-                    ? currentPhase.alternativeSpeechText
-                    : activeSpeechText || currentPhase.speechText}
-                </p>
+                {isAnsweringQuery ? (
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <div className="h-6 w-6 rounded-full border-2 border-emerald-500/30 border-t-emerald-400 animate-spin" />
+                      <Sparkles className="w-2.5 h-2.5 text-emerald-400 absolute" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-emerald-400">
+                          AI Companion
+                        </span>
+                        <span className="flex gap-1 items-center">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse [animation-delay:-0.3s]" />
+                          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse [animation-delay:-0.15s]" />
+                          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-300 font-medium">
+                        {thinkingStatus}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p>
+                    {customResponse
+                      ? customResponse
+                      : isQuizMode
+                      ? "Test your understanding of this phase before moving forward."
+                      : isAlternativeView
+                      ? currentPhase.alternativeSpeechText
+                      : activeSpeechText || currentPhase.speechText}
+                  </p>
+                )}
               </motion.div>
 
               {/* Robot User Query Input Box */}
@@ -731,13 +784,17 @@ export default function WorkspacePage() {
                   disabled={!userQuery.trim() || isAnsweringQuery}
                   className={cn(
                     "absolute right-2.5 flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-colors cursor-pointer",
-                    userQuery.trim()
+                    userQuery.trim() && !isAnsweringQuery
                       ? "bg-white text-neutral-950 hover:bg-neutral-200"
                       : "opacity-40 cursor-not-allowed"
                   )}
                   aria-label="Send question"
                 >
-                  <ArrowRight className="w-3 h-3" />
+                  {isAnsweringQuery ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-neutral-400" />
+                  ) : (
+                    <ArrowRight className="w-3 h-3" />
+                  )}
                 </motion.button>
               </form>
             </div>
