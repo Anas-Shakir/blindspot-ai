@@ -20,6 +20,8 @@ import {
   Loader2,
   Sparkles,
   Globe,
+  Network,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +36,7 @@ import {
 import RobotCompanionWrapper from "@/components/RobotCompanionWrapper";
 import QuizCard, { QuizOption } from "@/components/QuizCard";
 import Sidebar from "@/components/Sidebar";
+import KnowledgeGraphView from "@/components/KnowledgeGraphView";
 
 interface PhaseData {
   id: number;
@@ -121,7 +124,8 @@ export default function WorkspacePage() {
   const [transcripts, setTranscripts] = useState<TranscriptSegment[]>([]);
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState<number>(0);
 
-  // UI modes
+  // UI modes & View Switching
+  const [activeMainView, setActiveMainView] = useState<"lesson" | "graph">("lesson");
   const [isQuizMode, setIsQuizMode] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isAlternativeView, setIsAlternativeView] = useState<boolean>(false);
@@ -567,7 +571,16 @@ export default function WorkspacePage() {
       />
 
       {/* Global Collapsible Sidebar */}
-      <Sidebar />
+      <Sidebar
+        currentPathOverride={activeMainView === "graph" ? "#graph" : "/workspace"}
+        onNavigate={(href) => {
+          if (href === "#graph" || href.includes("graph")) {
+            setActiveMainView("graph");
+          } else {
+            setActiveMainView("lesson");
+          }
+        }}
+      />
 
       {/* Main Workspace Frame */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
@@ -595,6 +608,36 @@ export default function WorkspacePage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            {/* View Mode Switcher: Lesson Canvas vs Knowledge Graph */}
+            <div className="flex items-center bg-zinc-900 border border-white/[0.08] p-0.5 rounded-lg text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveMainView("lesson")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer text-xs",
+                  activeMainView === "lesson"
+                    ? "bg-zinc-800 text-white shadow-sm font-semibold"
+                    : "text-neutral-400 hover:text-white"
+                )}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Lesson</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMainView("graph")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer text-xs",
+                  activeMainView === "graph"
+                    ? "bg-sky-950/80 text-sky-300 border border-sky-500/40 shadow-sm font-semibold"
+                    : "text-neutral-400 hover:text-sky-300"
+                )}
+              >
+                <Network className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden sm:inline">Knowledge Graph</span>
+              </button>
+            </div>
+
             {/* 1. Text Reading Language Selector */}
             <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/[0.08] hover:border-white/[0.15] rounded-lg px-2.5 py-1 text-xs text-neutral-300 transition-colors">
               <Globe className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
@@ -654,8 +697,27 @@ export default function WorkspacePage() {
           </div>
         </header>
 
-        {/* Workspace Split Layout: Left Content (60%) vs Right Companion (40%) */}
-        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
+        {/* Workspace Main Viewport: Knowledge Graph vs Interactive Lesson Split */}
+        {activeMainView === "graph" && lectureId ? (
+          <main className="flex-1 min-h-0 overflow-hidden">
+            <KnowledgeGraphView
+              lectureId={lectureId}
+              onJumpToTimestamp={(startSec) => {
+                setPlaybackSeconds(Math.floor(startSec));
+                setIsSourceDrawerOpen(true);
+                setActiveMainView("lesson");
+              }}
+              onAskTutor={(question) => {
+                setActiveMainView("lesson");
+                setUserQuery(question);
+                if (inputRef.current) {
+                  inputRef.current.focus();
+                }
+              }}
+            />
+          </main>
+        ) : (
+          <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
           {/* Left Pane — Active Lesson Canvas (60% Width, Scrollable) */}
           <section className="lg:col-span-7 p-6 sm:p-8 overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/[0.07] flex flex-col justify-between">
             <AnimatePresence mode="wait">
@@ -997,6 +1059,7 @@ export default function WorkspacePage() {
             </div>
           </section>
         </main>
+        )}
       </div>
 
       {/* Floating Toast Notification for Voice / Accent Switching */}
