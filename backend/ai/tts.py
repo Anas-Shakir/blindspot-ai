@@ -134,6 +134,16 @@ def get_available_voices() -> list[dict]:
     return VOICE_CATALOG
 
 
+def get_language_for_voice(voice_id: Optional[str]) -> str:
+    """Finds the target language name for a given voice ID."""
+    if not voice_id:
+        return "English"
+    for v in VOICE_CATALOG:
+        if v["id"].lower() == voice_id.lower():
+            return v["language"]
+    return "English"
+
+
 def set_default_voice(voice_id: str) -> None:
     """Sets the global default voice for TTS synthesis."""
     global DEFAULT_EDGE_VOICE

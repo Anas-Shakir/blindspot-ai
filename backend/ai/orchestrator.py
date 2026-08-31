@@ -115,6 +115,7 @@ class TeachingSession:
         quizzes: Optional[List[QuizItem]] = None,
         transcript_segments: Optional[List[TranscriptSegment]] = None,
         voice: Optional[str] = None,
+        text_language: Optional[str] = None,
     ) -> None:
         self.session_id = session_id
         self.lecture_id = lecture_id
@@ -123,10 +124,19 @@ class TeachingSession:
         self.transcript_segments: List[TranscriptSegment] = transcript_segments or []
         self.voice: Optional[str] = voice
 
+        from backend.ai.tts import get_language_for_voice
+        self.voice_language: str = get_language_for_voice(voice)
+        self.text_language: str = text_language or "English"
+
         self.current_phase_index: int = 0
         self.is_ended: bool = False
         self.active_quiz_item: Optional[QuizItem] = None
         self.history: List[dict] = []
+
+    @property
+    def language(self) -> str:
+        """Alias for voice_language for backward compatibility."""
+        return self.voice_language
 
     @property
     def current_phase(self) -> Optional[Phase]:
@@ -148,17 +158,66 @@ class TeachingSession:
         return event
 
     def set_voice(self, voice_id: str) -> List[SessionEvent]:
-        """Silently changes the active voice model for this session without interrupting speech."""
+        """Silently changes the active voice model & spoken voice language for this session."""
         clean_voice = (voice_id or "").strip()
         if clean_voice:
             self.voice = clean_voice
+            from backend.ai.tts import get_language_for_voice
+            self.voice_language = get_language_for_voice(clean_voice)
 
         return [
             self._emit(
                 SessionEventType.AWAITING_COMMAND,
-                {"voice": self.voice, "status": "voice_updated"},
+                {
+                    "voice": self.voice,
+                    "voice_language": self.voice_language,
+                    "text_language": self.text_language,
+                    "status": "voice_updated",
+                },
             )
         ]
+
+    def set_text_language(self, language: str) -> List[SessionEvent]:
+        """Silently changes the on-screen text language for this session."""
+        clean_lang = (language or "").strip()
+        if clean_lang:
+            self.text_language = clean_lang
+
+        return [
+            self._emit(
+                SessionEventType.AWAITING_COMMAND,
+                {
+                    "voice": self.voice,
+                    "voice_language": self.voice_language,
+                    "text_language": self.text_language,
+                    "status": "text_language_updated",
+                },
+            )
+        ]
+
+    def _prepare_speech(self, text: str) -> tuple[str, Optional[str]]:
+        """Prepares on-screen dialogue text in self.text_language and
+        synthesizes voice audio in self.voice_language with self.voice.
+        Returns (dialogue_text, audio_url).
+        """
+        from backend.ai.translation import translate_text
+
+        # 1. Translate for on-screen reading
+        dialogue_text = (
+            translate_text(text, self.text_language)
+            if self.text_language and "english" not in self.text_language.lower()
+            else text
+        )
+
+        # 2. Translate for spoken voice audio
+        audio_text = (
+            translate_text(text, self.voice_language)
+            if self.voice_language and "english" not in self.voice_language.lower()
+            else text
+        )
+
+        audio_url = _current_tts_engine(audio_text, voice=self.voice)
+        return dialogue_text, audio_url
 
     def start(self) -> List[SessionEvent]:
         """Starts the session by teaching the first phase."""
@@ -171,7 +230,7 @@ class TeachingSession:
         return self._teach_current_phase()
 
     def _teach_current_phase(self) -> List[SessionEvent]:
-        """Emits phase_started, invokes TTS to speak the phase script, and awaits command."""
+        """Emits phase_started, translates & synthesizes speech, and awaits command."""
         phase = self.current_phase
         if not phase:
             self.is_ended = True
@@ -188,11 +247,13 @@ class TeachingSession:
         }
         events.append(self._emit(SessionEventType.PHASE_STARTED, phase_payload))
 
-        # 2. TTS synthesis & emit speaking
-        audio_url = _current_tts_engine(phase.teaching_script, voice=self.voice)
+        # 2. TTS synthesis & emit speaking (with native translations)
+        spoken_text, audio_url = self._prepare_speech(phase.teaching_script)
         speaking_payload = {
-            "text": phase.teaching_script,
+            "text": spoken_text,
             "audio_url": audio_url,
+            "text_language": self.text_language,
+            "voice_language": self.voice_language,
         }
         events.append(self._emit(SessionEventType.SPEAKING, speaking_payload))
 
@@ -226,6 +287,8 @@ class TeachingSession:
             return self.handle_quiz_me()
         elif raw_cmd in ("set_voice", "change_voice", "voice"):
             return self.set_voice(cmd.argument or "")
+        elif raw_cmd in ("set_text_language", "set_language", "text_language", "language"):
+            return self.set_text_language(cmd.argument or "English")
         else:
             # Free question or unrecognized command
             return self.handle_question(cmd.command)
@@ -250,11 +313,13 @@ class TeachingSession:
             return [self._emit(SessionEventType.SESSION_ENDED)]
 
         events: List[SessionEvent] = []
-        audio_url = _current_tts_engine(phase.teaching_script, voice=self.voice)
+        spoken_text, audio_url = self._prepare_speech(phase.teaching_script)
         speaking_payload = {
-            "text": phase.teaching_script,
+            "text": spoken_text,
             "audio_url": audio_url,
             "is_reexplanation": True,
+            "text_language": self.text_language,
+            "voice_language": self.voice_language,
         }
         events.append(self._emit(SessionEventType.SPEAKING, speaking_payload))
         events.append(self._emit(SessionEventType.AWAITING_COMMAND))
@@ -360,16 +425,18 @@ class TeachingSession:
             else f"Not quite. The correct answer was: {quiz.correct_answer}."
         )
 
-        audio_url = _current_tts_engine(feedback_text, voice=self.voice)
+        spoken_text, audio_url = self._prepare_speech(feedback_text)
 
         events: List[SessionEvent] = []
         events.append(
             self._emit(
                 SessionEventType.SPEAKING,
                 {
-                    "text": feedback_text,
+                    "text": spoken_text,
                     "audio_url": audio_url,
                     "quiz_result": result.model_dump(),
+                    "text_language": self.text_language,
+                    "voice_language": self.voice_language,
                 },
             )
         )
@@ -383,16 +450,18 @@ class TeachingSession:
             current_phase=self.current_phase,
             transcript_segments=self.transcript_segments,
         )
-        audio_url = _current_tts_engine(answer_text, voice=self.voice)
+        spoken_text, audio_url = self._prepare_speech(answer_text)
 
         events: List[SessionEvent] = []
         events.append(
             self._emit(
                 SessionEventType.SPEAKING,
                 {
-                    "text": answer_text,
+                    "text": spoken_text,
                     "audio_url": audio_url,
                     "in_response_to": question,
+                    "text_language": self.text_language,
+                    "voice_language": self.voice_language,
                 },
             )
         )
@@ -417,6 +486,7 @@ class SessionStore:
         plan: LearningPlan,
         quizzes: Optional[List[QuizItem]] = None,
         transcript_segments: Optional[List[TranscriptSegment]] = None,
+        voice: Optional[str] = None,
     ) -> TeachingSession:
         session = TeachingSession(
             session_id=session_id,
@@ -424,6 +494,7 @@ class SessionStore:
             plan=plan,
             quizzes=quizzes,
             transcript_segments=transcript_segments,
+            voice=voice,
         )
         self._sessions[session_id] = session
         return session
@@ -450,6 +521,7 @@ def load_session_from_db(
     lecture_id: int,
     session_id: Optional[str] = None,
     db: Optional[any] = None,
+    voice: Optional[str] = None,
 ) -> TeachingSession:
     """Loads a lecture's LearningPlan, QuizItems, and TranscriptChunks from the database
     and creates/registers an active TeachingSession.
@@ -555,6 +627,7 @@ def load_session_from_db(
             plan=plan,
             quizzes=quizzes,
             transcript_segments=transcripts,
+            voice=voice,
         )
         return session
 

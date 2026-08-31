@@ -19,6 +19,7 @@ import {
   VolumeX,
   Loader2,
   Sparkles,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -132,9 +133,22 @@ export default function WorkspacePage() {
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [activeSpeechText, setActiveSpeechText] = useState<string>("");
 
-  // Voice / Language state
+  // Text Language Options Catalog
+  const TEXT_LANGUAGES = [
+    { id: "English", name: "English", flag: "🌐" },
+    { id: "Urdu", name: "Urdu (اردو)", flag: "🇵🇰" },
+    { id: "Spanish", name: "Spanish (Español)", flag: "🇪🇸" },
+    { id: "French", name: "French (Français)", flag: "🇫🇷" },
+    { id: "German", name: "German (Deutsch)", flag: "🇩🇪" },
+    { id: "Arabic", name: "Arabic (العربية)", flag: "🇸🇦" },
+    { id: "Chinese", name: "Chinese (中文)", flag: "🇨🇳" },
+    { id: "Hindi", name: "Hindi (हिन्दी)", flag: "🇮🇳" },
+  ];
+
+  // Voice & Text Language state
   const [voices, setVoices] = useState<VoiceOption[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>("en-US-ChristopherNeural");
+  const [selectedTextLanguage, setSelectedTextLanguage] = useState<string>("English");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Fetch available neural voices on mount
@@ -163,6 +177,25 @@ export default function WorkspacePage() {
         await api.sendCommand(lectureId, sessionId, "set_voice", voiceId);
       } catch (err) {
         console.warn("Failed to set voice on orchestrator:", err);
+      }
+    }
+  };
+
+  const handleTextLanguageChange = async (langId: string) => {
+    setSelectedTextLanguage(langId);
+    const matched = TEXT_LANGUAGES.find((t) => t.id === langId);
+    const label = matched ? `${matched.flag} ${matched.name}` : langId;
+
+    setToastMessage(`Text language set to ${label}`);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+
+    if (lectureId) {
+      try {
+        await api.sendCommand(lectureId, sessionId, "set_text_language", langId);
+      } catch (err) {
+        console.warn("Failed to set text language on orchestrator:", err);
       }
     }
   };
@@ -497,19 +530,16 @@ export default function WorkspacePage() {
         return;
       }
     } catch (err) {
-      console.warn("Free Q&A failed on backend; using local fallback:", err);
+      console.warn("Free Q&A failed on backend:", err);
+      setCustomResponse(
+        `I had a moment of interference while retrieving the explanation for "${query}". Please ask again!`
+      );
     } finally {
       clearInterval(thinkingInterval);
-    }
-
-    setTimeout(() => {
       setIsAnsweringQuery(false);
       setIsSpeaking(false);
-      setCustomResponse(
-        `Regarding "${query}": In ${currentPhase.title}, this directly connects to the core concepts discussed in this phase.`
-      );
       setUserQuery("");
-    }, 800);
+    }
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -565,19 +595,38 @@ export default function WorkspacePage() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* Voice / Accent / Language Selector */}
+            {/* 1. Text Reading Language Selector */}
+            <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/[0.08] hover:border-white/[0.15] rounded-lg px-2.5 py-1 text-xs text-neutral-300 transition-colors">
+              <Globe className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+              <span className="text-[11px] text-neutral-400 hidden sm:inline">Text:</span>
+              <select
+                value={selectedTextLanguage}
+                onChange={(e) => handleTextLanguageChange(e.target.value)}
+                aria-label="Select Reading Text Language"
+                className="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer pr-1 hover:text-white"
+              >
+                {TEXT_LANGUAGES.map((t) => (
+                  <option key={t.id} value={t.id} className="bg-zinc-900 text-neutral-200">
+                    {t.flag} {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. AI Voice & Accent Selector */}
             {voices.length > 0 && (
               <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/[0.08] hover:border-white/[0.15] rounded-lg px-2.5 py-1 text-xs text-neutral-300 transition-colors">
                 <Volume2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                <span className="text-[11px] text-neutral-400 hidden sm:inline">Voice:</span>
                 <select
                   value={selectedVoice}
                   onChange={(e) => handleVoiceChange(e.target.value)}
-                  aria-label="Select AI Voice & Language"
+                  aria-label="Select Spoken AI Voice"
                   className="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer pr-1 hover:text-white"
                 >
                   {voices.map((v) => (
                     <option key={v.id} value={v.id} className="bg-zinc-900 text-neutral-200">
-                      {v.flag ? `${v.flag} ` : ""}{v.language} — {v.name}
+                      {v.flag ? `${v.flag} ` : ""}{v.language} ({v.name})
                     </option>
                   ))}
                 </select>
