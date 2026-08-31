@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Network,
@@ -11,14 +11,10 @@ import {
   RotateCcw,
   ZoomIn,
   ZoomOut,
-  Maximize2,
-  Filter,
-  CheckCircle2,
-  ArrowRight,
-  HelpCircle,
   Clock,
   Layers,
   ChevronRight,
+  Move,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, GraphNode, GraphEdge } from "@/lib/api";
@@ -28,6 +24,45 @@ interface KnowledgeGraphViewProps {
   onJumpToTimestamp?: (startSec: number) => void;
   onAskTutor?: (question: string) => void;
   className?: string;
+}
+
+// Card geometric bounds for precise border clipping
+const CARD_WIDTH = 210;
+const CARD_HEIGHT = 58;
+
+/**
+ * Calculates the exact point on the rectangular card boundary where a connection ray intersects it.
+ * This guarantees arrowheads and connection lines touch the card border precisely without clipping or burying.
+ */
+function getBorderIntersection(
+  fromPoint: { x: number; y: number },
+  cardCenter: { x: number; y: number },
+  width: number = CARD_WIDTH,
+  height: number = CARD_HEIGHT,
+  offset: number = 6
+): { x: number; y: number } {
+  const dx = fromPoint.x - cardCenter.x;
+  const dy = fromPoint.y - cardCenter.y;
+
+  if (dx === 0 && dy === 0) return cardCenter;
+
+  const halfW = width / 2 + offset;
+  const halfH = height / 2 + offset;
+
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  let scale = 1;
+  if (absDx * halfH > absDy * halfW) {
+    scale = halfW / (absDx || 1);
+  } else {
+    scale = halfH / (absDy || 1);
+  }
+
+  return {
+    x: cardCenter.x + dx * scale,
+    y: cardCenter.y + dy * scale,
+  };
 }
 
 export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
@@ -40,12 +75,23 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterMode, setFilterMode] = useState<"all" | "gaps">("all");
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [zoomLevel, setZoomLevel] = useState<number>(0.85);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Custom node positions: nodeId -> { x, y }
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
+
+  // Active dragged node tracking
+  const draggingNodeRef = useRef<{ id: string; startX: number; startY: number; mouseStartX: number; mouseStartY: number } | null>(null);
+
+  // Center coordinate space
+  const CENTER_X = 1000;
+  const CENTER_Y = 800;
 
   // Fetch live knowledge graph from GET /api/lectures/{id}/graph
   useEffect(() => {
@@ -58,10 +104,54 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
       .getGraph(lectureId)
       .then((data) => {
         if (!isMounted) return;
-        setNodes(data.nodes || []);
-        setEdges(data.edges || []);
-        if (data.nodes && data.nodes.length > 0) {
-          setSelectedNodeId(data.nodes[0].id);
+        const loadedNodes = data.nodes || [];
+        const loadedEdges = data.edges || [];
+        setNodes(loadedNodes);
+        setEdges(loadedEdges);
+
+        if (loadedNodes.length > 0) {
+          setSelectedNodeId(loadedNodes[0].id);
+
+          // Compute generous, de-congested multi-tier orbital positions
+          const coreNodes = loadedNodes.filter((n) => !n.is_gap);
+          const gapNodes = loadedNodes.filter((n) => n.is_gap);
+
+          const tier1Core = coreNodes.slice(0, Math.ceil(coreNodes.length / 2));
+          const tier2Core = coreNodes.slice(Math.ceil(coreNodes.length / 2));
+
+          const initialMap: Record<string, { x: number; y: number }> = {};
+
+          // Tier 1: Inner Core ring (~280px radius)
+          tier1Core.forEach((node, i) => {
+            const radius = 280 + (i % 2 === 0 ? 0 : 35);
+            const angle = (i / Math.max(1, tier1Core.length)) * 2 * Math.PI - Math.PI / 2;
+            initialMap[node.id] = {
+              x: CENTER_X + radius * Math.cos(angle),
+              y: CENTER_Y + radius * Math.sin(angle),
+            };
+          });
+
+          // Tier 2: Intermediate ring (~500px radius)
+          tier2Core.forEach((node, i) => {
+            const radius = 500 + (i % 2 === 0 ? 0 : 45);
+            const angle = (i / Math.max(1, tier2Core.length)) * 2 * Math.PI - Math.PI / 3 + 0.3;
+            initialMap[node.id] = {
+              x: CENTER_X + radius * Math.cos(angle),
+              y: CENTER_Y + radius * Math.sin(angle),
+            };
+          });
+
+          // Tier 3: Blindspot Gaps outer ring (~740px radius with generous spacing)
+          gapNodes.forEach((node, i) => {
+            const radius = 740 + (i % 2 === 0 ? 0 : 55);
+            const angle = (i / Math.max(1, gapNodes.length)) * 2 * Math.PI - Math.PI / 4;
+            initialMap[node.id] = {
+              x: CENTER_X + radius * Math.cos(angle),
+              y: CENTER_Y + radius * Math.sin(angle),
+            };
+          });
+
+          setNodePositions(initialMap);
         }
       })
       .catch((err) => {
@@ -76,7 +166,7 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
     };
   }, [lectureId]);
 
-  // Filtered nodes based on search & filter mode
+  // Filtered nodes
   const filteredNodes = useMemo(() => {
     return nodes.filter((node) => {
       const matchesSearch =
@@ -86,85 +176,98 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
     });
   }, [nodes, searchQuery, filterMode]);
 
-  // Compute layout coordinates for nodes in an organic concentric graph
-  const nodePositions = useMemo(() => {
-    const positions: Record<string, { x: number; y: number }> = {};
-    const total = nodes.length;
-    if (total === 0) return positions;
-
-    const centerX = 450;
-    const centerY = 350;
-
-    // Group nodes into Core Concepts vs Gap Concepts
-    const coreNodes = nodes.filter((n) => !n.is_gap);
-    const gapNodes = nodes.filter((n) => n.is_gap);
-
-    // Inner ring for Core Concepts
-    coreNodes.forEach((node, i) => {
-      const radius = 220;
-      const angle = (i / Math.max(1, coreNodes.length)) * 2 * Math.PI - Math.PI / 2;
-      positions[node.id] = {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle),
-      };
-    });
-
-    // Outer ring for Blindspot Gap Concepts
-    gapNodes.forEach((node, i) => {
-      const radius = 350;
-      const angle = (i / Math.max(1, gapNodes.length)) * 2 * Math.PI - Math.PI / 3;
-      positions[node.id] = {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle),
-      };
-    });
-
-    return positions;
-  }, [nodes]);
-
-  // Currently selected node object
+  // Selected node object
   const selectedNode = useMemo(() => {
     return nodes.find((n) => n.id === selectedNodeId) || null;
   }, [nodes, selectedNodeId]);
 
-  // Connected edges and neighbors for selected node
-  const connectedEdges = useMemo(() => {
-    if (!selectedNodeId) return [];
-    return edges.filter(
-      (e) => e.source === selectedNodeId || e.target === selectedNodeId
-    );
-  }, [edges, selectedNodeId]);
+  // Active focus ID (hovered or selected)
+  const activeFocusId = hoveredNodeId || selectedNodeId;
+
+  // Active edges and neighbors set for focus highlighting
+  const activeEdgeMap = useMemo(() => {
+    const map = new Map<string, { isSource: boolean }>();
+    if (!activeFocusId) return map;
+    edges.forEach((e, idx) => {
+      if (e.source === activeFocusId) {
+        map.set(`${e.source}->${e.target}-${idx}`, { isSource: true });
+      } else if (e.target === activeFocusId) {
+        map.set(`${e.source}->${e.target}-${idx}`, { isSource: false });
+      }
+    });
+    return map;
+  }, [edges, activeFocusId]);
+
+  const neighborNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!activeFocusId) return ids;
+    edges.forEach((e) => {
+      if (e.source === activeFocusId) ids.add(e.target);
+      if (e.target === activeFocusId) ids.add(e.source);
+    });
+    return ids;
+  }, [edges, activeFocusId]);
 
   const neighborNodes = useMemo(() => {
     if (!selectedNodeId) return [];
-    const neighborIds = new Set<string>();
-    connectedEdges.forEach((e) => {
-      if (e.source === selectedNodeId) neighborIds.add(e.target);
-      if (e.target === selectedNodeId) neighborIds.add(e.source);
-    });
-    return nodes.filter((n) => neighborIds.has(n.id));
-  }, [nodes, connectedEdges, selectedNodeId]);
+    return nodes.filter((n) => neighborNodeIds.has(n.id) && n.id !== selectedNodeId);
+  }, [nodes, neighborNodeIds, selectedNodeId]);
 
   // Stats
   const gapCount = useMemo(() => nodes.filter((n) => n.is_gap).length, [nodes]);
   const coreCount = nodes.length - gapCount;
 
-  // Pan interaction
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+  // --- High-Performance Mouse Interactions ---
+
+  // Start dragging a node
+  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+    const currentPos = nodePositions[nodeId] || { x: CENTER_X, y: CENTER_Y };
+    draggingNodeRef.current = {
+      id: nodeId,
+      startX: currentPos.x,
+      startY: currentPos.y,
+      mouseStartX: e.clientX,
+      mouseStartY: e.clientY,
+    };
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPanOffset({
-      x: e.clientX - dragStartRef.current.x,
-      y: e.clientY - dragStartRef.current.y,
-    });
+  // Canvas Panning or Node Dragging
+  const handleContainerMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".graph-node-card")) return;
+    setIsPanning(true);
+    panStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleContainerMouseMove = (e: React.MouseEvent) => {
+    // 1. Dragging Node
+    if (draggingNodeRef.current) {
+      const { id, startX, startY, mouseStartX, mouseStartY } = draggingNodeRef.current;
+      const deltaX = (e.clientX - mouseStartX) / zoomLevel;
+      const deltaY = (e.clientY - mouseStartY) / zoomLevel;
+
+      setNodePositions((prev) => ({
+        ...prev,
+        [id]: {
+          x: startX + deltaX,
+          y: startY + deltaY,
+        },
+      }));
+      return;
+    }
+
+    // 2. Panning Canvas
+    if (isPanning) {
+      setPanOffset({
+        x: e.clientX - panStartRef.current.x,
+        y: e.clientY - panStartRef.current.y,
+      });
+    }
+  };
+
+  const handleContainerMouseUp = () => {
+    draggingNodeRef.current = null;
+    setIsPanning(false);
   };
 
   const formatTimestamp = (sec?: number | null) => {
@@ -184,9 +287,9 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
       {/* 1. Main Graph Canvas Area (70% Width) */}
       <div className="flex-1 relative flex flex-col h-full overflow-hidden border-b lg:border-b-0 lg:border-r border-white/[0.08]">
         {/* Top Floating Controls Toolbar */}
-        <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+        <div className="absolute top-4 left-4 right-4 z-30 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
           {/* Search & Filter Bar */}
-          <div className="flex items-center gap-2 pointer-events-auto bg-zinc-900/90 backdrop-blur-md p-1.5 rounded-xl border border-white/[0.08] shadow-xl">
+          <div className="flex items-center gap-2 pointer-events-auto bg-zinc-900/90 backdrop-blur-md p-1.5 rounded-xl border border-white/[0.08] shadow-2xl">
             <div className="flex items-center gap-2 px-2.5 py-1 bg-black/40 rounded-lg border border-white/[0.05]">
               <Search className="w-3.5 h-3.5 text-neutral-400" />
               <input
@@ -201,9 +304,10 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
             {/* Filter Toggle */}
             <div className="flex items-center gap-1 bg-black/30 p-0.5 rounded-lg text-[11px] font-medium">
               <button
+                type="button"
                 onClick={() => setFilterMode("all")}
                 className={cn(
-                  "px-2.5 py-1 rounded-md transition-colors",
+                  "px-2.5 py-1 rounded-md transition-colors cursor-pointer",
                   filterMode === "all"
                     ? "bg-zinc-800 text-white shadow-sm"
                     : "text-neutral-400 hover:text-white"
@@ -212,9 +316,10 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
                 All ({nodes.length})
               </button>
               <button
+                type="button"
                 onClick={() => setFilterMode("gaps")}
                 className={cn(
-                  "px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors",
+                  "px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors cursor-pointer",
                   filterMode === "gaps"
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                     : "text-neutral-400 hover:text-amber-300"
@@ -226,28 +331,38 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
             </div>
           </div>
 
-          {/* Zoom & View Controls */}
-          <div className="flex items-center gap-1 pointer-events-auto bg-zinc-900/90 backdrop-blur-md p-1.5 rounded-xl border border-white/[0.08] shadow-xl">
+          {/* Zoom, Drag Helper & Reset View */}
+          <div className="flex items-center gap-1.5 pointer-events-auto bg-zinc-900/90 backdrop-blur-md p-1.5 rounded-xl border border-white/[0.08] shadow-2xl">
+            <div className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-neutral-400 px-2 py-1 bg-black/30 rounded-lg">
+              <Move className="w-3 h-3 text-neutral-500" />
+              <span>Drag cards to position</span>
+            </div>
+
+            <div className="h-4 w-[1px] bg-white/[0.08] hidden sm:block" />
+
             <button
-              onClick={() => setZoomLevel((z) => Math.min(2.0, z + 0.15))}
-              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors"
+              type="button"
+              onClick={() => setZoomLevel((z) => Math.min(1.8, z + 0.15))}
+              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
               title="Zoom In"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setZoomLevel((z) => Math.max(0.4, z - 0.15))}
-              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors"
+              type="button"
+              onClick={() => setZoomLevel((z) => Math.max(0.35, z - 0.15))}
+              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
               title="Zoom Out"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={() => {
-                setZoomLevel(1);
+                setZoomLevel(0.85);
                 setPanOffset({ x: 0, y: 0 });
               }}
-              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
               title="Reset View"
             >
               <RotateCcw className="w-4 h-4" />
@@ -255,12 +370,16 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
           </div>
         </div>
 
-        {/* Interactive SVG / Graph Viewport */}
+        {/* Interactive Full-Bleed Viewport */}
         <div
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          className="flex-1 w-full h-full cursor-grab active:cursor-grabbing relative overflow-hidden bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:20px_20px]"
+          onMouseDown={handleContainerMouseDown}
+          onMouseMove={handleContainerMouseMove}
+          onMouseUp={handleContainerMouseUp}
+          onMouseLeave={handleContainerMouseUp}
+          className={cn(
+            "flex-1 w-full h-full relative overflow-hidden bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px]",
+            isPanning ? "cursor-grabbing" : "cursor-grab"
+          )}
         >
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-neutral-400">
@@ -272,105 +391,174 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
               style={{
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
                 transformOrigin: "center center",
-                transition: isDragging ? "none" : "transform 0.1s ease-out",
+                position: "absolute",
+                left: "calc(50% - 1000px)",
+                top: "calc(50% - 800px)",
+                width: "2000px",
+                height: "1600px",
               }}
-              className="w-[900px] h-[700px] absolute inset-0 m-auto"
             >
-              {/* SVG Link Edges */}
-              <svg className="w-full h-full absolute inset-0 pointer-events-none">
+              {/* Full-Bleed SVG Vector Canvas */}
+              <svg
+                className="w-full h-full absolute inset-0 pointer-events-none z-0"
+                style={{ overflow: "visible" }}
+              >
                 <defs>
-                  <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#a855f7" stopOpacity="0.4" />
+                  {/* Subtle Gradient for Active Connections */}
+                  <linearGradient id="active-curve-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="#818cf8" stopOpacity="0.95" />
                   </linearGradient>
-                  <linearGradient id="gap-edge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.6" />
-                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.6" />
-                  </linearGradient>
+
+                  {/* Clean Arrow Marker */}
+                  <marker
+                    id="arrowhead-active"
+                    markerWidth="9"
+                    markerHeight="7"
+                    refX="8"
+                    refY="3.5"
+                    orient="auto"
+                  >
+                    <polygon points="0 0, 9 3.5, 0 7" fill="#38bdf8" />
+                  </marker>
+
+                  <marker
+                    id="arrowhead-dim"
+                    markerWidth="8"
+                    markerHeight="6"
+                    refX="7"
+                    refY="3"
+                    orient="auto"
+                  >
+                    <polygon points="0 0, 8 3, 0 6" fill="rgba(255, 255, 255, 0.25)" />
+                  </marker>
                 </defs>
 
                 {edges.map((edge, idx) => {
-                  const sourcePos = nodePositions[edge.source];
-                  const targetPos = nodePositions[edge.target];
-                  if (!sourcePos || !targetPos) return null;
+                  const sourceCenter = nodePositions[edge.source];
+                  const targetCenter = nodePositions[edge.target];
+                  if (!sourceCenter || !targetCenter) return null;
 
-                  const isConnectedToSelected =
-                    edge.source === selectedNodeId || edge.target === selectedNodeId;
+                  const edgeKey = `${edge.source}->${edge.target}-${idx}`;
+                  const activeInfo = activeEdgeMap.get(edgeKey);
+                  const isEdgeActive = !!activeInfo;
+
+                  // 1. Calculate Exact Card Border Intersections (Source Exit & Target Entry)
+                  const startBorder = getBorderIntersection(targetCenter, sourceCenter, CARD_WIDTH, CARD_HEIGHT, 4);
+                  const endBorder = getBorderIntersection(sourceCenter, targetCenter, CARD_WIDTH, CARD_HEIGHT, 6);
+
+                  // 2. Calculate Smooth Elastic Quadratic Bezier Curve
+                  const dx = endBorder.x - startBorder.x;
+                  const dy = endBorder.y - startBorder.y;
+                  const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+
+                  // Gentle curvature offset perpendicular to connection ray
+                  const curvature = Math.min(48, Math.max(16, dist * 0.12));
+                  const nx = -dy / dist;
+                  const ny = dx / dist;
+
+                  const controlX = (startBorder.x + endBorder.x) / 2 + nx * curvature;
+                  const controlY = (startBorder.y + endBorder.y) / 2 + ny * curvature;
+
+                  const pathD = `M ${startBorder.x} ${startBorder.y} Q ${controlX} ${controlY} ${endBorder.x} ${endBorder.y}`;
 
                   return (
                     <g key={`edge-${idx}`}>
-                      <line
-                        x1={sourcePos.x}
-                        y1={sourcePos.y}
-                        x2={targetPos.x}
-                        y2={targetPos.y}
+                      {/* Active Glowing Backing Beam */}
+                      {isEdgeActive && (
+                        <path
+                          d={pathD}
+                          fill="none"
+                          stroke="rgba(56, 189, 248, 0.3)"
+                          strokeWidth={8}
+                          strokeLinecap="round"
+                        />
+                      )}
+
+                      {/* Main Smooth Connection Curve */}
+                      <path
+                        d={pathD}
+                        fill="none"
                         stroke={
-                          isConnectedToSelected
-                            ? "#38bdf8"
+                          isEdgeActive
+                            ? "url(#active-curve-gradient)"
                             : "rgba(255, 255, 255, 0.12)"
                         }
-                        strokeWidth={isConnectedToSelected ? 2.5 : 1.2}
-                        strokeDasharray={isConnectedToSelected ? "none" : "4 4"}
-                        className="transition-all duration-300"
+                        strokeWidth={isEdgeActive ? 2.6 : 1.2}
+                        strokeDasharray={isEdgeActive ? "none" : "5 5"}
+                        markerEnd={isEdgeActive ? "url(#arrowhead-active)" : "url(#arrowhead-dim)"}
+                        className="transition-colors duration-200"
                       />
                     </g>
                   );
                 })}
               </svg>
 
-              {/* Concept Nodes */}
+              {/* Concept Nodes (Smooth Physics & High-Speed Drag) */}
               {filteredNodes.map((node) => {
-                const pos = nodePositions[node.id];
-                if (!pos) return null;
-
+                const pos = nodePositions[node.id] || { x: CENTER_X, y: CENTER_Y };
                 const isSelected = node.id === selectedNodeId;
-                const isNeighbor = neighborNodes.some((n) => n.id === node.id);
+                const isHovered = node.id === hoveredNodeId;
+                const isNeighbor = neighborNodeIds.has(node.id);
+                const isDimmed = activeFocusId && node.id !== activeFocusId && !isNeighbor;
 
                 return (
-                  <motion.div
+                  <div
                     key={node.id}
+                    onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedNodeId(node.id);
                     }}
+                    onMouseEnter={() => setHoveredNodeId(node.id)}
+                    onMouseLeave={() => setHoveredNodeId(null)}
                     style={{
-                      left: pos.x,
-                      top: pos.y,
+                      position: "absolute",
+                      left: `${pos.x}px`,
+                      top: `${pos.y}px`,
+                      transform: "translate(-50%, -50%)",
+                      width: `${CARD_WIDTH}px`,
+                      height: `${CARD_HEIGHT}px`,
                     }}
-                    whileHover={{ scale: 1.08 }}
-                    whileTap={{ scale: 0.96 }}
                     className={cn(
-                      "absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer p-3 rounded-2xl border backdrop-blur-md shadow-lg transition-all duration-200 flex items-center gap-2 max-w-[220px]",
+                      "graph-node-card cursor-grab active:cursor-grabbing px-3.5 py-2.5 rounded-2xl border backdrop-blur-xl transition-shadow transition-colors duration-150 flex items-center gap-2.5 select-none",
                       isSelected
-                        ? "bg-zinc-800/95 border-sky-400 ring-2 ring-sky-400/30 z-30 shadow-sky-500/20"
+                        ? "bg-zinc-800/95 border-sky-400 ring-4 ring-sky-400/25 z-40 shadow-2xl shadow-sky-500/30 scale-105"
+                        : isHovered
+                        ? "bg-zinc-800/95 border-sky-400/80 ring-2 ring-sky-400/20 z-30 shadow-xl shadow-sky-500/20 scale-105"
                         : node.is_gap
-                        ? "bg-amber-950/40 border-amber-500/50 hover:border-amber-400 z-20 shadow-amber-500/10"
+                        ? "bg-[#16100a]/90 border-amber-500/60 hover:border-amber-400 z-20 shadow-lg shadow-amber-500/10"
                         : isNeighbor
-                        ? "bg-zinc-900/90 border-sky-500/40 hover:border-sky-400 z-10"
-                        : "bg-zinc-900/80 border-white/[0.08] hover:border-white/[0.2] z-10"
+                        ? "bg-zinc-900/90 border-sky-500/50 hover:border-sky-400 z-20 shadow-md shadow-sky-500/10"
+                        : "bg-[#101014]/90 border-white/[0.08] hover:border-white/[0.22] z-10",
+                      isDimmed ? "opacity-35 hover:opacity-100" : "opacity-100"
                     )}
                   >
                     {node.is_gap ? (
-                      <div className="p-1 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
-                        <AlertTriangle className="w-3.5 h-3.5" />
+                      <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0 border border-amber-500/30">
+                        <AlertTriangle className="w-4 h-4" />
                       </div>
                     ) : (
-                      <div className="p-1 rounded-lg bg-sky-500/10 text-sky-400 shrink-0">
-                        <Network className="w-3.5 h-3.5" />
+                      <div className="p-1.5 rounded-xl bg-sky-500/15 text-sky-400 shrink-0 border border-sky-500/25">
+                        <Network className="w-4 h-4" />
                       </div>
                     )}
 
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-semibold text-neutral-100 truncate">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-xs font-semibold text-neutral-100 truncate leading-snug">
                         {node.label}
                       </span>
-                      {node.is_gap && (
-                        <span className="text-[9px] font-mono text-amber-400 uppercase tracking-wider font-semibold">
+                      {node.is_gap ? (
+                        <span className="text-[9px] font-mono text-amber-400 uppercase tracking-wider font-bold">
                           Blindspot Gap
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wider">
+                          Concept
                         </span>
                       )}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -378,7 +566,7 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
         </div>
 
         {/* Bottom Legend */}
-        <div className="absolute bottom-4 left-4 z-20 flex items-center gap-4 bg-zinc-900/80 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/[0.08] text-[11px] font-mono text-neutral-400 shadow-xl">
+        <div className="absolute bottom-4 left-4 z-20 flex items-center gap-4 bg-zinc-900/85 backdrop-blur-md px-4 py-2 rounded-xl border border-white/[0.08] text-[11px] font-mono text-neutral-400 shadow-2xl">
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-sky-400" />
             <span>Core Concept ({coreCount})</span>
@@ -401,8 +589,8 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
                   className={cn(
                     "px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5",
                     selectedNode.is_gap
-                      ? "bg-amber-950/60 text-amber-300 border border-amber-500/30"
-                      : "bg-sky-950/60 text-sky-300 border border-sky-500/30"
+                      ? "bg-amber-950/60 text-amber-300 border border-amber-500/30 shadow-sm"
+                      : "bg-sky-950/60 text-sky-300 border border-sky-500/30 shadow-sm"
                   )}
                 >
                   {selectedNode.is_gap ? (
@@ -441,6 +629,7 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
               {/* Jump to Timestamp Action */}
               {selectedNode.source_timestamp && onJumpToTimestamp && (
                 <button
+                  type="button"
                   onClick={() =>
                     onJumpToTimestamp(selectedNode.source_timestamp?.start || 0)
                   }
@@ -496,6 +685,7 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
             {onAskTutor && (
               <div className="pt-4 border-t border-white/[0.08]">
                 <button
+                  type="button"
                   onClick={() =>
                     onAskTutor(
                       `Can you explain the concept of "${selectedNode.label}" and how it connects to our lecture?`
