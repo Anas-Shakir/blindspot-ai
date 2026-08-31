@@ -365,6 +365,13 @@ export interface VoiceOption {
 }
 
 /**
+ * Get the direct streaming URL for the original uploaded lecture recording.
+ */
+export function getLectureStreamUrl(lectureId: number | string): string {
+  return `${API_BASE_URL}/api/lectures/${lectureId}/stream`;
+}
+
+/**
  * Get the list of available TTS voices & languages from GET /api/session/voices.
  */
 export async function getVoices(): Promise<VoiceOption[]> {
@@ -399,6 +406,7 @@ export const api = {
   startSession,
   sendCommand,
   resolveAudioUrl,
+  getLectureStreamUrl,
   getVoices,
   checkHealth,
 };

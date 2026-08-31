@@ -365,3 +365,31 @@ def get_knowledge_graph(lecture_id: int, db: Session = Depends(get_db)):
             for e in edges
         ],
     }
+
+
+@router.get("/lectures/{lecture_id}/audio-url")
+def get_lecture_audio_url(lecture_id: int, db: Session = Depends(get_db)):
+    """Returns a secure presigned stream URL for the original lecture recording."""
+    lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
+    if not lecture or not lecture.audio_url:
+        raise HTTPException(status_code=404, detail="Lecture audio recording not found")
+
+    from backend.storage_R2 import s3_client, BUCKET_NAME
+
+    try:
+        presigned = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": BUCKET_NAME, "Key": lecture.audio_url},
+            ExpiresIn=3600 * 6,
+        )
+        return {"url": presigned, "filename": lecture.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate audio URL: {e}")
+
+
+@router.get("/lectures/{lecture_id}/stream")
+def stream_lecture(lecture_id: int, db: Session = Depends(get_db)):
+    """Redirects directly to the presigned audio/video stream for HTML5 media players."""
+    from fastapi.responses import RedirectResponse
+    res = get_lecture_audio_url(lecture_id, db)
+    return RedirectResponse(url=res["url"])

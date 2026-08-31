@@ -45,6 +45,8 @@ interface PhaseData {
   timestamp: string;
   duration: string;
   durationSec: number;
+  startSec: number;
+  endSec: number;
   mentalModels: {
     number: string;
     title: string;
@@ -70,6 +72,8 @@ const defaultMockPhases: PhaseData[] = [
     timestamp: "03:12",
     duration: "04:15",
     durationSec: 255,
+    startSec: 192,
+    endSec: 447,
     mentalModels: [
       {
         number: "01",
@@ -135,7 +139,9 @@ export default function WorkspacePage() {
 
   // Audio elements & speech text
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const lectureAudioRef = useRef<HTMLAudioElement | null>(null);
   const [activeSpeechText, setActiveSpeechText] = useState<string>("");
+  const [isPlayingLectureAudio, setIsPlayingLectureAudio] = useState<boolean>(false);
 
   // Text Language Options Catalog
   const TEXT_LANGUAGES = [
@@ -345,6 +351,8 @@ export default function WorkspacePage() {
               timestamp: formatSeconds(startSec),
               duration: formatSeconds(durationSec),
               durationSec,
+              startSec: Math.floor(startSec),
+              endSec: Math.floor(endSec),
               mentalModels: [
                 {
                   number: "01",
@@ -546,27 +554,96 @@ export default function WorkspacePage() {
     }
   };
 
+  // Play lecture recording audio from specific timestamp
+  const handlePlayLectureAudio = useCallback((startSec?: number) => {
+    if (!lectureAudioRef.current || !lectureId) return;
+
+    // Pause AI companion voice if speaking so they don't overlap
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      setIsPlayingAudio(false);
+      setIsSpeaking(false);
+    }
+
+    const streamUrl = api.getLectureStreamUrl(lectureId);
+    if (lectureAudioRef.current.src !== streamUrl) {
+      lectureAudioRef.current.src = streamUrl;
+    }
+
+    const targetTime = typeof startSec === "number" ? startSec : (currentPhase.startSec ?? 0);
+    lectureAudioRef.current.currentTime = targetTime;
+    setPlaybackSeconds(Math.floor(targetTime));
+
+    lectureAudioRef.current
+      .play()
+      .then(() => {
+        setIsPlayingLectureAudio(true);
+      })
+      .catch((err) => {
+        console.warn("Lecture audio playback blocked or failed:", err);
+      });
+  }, [lectureId, currentPhase]);
+
+  const handleToggleLectureAudio = useCallback(() => {
+    if (!lectureAudioRef.current) return;
+    if (isPlayingLectureAudio) {
+      lectureAudioRef.current.pause();
+      setIsPlayingLectureAudio(false);
+    } else {
+      handlePlayLectureAudio(playbackSeconds > 0 ? playbackSeconds : (currentPhase.startSec ?? 0));
+    }
+  }, [isPlayingLectureAudio, playbackSeconds, currentPhase, handlePlayLectureAudio]);
+
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const width = rect.width;
     const percentage = Math.max(0, Math.min(1, clickX / width));
-    setPlaybackSeconds(Math.floor(percentage * currentPhase.durationSec));
+    const phaseStart = currentPhase.startSec ?? 0;
+    const phaseDur = currentPhase.durationSec || 60;
+    const targetSec = phaseStart + Math.floor(percentage * phaseDur);
+
+    setPlaybackSeconds(targetSec);
+
+    if (lectureAudioRef.current) {
+      lectureAudioRef.current.currentTime = targetSec;
+      if (!isPlayingLectureAudio) {
+        handlePlayLectureAudio(targetSec);
+      }
+    }
   };
 
-  const progressPercentage = Math.min(
+  const phaseProgressPercentage = Math.min(
     100,
-    (playbackSeconds / currentPhase.durationSec) * 100
+    Math.max(
+      0,
+      (((playbackSeconds || currentPhase.startSec) - (currentPhase.startSec ?? 0)) /
+        Math.max(1, currentPhase.durationSec)) *
+        100
+    )
   );
 
   return (
     <div className="flex h-screen w-full bg-[#09090b] text-neutral-100 selection:bg-[#701a24]/40 selection:text-white font-sans overflow-hidden">
-      {/* Hidden audio element for speech playback */}
+      {/* Hidden audio element for AI Tutor speech playback */}
       <audio
         ref={audioPlayerRef}
         onEnded={() => {
           setIsPlayingAudio(false);
           setIsSpeaking(false);
+        }}
+      />
+
+      {/* Hidden audio element for authentic lecture recording playback */}
+      <audio
+        ref={lectureAudioRef}
+        onEnded={() => {
+          setIsPlayingLectureAudio(false);
+        }}
+        onTimeUpdate={() => {
+          if (lectureAudioRef.current) {
+            setPlaybackSeconds(Math.floor(lectureAudioRef.current.currentTime));
+          }
         }}
       />
 
@@ -741,6 +818,19 @@ export default function WorkspacePage() {
                       <span className="text-[11px] font-mono text-neutral-500">
                         {currentPhase.duration}
                       </span>
+                      <span className="text-neutral-600">•</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSourceDrawerOpen(true);
+                          handlePlayLectureAudio(currentPhase.startSec);
+                        }}
+                        className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-950/40 hover:bg-emerald-950/70 px-2 py-0.5 rounded border border-emerald-500/30 transition-colors"
+                        title="Jump to lecture audio recording at this timestamp"
+                      >
+                        <Play className="w-2.5 h-2.5" />
+                        <span>{currentPhase.timestamp}</span>
+                      </button>
                     </div>
 
                     <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white mb-2">
@@ -812,13 +902,14 @@ export default function WorkspacePage() {
                             <div className="flex items-center gap-3">
                               <motion.button
                                 whileTap={{ scale: 0.94 }}
-                                onClick={() => setIsPlayingAudio(!isPlayingAudio)}
+                                onClick={handleToggleLectureAudio}
                                 className="h-7 w-7 rounded-md bg-zinc-800 hover:bg-zinc-700 text-neutral-200 flex items-center justify-center cursor-pointer transition-colors"
+                                title={isPlayingLectureAudio ? "Pause Lecture Audio" : "Play Lecture Audio"}
                               >
-                                {isPlayingAudio ? (
-                                  <Pause className="w-3 h-3" />
+                                {isPlayingLectureAudio ? (
+                                  <Pause className="w-3 h-3 text-emerald-400" />
                                 ) : (
-                                  <Play className="w-3 h-3 ml-0.5" />
+                                  <Play className="w-3 h-3 ml-0.5 text-neutral-200" />
                                 )}
                               </motion.button>
 
@@ -827,13 +918,13 @@ export default function WorkspacePage() {
                                 className="flex-1 h-1.5 rounded-full bg-zinc-800 cursor-pointer overflow-hidden relative"
                               >
                                 <div
-                                  className="h-full bg-[#701a24] rounded-full"
-                                  style={{ width: `${progressPercentage}%` }}
+                                  className="h-full bg-[#701a24] rounded-full transition-all duration-100"
+                                  style={{ width: `${phaseProgressPercentage}%` }}
                                 />
                               </div>
 
-                              <span className="font-mono text-[10px] text-neutral-500">
-                                {formatSeconds(playbackSeconds)} / {currentPhase.duration}
+                              <span className="font-mono text-[10px] text-neutral-400">
+                                {formatSeconds(playbackSeconds)} / {formatSeconds(currentPhase.endSec || (currentPhase.startSec + currentPhase.durationSec))}
                               </span>
                             </div>
 
@@ -848,10 +939,14 @@ export default function WorkspacePage() {
                             </div>
 
                             <div className="flex items-center justify-between text-[10px] text-neutral-500 font-mono pt-1">
-                              <span className="flex items-center gap-1 text-emerald-400">
+                              <button
+                                type="button"
+                                onClick={() => handlePlayLectureAudio(currentPhase.startSec)}
+                                className="flex items-center gap-1 text-emerald-400 hover:underline cursor-pointer"
+                              >
                                 <CheckCircle2 className="w-3 h-3" />
-                                Verified Source Alignment
-                              </span>
+                                <span>Verified Source Alignment (Play from start)</span>
+                              </button>
                               <span>Timestamp: {currentPhase.timestamp}</span>
                             </div>
                           </div>
