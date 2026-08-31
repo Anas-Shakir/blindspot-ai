@@ -356,6 +356,24 @@ export function resolveAudioUrl(pathOrUrl?: string | null): string | null {
   return pathOrUrl;
 }
 
+export interface VoiceOption {
+  id: string;
+  name: string;
+  language: string;
+  gender: string;
+  flag?: string;
+}
+
+/**
+ * Get the list of available TTS voices & languages from GET /api/session/voices.
+ */
+export async function getVoices(): Promise<VoiceOption[]> {
+  return fetchJson<VoiceOption[]>("/api/session/voices", {
+    method: "GET",
+    cache: "no-store",
+  });
+}
+
 /**
  * Check backend health status from GET /health.
  */
@@ -381,6 +399,7 @@ export const api = {
   startSession,
   sendCommand,
   resolveAudioUrl,
+  getVoices,
   checkHealth,
 };
 

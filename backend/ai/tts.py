@@ -47,6 +47,98 @@ TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_EDGE_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-ChristopherNeural")
 DEFAULT_ALIBABA_VOICE = os.getenv("ALIBABA_TTS_VOICE", "cosyvoice-v1")
 
+# Curated Voice Catalog across languages
+VOICE_CATALOG = [
+    {
+        "id": "en-US-ChristopherNeural",
+        "name": "Christopher",
+        "language": "English (US)",
+        "gender": "Male",
+        "flag": "🇺🇸",
+    },
+    {
+        "id": "en-US-AriaNeural",
+        "name": "Aria",
+        "language": "English (US)",
+        "gender": "Female",
+        "flag": "🇺🇸",
+    },
+    {
+        "id": "en-GB-RyanNeural",
+        "name": "Ryan",
+        "language": "English (UK)",
+        "gender": "Male",
+        "flag": "🇬🇧",
+    },
+    {
+        "id": "en-GB-SoniaNeural",
+        "name": "Sonia",
+        "language": "English (UK)",
+        "gender": "Female",
+        "flag": "🇬🇧",
+    },
+    {
+        "id": "es-ES-AlvaroNeural",
+        "name": "Alvaro",
+        "language": "Spanish",
+        "gender": "Male",
+        "flag": "🇪🇸",
+    },
+    {
+        "id": "fr-FR-HenriNeural",
+        "name": "Henri",
+        "language": "French",
+        "gender": "Male",
+        "flag": "🇫🇷",
+    },
+    {
+        "id": "de-DE-KillianNeural",
+        "name": "Killian",
+        "language": "German",
+        "gender": "Male",
+        "flag": "🇩🇪",
+    },
+    {
+        "id": "ar-SA-HamedNeural",
+        "name": "Hamed",
+        "language": "Arabic",
+        "gender": "Male",
+        "flag": "🇸🇦",
+    },
+    {
+        "id": "zh-CN-YunxiNeural",
+        "name": "Yunxi",
+        "language": "Chinese",
+        "gender": "Male",
+        "flag": "🇨🇳",
+    },
+    {
+        "id": "hi-IN-MadhurNeural",
+        "name": "Madhur",
+        "language": "Hindi",
+        "gender": "Male",
+        "flag": "🇮🇳",
+    },
+    {
+        "id": "ur-PK-AsadNeural",
+        "name": "Asad",
+        "language": "Urdu",
+        "gender": "Male",
+        "flag": "🇵🇰",
+    },
+]
+
+
+def get_available_voices() -> list[dict]:
+    """Returns the list of supported voice models and languages."""
+    return VOICE_CATALOG
+
+
+def set_default_voice(voice_id: str) -> None:
+    """Sets the global default voice for TTS synthesis."""
+    global DEFAULT_EDGE_VOICE
+    DEFAULT_EDGE_VOICE = voice_id
+
 
 # ---------------------------------------------------------------------------
 # Cache Helper

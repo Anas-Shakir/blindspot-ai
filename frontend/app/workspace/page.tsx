@@ -28,6 +28,7 @@ import {
   QuizItem,
   TranscriptSegment,
   SessionEvent,
+  VoiceOption,
 } from "@/lib/api";
 import RobotCompanionWrapper from "@/components/RobotCompanionWrapper";
 import QuizCard, { QuizOption } from "@/components/QuizCard";
@@ -130,6 +131,41 @@ export default function WorkspacePage() {
   // Audio elements & speech text
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [activeSpeechText, setActiveSpeechText] = useState<string>("");
+
+  // Voice / Language state
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>("en-US-ChristopherNeural");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Fetch available neural voices on mount
+  useEffect(() => {
+    api.getVoices().then((res) => {
+      if (res && res.length > 0) {
+        setVoices(res);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleVoiceChange = async (voiceId: string) => {
+    setSelectedVoice(voiceId);
+    const matchedVoice = voices.find((v) => v.id === voiceId);
+    const label = matchedVoice
+      ? `${matchedVoice.flag ? matchedVoice.flag + " " : ""}${matchedVoice.language} (${matchedVoice.name})`
+      : voiceId;
+
+    setToastMessage(`Voice switched to ${label}`);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+
+    if (lectureId) {
+      try {
+        await api.sendCommand(lectureId, sessionId, "set_voice", voiceId);
+      } catch (err) {
+        console.warn("Failed to set voice on orchestrator:", err);
+      }
+    }
+  };
 
   // User query & AI Thinking state
   const [userQuery, setUserQuery] = useState<string>("");
@@ -528,7 +564,26 @@ export default function WorkspacePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {/* Voice / Accent / Language Selector */}
+            {voices.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/[0.08] hover:border-white/[0.15] rounded-lg px-2.5 py-1 text-xs text-neutral-300 transition-colors">
+                <Volume2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                <select
+                  value={selectedVoice}
+                  onChange={(e) => handleVoiceChange(e.target.value)}
+                  aria-label="Select AI Voice & Language"
+                  className="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer pr-1 hover:text-white"
+                >
+                  {voices.map((v) => (
+                    <option key={v.id} value={v.id} className="bg-zinc-900 text-neutral-200">
+                      {v.flag ? `${v.flag} ` : ""}{v.language} — {v.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Audio Indicator */}
             {isPlayingAudio && (
               <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
@@ -894,6 +949,22 @@ export default function WorkspacePage() {
           </section>
         </main>
       </div>
+
+      {/* Floating Toast Notification for Voice / Accent Switching */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-zinc-900/95 border border-white/[0.12] shadow-2xl backdrop-blur-md text-xs text-neutral-200"
+          >
+            <Volume2 className="w-4 h-4 text-emerald-400" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

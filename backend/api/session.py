@@ -26,6 +26,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/session/voices")
+def list_available_voices():
+    """Returns the list of available TTS neural voices and languages."""
+    from backend.ai.tts import get_available_voices
+    return get_available_voices()
+
+
 @router.post("/lectures/{lecture_id}/session", response_model=List[SessionEvent])
 def start_teaching_session(
     lecture_id: int,

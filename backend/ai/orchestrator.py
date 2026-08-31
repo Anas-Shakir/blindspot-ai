@@ -55,14 +55,14 @@ logger = logging.getLogger(__name__)
 # speak(text) will produce audio (e.g. an audio URL or path).
 # Until then, or as a fallback, we provide a default mock/passthrough.
 
-TTSCallable = Callable[[str], Optional[str]]
+TTSCallable = Callable[..., Optional[str]]
 
 
-def _default_tts_speak(text: str) -> Optional[str]:
+def _default_tts_speak(text: str, voice: Optional[str] = None) -> Optional[str]:
     """Default fallback TTS function if backend/ai/tts.py is not yet ready."""
     try:
         from backend.ai.tts import speak as external_speak
-        return external_speak(text)
+        return external_speak(text, voice=voice)
     except ImportError:
         logger.debug("backend.ai.tts not found; running in text-only mode.")
         return None
@@ -114,12 +114,14 @@ class TeachingSession:
         plan: LearningPlan,
         quizzes: Optional[List[QuizItem]] = None,
         transcript_segments: Optional[List[TranscriptSegment]] = None,
+        voice: Optional[str] = None,
     ) -> None:
         self.session_id = session_id
         self.lecture_id = lecture_id
         self.plan = plan
         self.quizzes: List[QuizItem] = quizzes or []
         self.transcript_segments: List[TranscriptSegment] = transcript_segments or []
+        self.voice: Optional[str] = voice
 
         self.current_phase_index: int = 0
         self.is_ended: bool = False
@@ -144,6 +146,19 @@ class TeachingSession:
         )
         self.history.append({"type": "event", "event": event.model_dump()})
         return event
+
+    def set_voice(self, voice_id: str) -> List[SessionEvent]:
+        """Silently changes the active voice model for this session without interrupting speech."""
+        clean_voice = (voice_id or "").strip()
+        if clean_voice:
+            self.voice = clean_voice
+
+        return [
+            self._emit(
+                SessionEventType.AWAITING_COMMAND,
+                {"voice": self.voice, "status": "voice_updated"},
+            )
+        ]
 
     def start(self) -> List[SessionEvent]:
         """Starts the session by teaching the first phase."""
@@ -174,7 +189,7 @@ class TeachingSession:
         events.append(self._emit(SessionEventType.PHASE_STARTED, phase_payload))
 
         # 2. TTS synthesis & emit speaking
-        audio_url = _current_tts_engine(phase.teaching_script)
+        audio_url = _current_tts_engine(phase.teaching_script, voice=self.voice)
         speaking_payload = {
             "text": phase.teaching_script,
             "audio_url": audio_url,
@@ -209,6 +224,8 @@ class TeachingSession:
             return self.handle_show_me(cmd.argument)
         elif raw_cmd in ("quiz_me", "quiz", "quiz me"):
             return self.handle_quiz_me()
+        elif raw_cmd in ("set_voice", "change_voice", "voice"):
+            return self.set_voice(cmd.argument or "")
         else:
             # Free question or unrecognized command
             return self.handle_question(cmd.command)
@@ -233,7 +250,7 @@ class TeachingSession:
             return [self._emit(SessionEventType.SESSION_ENDED)]
 
         events: List[SessionEvent] = []
-        audio_url = _current_tts_engine(phase.teaching_script)
+        audio_url = _current_tts_engine(phase.teaching_script, voice=self.voice)
         speaking_payload = {
             "text": phase.teaching_script,
             "audio_url": audio_url,
@@ -343,7 +360,7 @@ class TeachingSession:
             else f"Not quite. The correct answer was: {quiz.correct_answer}."
         )
 
-        audio_url = _current_tts_engine(feedback_text)
+        audio_url = _current_tts_engine(feedback_text, voice=self.voice)
 
         events: List[SessionEvent] = []
         events.append(
@@ -366,7 +383,7 @@ class TeachingSession:
             current_phase=self.current_phase,
             transcript_segments=self.transcript_segments,
         )
-        audio_url = _current_tts_engine(answer_text)
+        audio_url = _current_tts_engine(answer_text, voice=self.voice)
 
         events: List[SessionEvent] = []
         events.append(
