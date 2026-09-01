@@ -10,6 +10,7 @@ import {
   Zap,
   Layers,
   Radio,
+  Hand,
 } from 'lucide-react';
 import {
   CanvasObject,
@@ -30,6 +31,7 @@ interface SynchronizedLessonPlayerProps {
   setViewport: React.Dispatch<React.SetStateAction<ViewportTransform>>;
   onTriggerHighlight: (targetId: string, color: string, durationMs: number) => void;
   activeLesson?: WhiteboardLessonBeat | null;
+  onRaiseHand?: (currentTimeMs: number) => void;
 }
 
 export const SynchronizedLessonPlayer: React.FC<SynchronizedLessonPlayerProps> = ({
@@ -39,6 +41,7 @@ export const SynchronizedLessonPlayer: React.FC<SynchronizedLessonPlayerProps> =
   setViewport,
   onTriggerHighlight,
   activeLesson,
+  onRaiseHand,
 }) => {
   const [selectedLesson, setSelectedLesson] = useState<WhiteboardLessonBeat>(
     activeLesson || LESSON_CIRCUIT_SYNCHRONIZED
@@ -332,6 +335,20 @@ export const SynchronizedLessonPlayer: React.FC<SynchronizedLessonPlayerProps> =
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             <span>{isPlaying ? 'Pause Lesson' : 'Start Live Lesson'}</span>
+          </button>
+
+          {/* Step 6 Raise Hand Button */}
+          <button
+            onClick={() => {
+              if (audioEngineRef.current) audioEngineRef.current.pause();
+              setIsPlaying(false);
+              onRaiseHand?.(currentTimeMs);
+            }}
+            className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold flex items-center gap-1.5 shadow-md shadow-amber-500/10 active:scale-95 transition-all text-xs"
+            title="Raise Hand to Pause & Ask AI (Shortcut: H)"
+          >
+            <Hand className="w-4 h-4" />
+            <span>Raise Hand</span>
           </button>
         </div>
       </div>

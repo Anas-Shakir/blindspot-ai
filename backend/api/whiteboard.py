@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 
 from backend.ai.whiteboard.tts_sync import synthesize_speech_with_timing
 from backend.ai.whiteboard.generator import generate_whiteboard_lesson
+from backend.ai.whiteboard.interruption_handler import handle_student_interruption
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,13 @@ class GenerateLessonRequest(BaseModel):
     context: Optional[str] = Field(default=None, description="Optional background context")
 
 
+class InterruptionApiRequest(BaseModel):
+    student_query: str = Field(..., min_length=1, description="Student voice/text question")
+    current_board_objects: List[dict] = Field(default_factory=list, description="Visible board objects snapshot")
+    active_lesson_context: dict = Field(default_factory=dict, description="Current lesson metadata")
+    voice: Optional[str] = Field(default=None, description="Voice ID")
+
+
 @router.post("/tts", response_model=TTSTimingResponse)
 async def generate_speech_with_timing(req: TTSTimingRequest):
     """Synthesizes speech and returns the audio URL and word-level timing marks."""
@@ -72,4 +80,21 @@ def generate_ai_whiteboard_lesson(req: GenerateLessonRequest):
     except Exception as e:
         logger.exception("Failed to generate AI whiteboard lesson: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/interruption")
+def handle_interruption_qa(req: InterruptionApiRequest):
+    """Answers a student interruption question contextually with spoken audio and visual whiteboard highlights."""
+    try:
+        response = handle_student_interruption(
+            student_query=req.student_query,
+            current_board_objects=req.current_board_objects,
+            active_lesson_context=req.active_lesson_context,
+            voice=req.voice,
+        )
+        return response
+    except Exception as e:
+        logger.exception("Failed to process student interruption: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 

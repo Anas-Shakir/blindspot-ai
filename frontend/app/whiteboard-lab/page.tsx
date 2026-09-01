@@ -15,6 +15,7 @@ import { CommandPlayer } from '@/components/whiteboard/CommandPlayer';
 import { AudioTimingTester } from '@/components/whiteboard/AudioTimingTester';
 import { SynchronizedLessonPlayer } from '@/components/whiteboard/SynchronizedLessonPlayer';
 import { AILessonGeneratorModal } from '@/components/whiteboard/AILessonGeneratorModal';
+import { InterruptionTray } from '@/components/whiteboard/InterruptionTray';
 import {
   Layers,
   Code2,
@@ -31,6 +32,7 @@ import {
   Radio,
   Sliders,
   Wand2,
+  Hand,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -53,12 +55,16 @@ export default function WhiteboardLabPage() {
   const [historyPast, setHistoryPast] = useState<CanvasObject[][]>([]);
   const [historyFuture, setHistoryFuture] = useState<CanvasObject[][]>([]);
 
-  // Studio Mode: 'sync_lesson' (Step 4 & 5) | 'command_player' (Step 2)
+  // Studio Mode: 'sync_lesson' (Step 4, 5, 6) | 'command_player' (Step 2)
   const [studioMode, setStudioMode] = useState<'sync_lesson' | 'command_player'>('sync_lesson');
 
   // AI Generation State (Step 5)
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [activeAiLesson, setActiveAiLesson] = useState<WhiteboardLessonBeat | null>(null);
+
+  // Student Interruption State (Step 6)
+  const [isInterruptionOpen, setIsInterruptionOpen] = useState(false);
+  const [interruptedTimestampMs, setInterruptedTimestampMs] = useState(0);
 
   // UI state
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
@@ -216,7 +222,7 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 5 — LLM Visual Lesson Generator
+              Step 6 — STT & Interruption Handling
             </span>
           </div>
         </div>
@@ -293,6 +299,21 @@ export default function WhiteboardLabPage() {
           }}
         />
 
+        {/* Floating Student Interruption Tray (Step 6) */}
+        <InterruptionTray
+          isOpen={isInterruptionOpen}
+          onClose={() => setIsInterruptionOpen(false)}
+          currentBoardObjects={objects}
+          setObjects={setObjects}
+          onCommitAction={commitAction}
+          activeLesson={activeAiLesson}
+          currentTimestampMs={interruptedTimestampMs}
+          onResumeLesson={() => {
+            setIsInterruptionOpen(false);
+          }}
+          onTriggerHighlight={triggerHighlight}
+        />
+
         {/* Floating TTS Timing Tester Modal */}
         {isTtsTesterOpen && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4 animate-fade-in">
@@ -354,6 +375,10 @@ export default function WhiteboardLabPage() {
             setViewport={setViewport}
             onTriggerHighlight={triggerHighlight}
             activeLesson={activeAiLesson}
+            onRaiseHand={(timeMs) => {
+              setInterruptedTimestampMs(timeMs);
+              setIsInterruptionOpen(true);
+            }}
           />
         ) : (
           <CommandPlayer
@@ -420,7 +445,7 @@ export default function WhiteboardLabPage() {
               ) : (
                 <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-slate-500 flex items-center gap-2">
                   <Info className="w-4 h-4 text-slate-600 shrink-0" />
-                  <span>Click Generate with AI or Start Live Lesson below to watch the live synchronized lecture.</span>
+                  <span>Click Start Live Lesson below. You can click Raise Hand (or press H) at any moment to pause and ask a question!</span>
                 </div>
               )}
 

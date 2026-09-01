@@ -235,4 +235,36 @@ export interface WhiteboardLessonBeat {
   initialViewport?: ViewportTransform;
 }
 
+// ---------------------------------------------------------------------------
+// Student Interruption & Turn-Based Q&A Schema (Step 6)
+// ---------------------------------------------------------------------------
+
+export type InterruptionState =
+  | 'IDLE'
+  | 'TEACHING_PLAYING'
+  | 'INTERRUPTED_LISTENING'
+  | 'AI_THINKING'
+  | 'AI_ANSWERING'
+  | 'READY_TO_RESUME';
+
+export interface StudentInterruptionQuery {
+  studentQuery: string;
+  currentBoardObjects: CanvasObject[];
+  activeLessonContext: {
+    lessonId: string;
+    lessonTitle: string;
+    speechScript: string;
+    currentTimestampMs: number;
+  };
+}
+
+export interface InterruptionResponse {
+  answerText: string;
+  audioUrl: string;
+  durationMs: number;
+  timingMarks: TimingMark[];
+  clarificationCommands: TimedDrawCommand[];
+}
+
+
 
