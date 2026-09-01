@@ -47,6 +47,9 @@ import {
   FolderOpen,
   Save,
   GraduationCap,
+  Pin,
+  PinOff,
+  X,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -96,6 +99,8 @@ export default function WhiteboardLabPage() {
 
   // UI state
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+  const [isInspectorPinned, setIsInspectorPinned] = useState(false);
+  const [isInspectorHovered, setIsInspectorHovered] = useState(false);
   const [isTtsTesterOpen, setIsTtsTesterOpen] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -627,109 +632,163 @@ export default function WhiteboardLabPage() {
           />
         )}
 
-        {/* Floating Debug / Inspector Drawer */}
+        {/* Floating Debug / Inspector Drawer with Sleek Peek-on-Hover Tab */}
         {isInspectorOpen && (
-          <aside className="absolute right-4 top-4 bottom-32 w-80 bg-slate-900/95 backdrop-blur-lg border border-slate-800 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden">
-            {/* Header */}
-            <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          <aside
+            onMouseEnter={() => setIsInspectorHovered(true)}
+            onMouseLeave={() => setIsInspectorHovered(false)}
+            className={`absolute right-0 top-4 bottom-32 w-80 bg-slate-900/95 backdrop-blur-xl border-l border-t border-b border-indigo-500/30 rounded-l-2xl shadow-2xl flex flex-col z-30 transition-transform duration-300 ease-in-out ${
+              isInspectorPinned || isInspectorHovered
+                ? 'translate-x-0'
+                : 'translate-x-[calc(100%-36px)]'
+            }`}
+          >
+            {/* Left Edge Peek Strip Handle (always visible when collapsed) */}
+            <div
+              onClick={() => setIsInspectorPinned(!isInspectorPinned)}
+              className="absolute left-0 top-0 bottom-0 w-9 flex flex-col items-center justify-between py-4 cursor-pointer bg-slate-950/60 hover:bg-slate-800/80 border-r border-slate-800/80 transition-colors select-none"
+              title={isInspectorPinned ? 'Unpin Drawer (Auto-hide on leave)' : 'Hover to view or click to pin open'}
+            >
+              <div className="flex flex-col items-center gap-2.5">
                 <Layers className="w-4 h-4 text-indigo-400" />
-                <span className="font-semibold text-xs tracking-wide uppercase text-slate-200">
-                  State & Object Inspector
+                <span className="[writing-mode:vertical-lr] text-[10px] font-bold uppercase tracking-wider text-slate-400 rotate-180">
+                  Inspector
                 </span>
               </div>
-              <span className="text-[11px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                {objects.length} {objects.length === 1 ? 'object' : 'objects'}
-              </span>
+              <div className="flex flex-col items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[9px] font-mono flex items-center justify-center font-bold">
+                  {objects.length}
+                </span>
+                <ChevronLeft
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${
+                    isInspectorPinned || isInspectorHovered ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-              {/* Selected Object Info */}
-              {selectedObject ? (
-                <div className="p-3 bg-slate-950/80 rounded-xl border border-indigo-500/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-indigo-300">
-                      Selected: {selectedObject.type}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const updated = objects.filter((o) => o.id !== selectedObject.id);
-                        setSelectedId(null);
-                        commitAction(updated);
-                      }}
-                      className="text-rose-400 hover:text-rose-300 p-1 hover:bg-rose-500/10 rounded transition-colors"
-                      title="Delete Object"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="font-mono text-[11px] text-slate-400 break-all">
-                    ID: {selectedObject.id}
-                  </div>
-                  <div className="font-mono text-[11px] text-slate-400">
-                    Author: <span className="text-indigo-400 font-semibold">{selectedObject.authoredBy}</span>
-                  </div>
-                  {selectedObject.linkedStepId && (
-                    <div className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 inline-block">
-                      Linked Step: {selectedObject.linkedStepId}
-                    </div>
-                  )}
-                  <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-[10px] text-slate-300 max-h-24 overflow-y-auto">
-                    {JSON.stringify(selectedObject.geometry, null, 2)}
-                  </div>
-
-                  {/* Ask AI about this object button */}
+            {/* Inner Content Container */}
+            <div className="ml-9 flex-1 flex flex-col min-w-0 overflow-hidden">
+              {/* Header */}
+              <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs tracking-wide text-white">
+                    State & Object Inspector
+                  </span>
+                  <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                    {objects.length} {objects.length === 1 ? 'object' : 'objects'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => {
-                      setIsInterruptionOpen(true);
-                    }}
-                    className="w-full py-2 bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all active:scale-95 mt-2"
+                    onClick={() => setIsInspectorPinned(!isInspectorPinned)}
+                    className={`p-1 rounded-lg border transition-colors ${
+                      isInspectorPinned
+                        ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/50'
+                        : 'text-slate-400 hover:text-white border-transparent hover:bg-slate-800'
+                    }`}
+                    title={isInspectorPinned ? 'Unpin Drawer (Auto-hide on leave)' : 'Pin Drawer Open'}
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Ask AI About This Component</span>
+                    {isInspectorPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                   </button>
-                </div>
-              ) : (
-                <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-slate-500 flex items-center gap-2">
-                  <Info className="w-4 h-4 text-slate-600 shrink-0" />
-                  <span>Click Start Live Lesson below. You can click Raise Hand (or press H) at any moment to pause and ask a question!</span>
-                </div>
-              )}
-
-              {/* Viewport Info */}
-              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
-                <div className="font-semibold text-slate-300">Viewport Metrics</div>
-                <div className="grid grid-cols-2 gap-2 text-slate-400 font-mono text-[11px]">
-                  <div>Scale: {Math.round(viewport.scale * 100)}%</div>
-                  <div>Pan: {Math.round(viewport.x)}, {Math.round(viewport.y)}</div>
+                  <button
+                    onClick={() => setIsInspectorOpen(false)}
+                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Close Inspector"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Live JSON Preview */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-slate-300">
-                  <span className="font-semibold">Live Canvas State (JSON)</span>
-                  <button
-                    onClick={handleCopyJson}
-                    className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 px-2 py-0.5 bg-indigo-500/10 rounded border border-indigo-500/20 transition-colors"
-                  >
-                    {copiedJson ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-400" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        Copy
-                      </>
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 text-xs">
+                {/* Selected Object Info */}
+                {selectedObject ? (
+                  <div className="p-3 bg-slate-950/80 rounded-xl border border-indigo-500/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-indigo-300">
+                        Selected: {selectedObject.type}
+                      </span>
+                      <button
+                        onClick={() => {
+                          const updated = objects.filter((o) => o.id !== selectedObject.id);
+                          setSelectedId(null);
+                          commitAction(updated);
+                        }}
+                        className="text-rose-400 hover:text-rose-300 p-1 hover:bg-rose-500/10 rounded transition-colors"
+                        title="Delete Object"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-400 break-all">
+                      ID: {selectedObject.id}
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-400">
+                      Author: <span className="text-indigo-400 font-semibold">{selectedObject.authoredBy}</span>
+                    </div>
+                    {selectedObject.linkedStepId && (
+                      <div className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 inline-block">
+                        Linked Step: {selectedObject.linkedStepId}
+                      </div>
                     )}
-                  </button>
+                    <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-[10px] text-slate-300 max-h-24 overflow-y-auto">
+                      {JSON.stringify(selectedObject.geometry, null, 2)}
+                    </div>
+
+                    {/* Ask AI about this object button */}
+                    <button
+                      onClick={() => {
+                        setIsInterruptionOpen(true);
+                      }}
+                      className="w-full py-2 bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all active:scale-95 mt-2"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Ask AI About This Component</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-slate-500 flex items-center gap-2">
+                    <Info className="w-4 h-4 text-slate-600 shrink-0" />
+                    <span>Click any object on canvas to inspect, or raise hand to ask questions!</span>
+                  </div>
+                )}
+
+                {/* Viewport Info */}
+                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
+                  <div className="font-semibold text-slate-300">Viewport Metrics</div>
+                  <div className="grid grid-cols-2 gap-2 text-slate-400 font-mono text-[11px]">
+                    <div>Scale: {Math.round(viewport.scale * 100)}%</div>
+                    <div>Pan: {Math.round(viewport.x)}, {Math.round(viewport.y)}</div>
+                  </div>
                 </div>
-                <pre className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-[10px] font-mono text-slate-400 max-h-56 overflow-auto">
-                  {JSON.stringify(objects, null, 2)}
-                </pre>
+
+                {/* Live JSON Preview */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span className="font-semibold">Live Canvas State (JSON)</span>
+                    <button
+                      onClick={handleCopyJson}
+                      className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 px-2 py-0.5 bg-indigo-500/10 rounded border border-indigo-500/20 transition-colors"
+                    >
+                      {copiedJson ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-[10px] font-mono text-slate-400 max-h-56 overflow-auto">
+                    {JSON.stringify(objects, null, 2)}
+                  </pre>
+                </div>
               </div>
             </div>
           </aside>

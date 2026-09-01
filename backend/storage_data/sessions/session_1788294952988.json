@@ -1,0 +1,179 @@
+{
+  "sessionId": "session_1788294952988",
+  "lessonId": "new_session",
+  "title": "Whiteboard Session 9/1/2026",
+  "createdAt": 1788294952989,
+  "updatedAt": 1788295352474,
+  "activeObjects": [
+    {
+      "id": "stage_hdr_1",
+      "type": "text",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 120,
+        "y": 40,
+        "text": "Stage 1: Intuition & Money Mindset"
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 1,
+        "opacity": 1,
+        "fontSize": 20,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788295308284,
+      "linkedStepId": null
+    },
+    {
+      "id": "s1_need_box",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 120,
+        "y": 150,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Need",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#818CF8",
+        "fillColor": "rgba(129, 140, 248, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788295303022,
+      "linkedStepId": null
+    },
+    {
+      "id": "s1_solution_box",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 320,
+        "y": 150,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Solution",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#34D399",
+        "fillColor": "rgba(52, 211, 153, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788295306850,
+      "linkedStepId": null
+    },
+    {
+      "id": "s1_arrow2",
+      "type": "arrow",
+      "authoredBy": "ai",
+      "geometry": {
+        "from": {
+          "x": 470,
+          "y": 185
+        },
+        "to": {
+          "x": 520,
+          "y": 185
+        },
+        "arrowheadEnd": true
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788295310767,
+      "linkedStepId": null
+    },
+    {
+      "id": "s1_payment_box",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 520,
+        "y": 150,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Payment",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#FBBF24",
+        "fillColor": "rgba(251, 191, 36, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788295309261,
+      "linkedStepId": null
+    },
+    {
+      "id": "s1_arrow1",
+      "type": "arrow",
+      "authoredBy": "ai",
+      "geometry": {
+        "from": {
+          "x": 270,
+          "y": 185
+        },
+        "to": {
+          "x": 320,
+          "y": 185
+        },
+        "arrowheadEnd": true
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788295313405,
+      "linkedStepId": null
+    },
+    {
+      "id": "stage_hdr_2",
+      "type": "text",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 870,
+        "y": 40,
+        "text": "Stage 2: Mechanics & Revenue Models"
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 1,
+        "opacity": 1,
+        "fontSize": 20,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788295344472,
+      "linkedStepId": null
+    }
+  ],
+  "viewport": {
+    "x": -750,
+    "y": 0,
+    "scale": 1
+  },
+  "events": []
+}
