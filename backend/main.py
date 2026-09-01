@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db import init_db
-from backend.api import lectures, session
+from backend.api import lectures, session, whiteboard
 
 # Initialize database tables on startup
 init_db()
@@ -42,6 +42,7 @@ app.add_middleware(
 # Mount route modules
 app.include_router(lectures.router, prefix="/api", tags=["lectures"])
 app.include_router(session.router, prefix="/api", tags=["session"])
+app.include_router(whiteboard.router, prefix="/api/whiteboard", tags=["whiteboard"])
 
 # Mount static storage for serving generated audio files
 from pathlib import Path

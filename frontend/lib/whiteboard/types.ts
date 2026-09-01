@@ -195,3 +195,21 @@ export interface ActiveHighlight {
   color: string;
   expiresAt: number;
 }
+
+// ---------------------------------------------------------------------------
+// Speech & Audio Timing Schema (Step 3)
+// ---------------------------------------------------------------------------
+
+export interface TimingMark {
+  word: string;
+  raw_word: string;
+  offset_ms: number;
+  duration_ms: number;
+}
+
+export interface TTSWithTimingResponse {
+  audio_url: string;
+  duration_ms: number;
+  timing_marks: TimingMark[];
+}
+

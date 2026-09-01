@@ -11,6 +11,7 @@ import {
 import { Toolbar } from '@/components/whiteboard/Toolbar';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { CommandPlayer } from '@/components/whiteboard/CommandPlayer';
+import { AudioTimingTester } from '@/components/whiteboard/AudioTimingTester';
 import {
   Layers,
   Code2,
@@ -23,6 +24,7 @@ import {
   Info,
   Trash2,
   PlaySquare,
+  Volume2,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -47,6 +49,7 @@ export default function WhiteboardLabPage() {
 
   // UI state
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
+  const [isTtsTesterOpen, setIsTtsTesterOpen] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,21 +198,28 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 2 — Command → Canvas Renderer
+              Step 3 — TTS with Timing Marks
             </span>
           </div>
         </div>
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-2 py-1 bg-slate-950/60 rounded-xl border border-slate-800 text-xs text-slate-400">
-            <PlaySquare className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">Command Engine Active</span>
-          </div>
+          <button
+            onClick={() => setIsTtsTesterOpen(!isTtsTesterOpen)}
+            className={`px-3 py-1 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all ${
+              isTtsTesterOpen
+                ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-300'
+            }`}
+          >
+            <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+            <span>TTS Timing Sync Tester</span>
+          </button>
 
           <button
             onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-            className="p-1.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 transition-colors ml-2"
+            className="p-1.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 transition-colors ml-1"
             title={isInspectorOpen ? 'Collapse Inspector' : 'Expand Inspector'}
           >
             <Code2 className="w-4 h-4 text-indigo-400" />
@@ -219,6 +229,20 @@ export default function WhiteboardLabPage() {
 
       {/* Main Canvas Workspace */}
       <div className="relative flex-1 w-full h-full overflow-hidden">
+        {/* Floating TTS Timing Tester Modal */}
+        {isTtsTesterOpen && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4 animate-fade-in">
+            <div className="relative shadow-2xl">
+              <button
+                onClick={() => setIsTtsTesterOpen(false)}
+                className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xs px-2 py-0.5 rounded bg-slate-800 z-10"
+              >
+                ✕ Close
+              </button>
+              <AudioTimingTester />
+            </div>
+          </div>
+        )}
         {/* Floating Top Toolbar */}
         <Toolbar
           activeTool={activeTool}
