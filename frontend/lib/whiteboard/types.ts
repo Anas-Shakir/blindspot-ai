@@ -266,5 +266,48 @@ export interface InterruptionResponse {
   clarificationCommands: TimedDrawCommand[];
 }
 
+// ---------------------------------------------------------------------------
+// Session State Persistence & Replay Schema (Step 9)
+// ---------------------------------------------------------------------------
+
+export type SessionEventType =
+  | 'lecture_beat'
+  | 'student_interruption'
+  | 'student_drawing'
+  | 'teacher_review';
+
+export interface SessionEvent {
+  id: string;
+  type: SessionEventType;
+  timestampMs: number;
+  title: string;
+  speechText?: string;
+  audioUrl?: string;
+  durationMs?: number;
+  timingMarks?: TimingMark[];
+  commands: TimedDrawCommand[];
+  resultingObjects: CanvasObject[];
+}
+
+export interface WhiteboardSessionRecord {
+  sessionId: string;
+  lessonId: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  activeObjects: CanvasObject[];
+  viewport: ViewportTransform;
+  events: SessionEvent[];
+}
+
+export interface SessionSummary {
+  sessionId: string;
+  title: string;
+  updatedAt: number;
+  objectsCount: number;
+  eventsCount: number;
+}
+
+
 
 

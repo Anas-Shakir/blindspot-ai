@@ -8,6 +8,8 @@ import {
   ViewportTransform,
   WhiteboardState,
   WhiteboardLessonBeat,
+  WhiteboardSessionRecord,
+  SessionEvent,
 } from '@/lib/whiteboard/types';
 import { Toolbar } from '@/components/whiteboard/Toolbar';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
@@ -17,6 +19,10 @@ import { SynchronizedLessonPlayer } from '@/components/whiteboard/SynchronizedLe
 import { AILessonGeneratorModal } from '@/components/whiteboard/AILessonGeneratorModal';
 import { InterruptionTray } from '@/components/whiteboard/InterruptionTray';
 import { StudentReviewModal } from '@/components/whiteboard/StudentReviewModal';
+import { SessionReplayPlayer } from '@/components/whiteboard/SessionReplayPlayer';
+import { SessionHistoryModal } from '@/components/whiteboard/SessionHistoryModal';
+import { WhiteboardSessionManager } from '@/lib/whiteboard/sessionManager';
+import { LESSON_CIRCUIT_SYNCHRONIZED } from '@/lib/whiteboard/lessonPresets';
 import {
   Layers,
   Code2,
@@ -35,6 +41,9 @@ import {
   Wand2,
   Hand,
   Award,
+  Film,
+  FolderOpen,
+  Save,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -57,20 +66,25 @@ export default function WhiteboardLabPage() {
   const [historyPast, setHistoryPast] = useState<CanvasObject[][]>([]);
   const [historyFuture, setHistoryFuture] = useState<CanvasObject[][]>([]);
 
-  // Studio Mode: 'sync_lesson' (Step 4, 5, 6) | 'command_player' (Step 2)
-  const [studioMode, setStudioMode] = useState<'sync_lesson' | 'command_player'>('sync_lesson');
+  // Studio Mode: 'sync_lesson' | 'replay_studio' | 'command_player' (Step 9)
+  const [studioMode, setStudioMode] = useState<'sync_lesson' | 'replay_studio' | 'command_player'>('sync_lesson');
 
   // AI Generation State (Step 5)
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [activeAiLesson, setActiveAiLesson] = useState<WhiteboardLessonBeat | null>(null);
 
-  // Student Interruption State (Step 6)
+  // Student Interruption State (Step 6 & 7)
   const [isInterruptionOpen, setIsInterruptionOpen] = useState(false);
   const [interruptedTimestampMs, setInterruptedTimestampMs] = useState(0);
 
   // Student Work Review State (Step 8)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const userElementsCount = objects.filter((o) => o.authoredBy === 'user').length;
+
+  // Session Persistence & Replay State (Step 9)
+  const [activeSession, setActiveSession] = useState<WhiteboardSessionRecord | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string>('Just now');
 
   // UI state
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
@@ -82,6 +96,59 @@ export default function WhiteboardLabPage() {
   useEffect(() => {
     objectsRef.current = objects;
   }, [objects]);
+
+  // Initialize Session from localStorage or default on initial mount
+  useEffect(() => {
+    const cached = WhiteboardSessionManager.loadFromLocalStorage();
+    if (cached && cached.activeObjects && cached.activeObjects.length > 0) {
+      setActiveSession(cached);
+      setObjects(cached.activeObjects);
+      if (cached.viewport) setViewport(cached.viewport);
+    } else {
+      const newSession: WhiteboardSessionRecord = {
+        sessionId: `session_${Date.now()}`,
+        lessonId: 'circuit-sync',
+        title: "Ohm's Law Circuit Session",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        activeObjects: [],
+        viewport: { x: 0, y: 0, scale: 1.0 },
+        events: [
+          {
+            id: 'ev_init_lecture',
+            type: 'lecture_beat',
+            timestampMs: 0,
+            title: "Lesson: Ohm's Law Circuit",
+            speechText: LESSON_CIRCUIT_SYNCHRONIZED.speechScript,
+            audioUrl: LESSON_CIRCUIT_SYNCHRONIZED.audioUrl,
+            durationMs: LESSON_CIRCUIT_SYNCHRONIZED.durationMs,
+            timingMarks: LESSON_CIRCUIT_SYNCHRONIZED.timingMarks,
+            commands: LESSON_CIRCUIT_SYNCHRONIZED.timedCommands,
+            resultingObjects: [],
+          },
+        ],
+      };
+      setActiveSession(newSession);
+    }
+  }, []);
+
+  // Auto-Save whenever objects or viewport change (debounced)
+  useEffect(() => {
+    if (!activeSession) return;
+
+    const updatedSession: WhiteboardSessionRecord = {
+      ...activeSession,
+      activeObjects: objects,
+      viewport,
+      updatedAt: Date.now(),
+    };
+
+    WhiteboardSessionManager.autoSave(updatedSession, () => {
+      setLastSavedTime(
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      );
+    });
+  }, [objects, viewport, activeSession]);
 
   // Trigger temporary highlight glow
   const triggerHighlight = useCallback((targetId: string, color: string, durationMs: number = 1500) => {
@@ -228,8 +295,14 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 8 — Student Drawing & AI Solution Review
+              Step 9 — Session Persistence & Replay
             </span>
+          </div>
+
+          {/* Auto-Save Indicator */}
+          <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            <span>Auto-Saved {lastSavedTime}</span>
           </div>
         </div>
 
@@ -255,6 +328,16 @@ export default function WhiteboardLabPage() {
             <span>Generate with AI</span>
           </button>
 
+          {/* Sessions Library Button (Step 9) */}
+          <button
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            title="Open Saved Whiteboard Sessions"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Sessions</span>
+          </button>
+
           {/* Mode Switcher */}
           <div className="flex items-center gap-1 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs">
             <button
@@ -266,8 +349,21 @@ export default function WhiteboardLabPage() {
               }`}
             >
               <Radio className="w-3 h-3 text-emerald-400" />
-              <span>Synchronized Lesson</span>
+              <span>Live Lesson</span>
             </button>
+
+            <button
+              onClick={() => setStudioMode('replay_studio')}
+              className={`px-3 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                studioMode === 'replay_studio'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Film className="w-3 h-3 text-sky-400" />
+              <span>Replay Studio</span>
+            </button>
+
             <button
               onClick={() => setStudioMode('command_player')}
               className={`px-3 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
@@ -313,6 +409,27 @@ export default function WhiteboardLabPage() {
           onLessonGenerated={(lesson) => {
             setActiveAiLesson(lesson);
             setStudioMode('sync_lesson');
+
+            // Add generated lesson beat to active session events
+            if (activeSession) {
+              const newEvent: SessionEvent = {
+                id: `ev_${Date.now()}`,
+                type: 'lecture_beat',
+                timestampMs: Date.now(),
+                title: lesson.title,
+                speechText: lesson.speechScript,
+                audioUrl: lesson.audioUrl,
+                durationMs: lesson.durationMs,
+                timingMarks: lesson.timingMarks,
+                commands: lesson.timedCommands,
+                resultingObjects: [],
+              };
+              setActiveSession({
+                ...activeSession,
+                title: lesson.title,
+                events: [...activeSession.events, newEvent],
+              });
+            }
           }}
         />
 
@@ -341,6 +458,33 @@ export default function WhiteboardLabPage() {
           onCommitAction={commitAction}
           activeLesson={activeAiLesson}
           onTriggerHighlight={triggerHighlight}
+        />
+
+        {/* Floating Session History Switcher Modal (Step 9) */}
+        <SessionHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          currentSessionId={activeSession?.sessionId || ''}
+          onLoadSession={(loaded) => {
+            setActiveSession(loaded);
+            setObjects(loaded.activeObjects || []);
+            if (loaded.viewport) setViewport(loaded.viewport);
+          }}
+          onNewSession={() => {
+            const fresh: WhiteboardSessionRecord = {
+              sessionId: `session_${Date.now()}`,
+              lessonId: 'new_session',
+              title: `Whiteboard Session ${new Date().toLocaleDateString()}`,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              activeObjects: [],
+              viewport: { x: 0, y: 0, scale: 1.0 },
+              events: [],
+            };
+            setActiveSession(fresh);
+            setObjects([]);
+            setViewport({ x: 0, y: 0, scale: 1.0 });
+          }}
         />
 
         {/* Floating TTS Timing Tester Modal */}
@@ -397,7 +541,13 @@ export default function WhiteboardLabPage() {
             setIsInterruptionOpen(true);
           }}
           activeHighlights={activeHighlights}
-          hideFloatingBadge={isInterruptionOpen || isAiModalOpen || isTtsTesterOpen || isReviewModalOpen}
+          hideFloatingBadge={
+            isInterruptionOpen ||
+            isAiModalOpen ||
+            isTtsTesterOpen ||
+            isReviewModalOpen ||
+            isHistoryModalOpen
+          }
         />
 
         {/* Bottom Playback Engine Dock (Mode Dependent) */}
@@ -413,6 +563,15 @@ export default function WhiteboardLabPage() {
               setInterruptedTimestampMs(timeMs);
               setIsInterruptionOpen(true);
             }}
+          />
+        ) : studioMode === 'replay_studio' ? (
+          <SessionReplayPlayer
+            session={activeSession}
+            objects={objects}
+            setObjects={setObjects}
+            onCommitAction={commitAction}
+            setViewport={setViewport}
+            onTriggerHighlight={triggerHighlight}
           />
         ) : (
           <CommandPlayer

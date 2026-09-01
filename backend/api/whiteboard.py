@@ -16,6 +16,7 @@ from backend.ai.whiteboard.tts_sync import synthesize_speech_with_timing
 from backend.ai.whiteboard.generator import generate_whiteboard_lesson
 from backend.ai.whiteboard.interruption_handler import handle_student_interruption
 from backend.ai.whiteboard.student_review import evaluate_student_work
+from backend.ai.whiteboard.session_manager import save_session, get_session, list_sessions, delete_session
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,18 @@ class ReviewApiRequest(BaseModel):
     all_board_objects: List[dict] = Field(default_factory=list, description="All board objects")
     lesson_context: dict = Field(default_factory=dict, description="Lesson problem metadata")
     voice: Optional[str] = Field(default=None, description="Voice ID")
+
+
+class SaveSessionRequest(BaseModel):
+    sessionId: Optional[str] = None
+    lessonId: Optional[str] = "whiteboard_lesson"
+    title: Optional[str] = "Whiteboard Learning Session"
+    createdAt: Optional[int] = None
+    updatedAt: Optional[int] = None
+    activeObjects: List[dict] = Field(default_factory=list)
+    viewport: Optional[dict] = None
+    events: List[dict] = Field(default_factory=list)
+
 
 
 @router.post("/tts", response_model=TTSTimingResponse)
@@ -124,5 +137,37 @@ def handle_student_review(req: ReviewApiRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/session/save")
+def api_save_session(req: SaveSessionRequest):
+    """Persists a whiteboard session and event timeline."""
+    try:
+        data = req.model_dump()
+        saved = save_session(data)
+        return saved
+    except Exception as e:
+        logger.exception("Failed to save whiteboard session: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/session/{session_id}")
+def api_get_session(session_id: str):
+    """Retrieves a whiteboard session by ID."""
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@router.get("/sessions")
+def api_list_sessions():
+    """Lists all saved whiteboard sessions."""
+    return list_sessions()
+
+
+@router.delete("/session/{session_id}")
+def api_delete_session(session_id: str):
+    """Deletes a whiteboard session."""
+    deleted = delete_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"status": "deleted", "sessionId": session_id}

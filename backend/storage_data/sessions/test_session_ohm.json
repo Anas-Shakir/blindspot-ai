@@ -1,0 +1,37 @@
+{
+  "sessionId": "test_session_ohm",
+  "lessonId": "circuit-1",
+  "title": "Ohm's Law Practice Session",
+  "createdAt": 1788278210630,
+  "updatedAt": 1788278210630,
+  "activeObjects": [
+    {
+      "id": "battery",
+      "type": "shape",
+      "label": "9V DC",
+      "authoredBy": "ai"
+    },
+    {
+      "id": "resistor",
+      "type": "shape",
+      "label": "100 \u03a9",
+      "authoredBy": "ai"
+    }
+  ],
+  "viewport": {
+    "x": 50,
+    "y": 50,
+    "scale": 1.0
+  },
+  "events": [
+    {
+      "id": "ev_1",
+      "type": "lecture_beat",
+      "timestampMs": 0,
+      "title": "Circuit Lecture Beat",
+      "speechText": "Let's construct a circuit.",
+      "commands": [],
+      "resultingObjects": []
+    }
+  ]
+}
