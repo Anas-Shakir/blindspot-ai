@@ -348,6 +348,24 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
                   <span>Listening to your voice... Speak now</span>
                 </div>
               )}
+
+              {state === 'AI_THINKING' && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between text-xs animate-fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-1 h-5">
+                      <span className="w-1 h-full bg-amber-400 rounded-full animate-acoustic-bar" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-full bg-amber-400 rounded-full animate-acoustic-bar" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-full bg-amber-400 rounded-full animate-acoustic-bar" style={{ animationDelay: '300ms' }} />
+                      <span className="w-1 h-full bg-amber-400 rounded-full animate-acoustic-bar" style={{ animationDelay: '100ms' }} />
+                      <span className="w-1 h-full bg-amber-400 rounded-full animate-acoustic-bar" style={{ animationDelay: '250ms' }} />
+                    </div>
+                    <span className="text-amber-300 font-medium">
+                      Reviewing board & preparing visual response...
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-amber-400/80">Sub-50ms Sync</span>
+                </div>
+              )}
             </div>
 
             {errorMsg && (

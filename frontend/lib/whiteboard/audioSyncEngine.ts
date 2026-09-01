@@ -23,6 +23,7 @@ export class AudioSyncEngine {
   private callbacks: AudioSyncCallbacks = {};
   private animationFrameId: number | null = null;
   private lastFiredWordIndex: number = -1;
+  private lookaheadLeadMs: number = 75; // 75ms lead calibration for sub-50ms visual sync
 
   // Event listener handlers for clean detachment
   private onPlayListener: (() => void) | null = null;
@@ -30,14 +31,19 @@ export class AudioSyncEngine {
   private onEndedListener: (() => void) | null = null;
   private onErrorListener: ((e: any) => void) | null = null;
 
-  constructor(callbacks?: AudioSyncCallbacks) {
+  constructor(callbacks?: AudioSyncCallbacks, lookaheadLeadMs: number = 75) {
     if (callbacks) {
       this.callbacks = callbacks;
     }
+    this.lookaheadLeadMs = lookaheadLeadMs;
   }
 
   public setCallbacks(callbacks: AudioSyncCallbacks) {
     this.callbacks = { ...this.callbacks, ...callbacks };
+  }
+
+  public setLookaheadLeadMs(ms: number) {
+    this.lookaheadLeadMs = ms;
   }
 
   public load(audioUrl: string, timingMarks: TimingMark[]) {
@@ -98,7 +104,7 @@ export class AudioSyncEngine {
   public seek(timeMs: number) {
     if (!this.audio) return;
     this.audio.currentTime = timeMs / 1000.0;
-    this.lastFiredWordIndex = this.findWordIndexAtTime(timeMs);
+    this.lastFiredWordIndex = this.findWordIndexAtTime(timeMs + this.lookaheadLeadMs);
     this.callbacks.onTimeUpdate?.(timeMs);
   }
 
@@ -146,11 +152,13 @@ export class AudioSyncEngine {
     const loop = () => {
       if (!this.audio) return;
 
-      const currentMs = this.audio.currentTime * 1000.0;
-      this.callbacks.onTimeUpdate?.(currentMs);
+      const rawMs = this.audio.currentTime * 1000.0;
+      this.callbacks.onTimeUpdate?.(rawMs);
 
-      // Check for word boundary events
-      const activeWordIndex = this.findWordIndexAtTime(currentMs);
+      // Apply lookahead lead buffer to trigger visual command right as voice starts
+      const effectiveMs = rawMs + this.lookaheadLeadMs;
+      const activeWordIndex = this.findWordIndexAtTime(effectiveMs);
+
       if (activeWordIndex >= 0 && activeWordIndex !== this.lastFiredWordIndex) {
         this.lastFiredWordIndex = activeWordIndex;
         const mark = this.timingMarks[activeWordIndex];

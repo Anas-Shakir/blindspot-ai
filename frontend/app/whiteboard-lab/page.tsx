@@ -294,15 +294,21 @@ export default function WhiteboardLabPage() {
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
               Whiteboard Lab
             </span>
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 9 — Session Persistence & Replay
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500/20 to-sky-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+              Step 10 — High-Precision Sync & Animation
             </span>
           </div>
 
-          {/* Auto-Save Indicator */}
-          <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-            <span>Auto-Saved {lastSavedTime}</span>
+          {/* Sub-50ms Sync & Auto-Save Indicator */}
+          <div className="hidden lg:flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              <span>⚡ 75ms Lookahead Lead</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>Auto-Saved {lastSavedTime}</span>
+            </div>
           </div>
         </div>
 

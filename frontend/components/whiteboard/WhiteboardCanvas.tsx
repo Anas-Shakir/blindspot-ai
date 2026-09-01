@@ -687,7 +687,7 @@ const RenderCanvasObject: React.FC<{
   if (type === 'stroke') {
     const geo = geometry as StrokeGeometry;
     return (
-      <g>
+      <g className="animate-draw-stroke">
         {highlightColor && (
           <path
             d={pointsToSvgPath(geo.points)}
@@ -728,7 +728,7 @@ const RenderCanvasObject: React.FC<{
     const geo = geometry as ShapeGeometry;
     if (geo.subtype === 'rectangle' || geo.subtype === 'card') {
       return (
-        <g>
+        <g className="animate-shape-in">
           {highlightColor && (
             <rect
               x={geo.x - 8}
@@ -785,7 +785,7 @@ const RenderCanvasObject: React.FC<{
       const cx = geo.x + rx;
       const cy = geo.y + ry;
       return (
-        <g>
+        <g className="animate-shape-in">
           {highlightColor && (
             <ellipse
               cx={cx}
@@ -849,7 +849,7 @@ const RenderCanvasObject: React.FC<{
     const p2y = geo.to.y - headLen * Math.sin(angle + Math.PI / 6);
 
     return (
-      <g>
+      <g className="animate-shape-in">
         {isSelected && (
           <line
             x1={geo.from.x}
@@ -870,6 +870,7 @@ const RenderCanvasObject: React.FC<{
           stroke={isSelected ? '#818CF8' : style.strokeColor}
           strokeWidth={style.strokeWidth}
           strokeLinecap="round"
+          className="animate-draw-stroke"
         />
         {geo.arrowheadEnd && (
           <polygon
@@ -892,7 +893,7 @@ const RenderCanvasObject: React.FC<{
     const estW = (geo.text.length * (style.fontSize || 18) * 0.6) + 8;
     const estH = (style.fontSize || 18) + 10;
     return (
-      <g>
+      <g className="animate-shape-in">
         <text
           x={geo.x}
           y={geo.y + 16}
