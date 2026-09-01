@@ -37,6 +37,7 @@ import RobotCompanionWrapper from "@/components/RobotCompanionWrapper";
 import QuizCard, { QuizOption } from "@/components/QuizCard";
 import Sidebar from "@/components/Sidebar";
 import KnowledgeGraphView from "@/components/KnowledgeGraphView";
+import FlowStepsCard, { FlowStepItem } from "@/components/FlowStepsCard";
 
 interface PhaseData {
   id: number;
@@ -136,12 +137,15 @@ export default function WorkspacePage() {
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [playbackSeconds, setPlaybackSeconds] = useState<number>(0);
-
-  // Audio elements & speech text
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const lectureAudioRef = useRef<HTMLAudioElement | null>(null);
   const [activeSpeechText, setActiveSpeechText] = useState<string>("");
   const [isPlayingLectureAudio, setIsPlayingLectureAudio] = useState<boolean>(false);
+  const [activeFlowData, setActiveFlowData] = useState<{
+    flowSteps?: FlowStepItem[] | null;
+    keyTakeaway?: string | null;
+    analogy?: string | null;
+  } | null>(null);
 
   // Text Language Options Catalog
   const TEXT_LANGUAGES = [
@@ -186,36 +190,36 @@ export default function WorkspacePage() {
       try {
         await api.sendCommand(lectureId, sessionId, "set_voice", voiceId);
       } catch (err) {
-        console.warn("Failed to set voice on orchestrator:", err);
+        console.warn("Failed to set voice on backend:", err);
       }
     }
   };
 
-  const handleTextLanguageChange = async (langId: string) => {
-    setSelectedTextLanguage(langId);
-    const matched = TEXT_LANGUAGES.find((t) => t.id === langId);
-    const label = matched ? `${matched.flag} ${matched.name}` : langId;
+  const handleTextLanguageChange = async (targetLanguage: string) => {
+    setSelectedTextLanguage(targetLanguage);
+    const matchedLang = TEXT_LANGUAGES.find((t) => t.id === targetLanguage);
+    const label = matchedLang ? `${matchedLang.flag} ${matchedLang.name}` : targetLanguage;
 
-    setToastMessage(`Text language set to ${label}`);
+    setToastMessage(`Text language switched to ${label}`);
     setTimeout(() => {
       setToastMessage(null);
     }, 2800);
 
     if (lectureId) {
       try {
-        await api.sendCommand(lectureId, sessionId, "set_text_language", langId);
+        await api.sendCommand(lectureId, sessionId, "set_text_language", targetLanguage);
       } catch (err) {
-        console.warn("Failed to set text language on orchestrator:", err);
+        console.warn("Failed to set text language on backend:", err);
       }
     }
   };
 
-  // User query & AI Thinking state
+  // Robot query and thinking status state
   const [userQuery, setUserQuery] = useState<string>("");
-  const [customResponse, setCustomResponse] = useState<string | null>(null);
   const [isAnsweringQuery, setIsAnsweringQuery] = useState<boolean>(false);
+  const [customResponse, setCustomResponse] = useState<string | null>(null);
   const [thinkingStatus, setThinkingStatus] = useState<string>("Analyzing lecture context...");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const formatSeconds = (sec: number): string => {
     const mins = Math.floor(sec / 60);
@@ -257,6 +261,7 @@ export default function WorkspacePage() {
         if (typeof ev.phase_order === "number") {
           setCurrentPhaseIndex(ev.phase_order);
           setCustomResponse(null);
+          setActiveFlowData(null);
           setIsQuizMode(false);
           setIsAlternativeView(false);
           setPlaybackSeconds(0);
@@ -266,6 +271,15 @@ export default function WorkspacePage() {
         const text = (ev.payload?.text as string) || "";
         const audioUrl = (ev.payload?.audio_url as string) || null;
         const inResponseTo = ev.payload?.in_response_to;
+        const flowSteps = (ev.payload?.flow_steps as FlowStepItem[]) || null;
+        const keyTakeaway = (ev.payload?.key_takeaway as string) || null;
+        const analogy = (ev.payload?.analogy as string) || null;
+
+        if (flowSteps || keyTakeaway || analogy) {
+          setActiveFlowData({ flowSteps, keyTakeaway, analogy });
+        } else if (!inResponseTo) {
+          setActiveFlowData(null);
+        }
 
         if (inResponseTo) {
           setCustomResponse(text);
@@ -533,8 +547,16 @@ export default function WorkspacePage() {
         clearInterval(thinkingInterval);
         processEvents(events);
         const speakEv = events.find((ev) => ev.type === "speaking");
-        if (speakEv?.payload?.text) {
-          setCustomResponse(String(speakEv.payload.text));
+        if (speakEv?.payload) {
+          const text = String(speakEv.payload.text || "");
+          const flowSteps = (speakEv.payload.flow_steps as FlowStepItem[]) || null;
+          const keyTakeaway = (speakEv.payload.key_takeaway as string) || null;
+          const analogy = (speakEv.payload.analogy as string) || null;
+
+          if (flowSteps || keyTakeaway || analogy) {
+            setActiveFlowData({ flowSteps, keyTakeaway, analogy });
+          }
+          setCustomResponse(text);
         }
         setUserQuery("");
         setIsAnsweringQuery(false);
@@ -1042,6 +1064,15 @@ export default function WorkspacePage() {
                       ? currentPhase.alternativeSpeechText
                       : activeSpeechText || currentPhase.speechText}
                   </p>
+                )}
+
+                {/* Structured Process Flow & Key Takeaways Card */}
+                {activeFlowData && (
+                  <FlowStepsCard
+                    flowSteps={activeFlowData.flowSteps}
+                    keyTakeaway={activeFlowData.keyTakeaway}
+                    analogy={activeFlowData.analogy}
+                  />
                 )}
               </motion.div>
 

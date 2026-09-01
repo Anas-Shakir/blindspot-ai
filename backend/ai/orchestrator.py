@@ -445,12 +445,24 @@ class TeachingSession:
 
     def handle_question(self, question: str) -> List[SessionEvent]:
         """Answers a free-form student question using the current phase context."""
-        answer_text = _answer_free_question(
+        qa_result = _answer_free_question(
             question=question,
             current_phase=self.current_phase,
             transcript_segments=self.transcript_segments,
         )
-        spoken_text, audio_url = self._prepare_speech(answer_text)
+
+        if hasattr(qa_result, "explanation"):
+            explanation_text = qa_result.explanation
+            key_takeaway = getattr(qa_result, "key_takeaway", None)
+            analogy = getattr(qa_result, "analogy", None)
+            flow_steps = [s.model_dump() for s in qa_result.flow_steps] if getattr(qa_result, "flow_steps", None) else None
+        else:
+            explanation_text = str(qa_result)
+            key_takeaway = None
+            analogy = None
+            flow_steps = None
+
+        spoken_text, audio_url = self._prepare_speech(explanation_text)
 
         events: List[SessionEvent] = []
         events.append(
@@ -460,6 +472,9 @@ class TeachingSession:
                     "text": spoken_text,
                     "audio_url": audio_url,
                     "in_response_to": question,
+                    "key_takeaway": key_takeaway,
+                    "analogy": analogy,
+                    "flow_steps": flow_steps,
                     "text_language": self.text_language,
                     "voice_language": self.voice_language,
                 },
