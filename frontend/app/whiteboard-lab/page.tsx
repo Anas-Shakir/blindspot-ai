@@ -10,6 +10,7 @@ import {
 } from '@/lib/whiteboard/types';
 import { Toolbar } from '@/components/whiteboard/Toolbar';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
+import { CommandPlayer } from '@/components/whiteboard/CommandPlayer';
 import {
   Layers,
   Code2,
@@ -21,6 +22,7 @@ import {
   ArrowLeft,
   Info,
   Trash2,
+  PlaySquare,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -36,6 +38,9 @@ export default function WhiteboardLabPage() {
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Active Highlight Glows (targetId -> color)
+  const [activeHighlights, setActiveHighlights] = useState<Record<string, string>>({});
+
   // History for Undo / Redo
   const [historyPast, setHistoryPast] = useState<CanvasObject[][]>([]);
   const [historyFuture, setHistoryFuture] = useState<CanvasObject[][]>([]);
@@ -44,6 +49,18 @@ export default function WhiteboardLabPage() {
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
   const [copiedJson, setCopiedJson] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Trigger temporary highlight glow
+  const triggerHighlight = useCallback((targetId: string, color: string, durationMs: number = 1500) => {
+    setActiveHighlights((prev) => ({ ...prev, [targetId]: color }));
+    setTimeout(() => {
+      setActiveHighlights((prev) => {
+        const next = { ...prev };
+        delete next[targetId];
+        return next;
+      });
+    }, durationMs);
+  }, []);
 
   // Commit action to history stack
   const commitAction = useCallback(
@@ -148,101 +165,6 @@ export default function WhiteboardLabPage() {
     setTimeout(() => setCopiedJson(false), 2000);
   };
 
-  // Load Preset Demos
-  const loadPreset = (presetName: 'binary-tree' | 'circuit') => {
-    if (presetName === 'binary-tree') {
-      const bstDemo: CanvasObject[] = [
-        {
-          id: 'root-50',
-          type: 'shape',
-          authoredBy: 'user',
-          geometry: { x: 300, y: 80, width: 70, height: 70, subtype: 'circle', label: '50' },
-          style: { strokeColor: '#818CF8', strokeWidth: 3, opacity: 1, fillColor: 'rgba(99, 102, 241, 0.15)', fontSize: 18 },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'node-30',
-          type: 'shape',
-          authoredBy: 'user',
-          geometry: { x: 180, y: 220, width: 60, height: 60, subtype: 'circle', label: '30' },
-          style: { strokeColor: '#34D399', strokeWidth: 3, opacity: 1, fillColor: 'rgba(52, 211, 153, 0.15)', fontSize: 16 },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'node-70',
-          type: 'shape',
-          authoredBy: 'user',
-          geometry: { x: 440, y: 220, width: 60, height: 60, subtype: 'circle', label: '70' },
-          style: { strokeColor: '#38BDF8', strokeWidth: 3, opacity: 1, fillColor: 'rgba(56, 189, 248, 0.15)', fontSize: 16 },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'arrow-left',
-          type: 'arrow',
-          authoredBy: 'user',
-          geometry: { from: { x: 310, y: 145 }, to: { x: 230, y: 220 }, arrowheadEnd: true },
-          style: { strokeColor: '#94A3B8', strokeWidth: 2, opacity: 1 },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'arrow-right',
-          type: 'arrow',
-          authoredBy: 'user',
-          geometry: { from: { x: 360, y: 145 }, to: { x: 450, y: 220 }, arrowheadEnd: true },
-          style: { strokeColor: '#94A3B8', strokeWidth: 2, opacity: 1 },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'text-title',
-          type: 'text',
-          authoredBy: 'user',
-          geometry: { x: 230, y: 25, text: 'Binary Search Tree (BST)' },
-          style: { strokeColor: '#F8FAFC', strokeWidth: 1, opacity: 1, fontSize: 22, fontFamily: 'sans-serif' },
-          createdAt: Date.now(),
-        },
-      ];
-      commitAction(bstDemo);
-      setViewport({ x: 100, y: 80, scale: 1.0 });
-    } else if (presetName === 'circuit') {
-      const circuitDemo: CanvasObject[] = [
-        {
-          id: 'battery-rect',
-          type: 'shape',
-          authoredBy: 'user',
-          geometry: { x: 120, y: 150, width: 90, height: 50, subtype: 'rectangle', label: '9V DC' },
-          style: { strokeColor: '#FB7185', strokeWidth: 3, opacity: 1, fillColor: 'rgba(251, 113, 133, 0.15)' },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'resistor-rect',
-          type: 'shape',
-          authoredBy: 'user',
-          geometry: { x: 340, y: 150, width: 110, height: 50, subtype: 'rectangle', label: '100 Ω Resistor' },
-          style: { strokeColor: '#FBBF24', strokeWidth: 3, opacity: 1, fillColor: 'rgba(251, 191, 36, 0.15)' },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'wire-top',
-          type: 'arrow',
-          authoredBy: 'user',
-          geometry: { from: { x: 210, y: 175 }, to: { x: 340, y: 175 }, arrowheadEnd: true },
-          style: { strokeColor: '#38BDF8', strokeWidth: 3, opacity: 1 },
-          createdAt: Date.now(),
-        },
-        {
-          id: 'circuit-text',
-          type: 'text',
-          authoredBy: 'user',
-          geometry: { x: 230, y: 140, text: 'I = 90 mA' },
-          style: { strokeColor: '#38BDF8', strokeWidth: 1, opacity: 1, fontSize: 16 },
-          createdAt: Date.now(),
-        },
-      ];
-      commitAction(circuitDemo);
-      setViewport({ x: 120, y: 100, scale: 1.0 });
-    }
-  };
-
   const selectedObject = objects.find((o) => o.id === selectedId);
 
   return (
@@ -273,30 +195,17 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 1 — Standalone Canvas Engine
+              Step 2 — Command → Canvas Renderer
             </span>
           </div>
         </div>
 
-        {/* Preset demo loaders */}
+        {/* Header Right Actions */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-            Load Template:
-          </span>
-          <button
-            onClick={() => loadPreset('binary-tree')}
-            className="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors flex items-center gap-1"
-          >
-            <Sparkles className="w-3 h-3 text-indigo-400" />
-            Binary Tree
-          </button>
-          <button
-            onClick={() => loadPreset('circuit')}
-            className="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors flex items-center gap-1"
-          >
-            <Sparkles className="w-3 h-3 text-amber-400" />
-            Ohm's Circuit
-          </button>
+          <div className="flex items-center gap-1 px-2 py-1 bg-slate-950/60 rounded-xl border border-slate-800 text-xs text-slate-400">
+            <PlaySquare className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Command Engine Active</span>
+          </div>
 
           <button
             onClick={() => setIsInspectorOpen(!isInspectorOpen)}
@@ -310,7 +219,7 @@ export default function WhiteboardLabPage() {
 
       {/* Main Canvas Workspace */}
       <div className="relative flex-1 w-full h-full overflow-hidden">
-        {/* Floating Toolbar */}
+        {/* Floating Top Toolbar */}
         <Toolbar
           activeTool={activeTool}
           setActiveTool={setActiveTool}
@@ -344,17 +253,27 @@ export default function WhiteboardLabPage() {
           selectedId={selectedId}
           setSelectedId={setSelectedId}
           onCommitAction={commitAction}
+          activeHighlights={activeHighlights}
+        />
+
+        {/* Floating Step 2 Command Playback Dock */}
+        <CommandPlayer
+          objects={objects}
+          setObjects={setObjects}
+          onCommitAction={commitAction}
+          setViewport={setViewport}
+          onTriggerHighlight={triggerHighlight}
         />
 
         {/* Floating Debug / Inspector Drawer */}
         {isInspectorOpen && (
-          <aside className="absolute right-4 top-4 bottom-4 w-80 bg-slate-900/95 backdrop-blur-lg border border-slate-800 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden">
+          <aside className="absolute right-4 top-4 bottom-24 w-80 bg-slate-900/95 backdrop-blur-lg border border-slate-800 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden">
             {/* Header */}
             <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-indigo-400" />
                 <span className="font-semibold text-xs tracking-wide uppercase text-slate-200">
-                  State Inspector
+                  State & Object Inspector
                 </span>
               </div>
               <span className="text-[11px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
@@ -387,8 +306,13 @@ export default function WhiteboardLabPage() {
                     ID: {selectedObject.id}
                   </div>
                   <div className="font-mono text-[11px] text-slate-400">
-                    Author: <span className="text-slate-200 font-semibold">{selectedObject.authoredBy}</span>
+                    Author: <span className="text-indigo-400 font-semibold">{selectedObject.authoredBy}</span>
                   </div>
+                  {selectedObject.linkedStepId && (
+                    <div className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 inline-block">
+                      Linked Step: {selectedObject.linkedStepId}
+                    </div>
+                  )}
                   <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-[10px] text-slate-300 max-h-24 overflow-y-auto">
                     {JSON.stringify(selectedObject.geometry, null, 2)}
                   </div>
@@ -396,7 +320,7 @@ export default function WhiteboardLabPage() {
               ) : (
                 <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-slate-500 flex items-center gap-2">
                   <Info className="w-4 h-4 text-slate-600 shrink-0" />
-                  <span>Click any object on the canvas with the Select tool to inspect.</span>
+                  <span>Use the Play button below to watch structured draw commands execute step-by-step.</span>
                 </div>
               )}
 
@@ -412,7 +336,7 @@ export default function WhiteboardLabPage() {
               {/* Live JSON Preview */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-slate-300">
-                  <span className="font-semibold">Serialized State (JSON)</span>
+                  <span className="font-semibold">Live Canvas State (JSON)</span>
                   <button
                     onClick={handleCopyJson}
                     className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 px-2 py-0.5 bg-indigo-500/10 rounded border border-indigo-500/20 transition-colors"

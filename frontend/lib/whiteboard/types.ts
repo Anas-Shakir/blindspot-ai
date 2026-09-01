@@ -3,7 +3,7 @@
  *
  * Core TypeScript types for the Blindspot AI Whiteboard Subsystem.
  * Structured object model for canvas elements, tool configurations,
- * history tracking, and JSON serialization.
+ * history tracking, JSON serialization, and Draw Command batches.
  */
 
 export type ToolType =
@@ -92,4 +92,106 @@ export interface WhiteboardState {
   objects: CanvasObject[];
   viewport: ViewportTransform;
   selectedId: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Draw Command Schema (Commands, Not Pixels)
+// ---------------------------------------------------------------------------
+
+export type DrawCommandOp =
+  | 'add_shape'
+  | 'add_text'
+  | 'connect_arrow'
+  | 'update_shape'
+  | 'delete_shape'
+  | 'highlight'
+  | 'pan_zoom'
+  | 'clear';
+
+export interface AddShapeCommand {
+  op: 'add_shape';
+  id: string;
+  subtype: ShapeSubtype;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label?: string;
+  style?: Partial<ObjectStyle>;
+  linkedStepId?: string;
+}
+
+export interface AddTextCommand {
+  op: 'add_text';
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  style?: Partial<ObjectStyle>;
+  linkedStepId?: string;
+}
+
+export interface ConnectArrowCommand {
+  op: 'connect_arrow';
+  id: string;
+  from: Point | string; // coordinate Point OR "shapeId.anchor" (e.g., "battery.right")
+  to: Point | string;
+  label?: string;
+  style?: Partial<ObjectStyle>;
+  linkedStepId?: string;
+}
+
+export interface UpdateShapeCommand {
+  op: 'update_shape';
+  targetId: string;
+  geometry?: Partial<ShapeGeometry | TextGeometry>;
+  style?: Partial<ObjectStyle>;
+  label?: string;
+}
+
+export interface DeleteShapeCommand {
+  op: 'delete_shape';
+  targetId: string;
+}
+
+export interface HighlightCommand {
+  op: 'highlight';
+  targetId: string;
+  durationMs?: number;
+  color?: string;
+}
+
+export interface PanZoomCommand {
+  op: 'pan_zoom';
+  x: number;
+  y: number;
+  scale?: number;
+}
+
+export interface ClearCommand {
+  op: 'clear';
+}
+
+export type DrawCommand =
+  | AddShapeCommand
+  | AddTextCommand
+  | ConnectArrowCommand
+  | UpdateShapeCommand
+  | DeleteShapeCommand
+  | HighlightCommand
+  | PanZoomCommand
+  | ClearCommand;
+
+export interface CommandBatch {
+  id: string;
+  title: string;
+  description: string;
+  commands: DrawCommand[];
+  initialViewport?: ViewportTransform;
+}
+
+export interface ActiveHighlight {
+  targetId: string;
+  color: string;
+  expiresAt: number;
 }

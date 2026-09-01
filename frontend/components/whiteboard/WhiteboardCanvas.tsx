@@ -26,6 +26,7 @@ interface WhiteboardCanvasProps {
   setSelectedId: (id: string | null) => void;
   onCommitAction: (newObjects: CanvasObject[]) => void;
   onObjectClick?: (object: CanvasObject) => void;
+  activeHighlights?: Record<string, string>; // targetId -> color
 }
 
 export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
@@ -41,6 +42,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   setSelectedId,
   onCommitAction,
   onObjectClick,
+  activeHighlights = {},
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -492,6 +494,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             key={obj.id}
             object={obj}
             isSelected={obj.id === selectedId}
+            highlightColor={activeHighlights[obj.id]}
           />
         ))}
 
@@ -613,13 +616,26 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
 const RenderCanvasObject: React.FC<{
   object: CanvasObject;
   isSelected: boolean;
-}> = ({ object, isSelected }) => {
+  highlightColor?: string;
+}> = ({ object, isSelected, highlightColor }) => {
   const { type, geometry, style, authoredBy } = object;
 
   if (type === 'stroke') {
     const geo = geometry as StrokeGeometry;
     return (
       <g>
+        {highlightColor && (
+          <path
+            d={pointsToSvgPath(geo.points)}
+            fill="none"
+            stroke={highlightColor}
+            strokeWidth={style.strokeWidth + 12}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.5}
+            className="animate-pulse"
+          />
+        )}
         <path
           d={pointsToSvgPath(geo.points)}
           fill="none"
@@ -649,6 +665,20 @@ const RenderCanvasObject: React.FC<{
     if (geo.subtype === 'rectangle' || geo.subtype === 'card') {
       return (
         <g>
+          {highlightColor && (
+            <rect
+              x={geo.x - 8}
+              y={geo.y - 8}
+              width={geo.width + 16}
+              height={geo.height + 16}
+              rx={(geo.borderRadius || 8) + 4}
+              fill="none"
+              stroke={highlightColor}
+              strokeWidth="4"
+              opacity={0.8}
+              className="animate-pulse"
+            />
+          )}
           <rect
             x={geo.x}
             y={geo.y}
@@ -692,6 +722,19 @@ const RenderCanvasObject: React.FC<{
       const cy = geo.y + ry;
       return (
         <g>
+          {highlightColor && (
+            <ellipse
+              cx={cx}
+              cy={cy}
+              rx={rx + 8}
+              ry={ry + 8}
+              fill="none"
+              stroke={highlightColor}
+              strokeWidth="4"
+              opacity={0.8}
+              className="animate-pulse"
+            />
+          )}
           <ellipse
             cx={cx}
             cy={cy}
