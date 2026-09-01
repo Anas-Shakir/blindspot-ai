@@ -164,6 +164,16 @@ def api_list_sessions():
     return list_sessions()
 
 
+from backend.ai.whiteboard.session_manager import save_session, get_session, list_sessions, delete_session
+from backend.ai.whiteboard.course_manager import start_course, get_course_stage, get_course_status
+
+
+class StartCourseRequest(BaseModel):
+    topic: str = Field(..., min_length=3, description="Topic or subject for the multi-stage course")
+    voice: Optional[str] = Field(default=None, description="Voice ID")
+    context: Optional[str] = Field(default=None, description="Optional extra context")
+
+
 @router.delete("/session/{session_id}")
 def api_delete_session(session_id: str):
     """Deletes a whiteboard session."""
@@ -171,3 +181,50 @@ def api_delete_session(session_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "deleted", "sessionId": session_id}
+
+
+# ---------------------------------------------------------------------------
+# Multi-Stage Structured Lecture Course Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/course/start")
+def api_start_course(req: StartCourseRequest):
+    """
+    Starts a multi-stage whiteboard course:
+    Returns Stage 1 + Syllabus immediately while pre-fetching Stages 2, 3, etc. in background.
+    """
+    try:
+        result = start_course(
+            topic=req.topic,
+            voice=req.voice,
+            context=req.context,
+        )
+        return result
+    except Exception as e:
+        logger.exception("Failed to start multi-stage course: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/course/{course_id}/stage/{stage_idx}")
+def api_get_course_stage(course_id: str, stage_idx: int):
+    """Fetches a specific course stage (from pre-fetched cache or on-demand)."""
+    try:
+        stage = get_course_stage(course_id, stage_idx)
+        if not stage:
+            raise HTTPException(status_code=404, detail="Course or stage not found")
+        return stage
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to fetch course stage: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/course/{course_id}/status")
+def api_get_course_status(course_id: str):
+    """Checks the background pre-generation readiness of stages in a course."""
+    status = get_course_status(course_id)
+    if not status.get("found"):
+        raise HTTPException(status_code=404, detail="Course not found")
+    return status
+

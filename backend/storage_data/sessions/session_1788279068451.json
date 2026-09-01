@@ -1,90 +1,394 @@
 {
   "sessionId": "session_1788279068451",
   "lessonId": "circuit-sync",
-  "title": "Ohm's Law Circuit Session",
+  "title": "Binary Search Tree Insertion",
   "createdAt": 1788279068451,
-  "updatedAt": 1788281387047,
+  "updatedAt": 1788292988937,
   "activeObjects": [
     {
-      "id": "title-txt",
+      "id": "stage_hdr_1",
       "type": "text",
       "authoredBy": "ai",
       "geometry": {
         "x": 120,
         "y": 40,
-        "text": "Ohm's Law: V = I \u00d7 R"
+        "text": "Stage 1: Intuition & Visual Blueprint"
       },
       "style": {
-        "strokeColor": "#F8FAFC",
+        "strokeColor": "#38BDF8",
         "fillColor": "transparent",
         "strokeWidth": 1,
         "opacity": 1,
-        "fontSize": 24,
+        "fontSize": 20,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788279585519,
-      "linkedStepId": "step-1-intro"
+      "createdAt": 1788292810585,
+      "linkedStepId": null
     },
     {
-      "id": "battery",
+      "id": "s1_array_container",
       "type": "shape",
       "authoredBy": "ai",
       "geometry": {
         "x": 120,
-        "y": 150,
-        "width": 90,
-        "height": 60,
+        "y": 120,
+        "width": 150,
+        "height": 70,
         "subtype": "rectangle",
-        "label": "9V DC",
+        "label": "Array",
         "borderRadius": 8
       },
       "style": {
-        "strokeColor": "#FB7185",
-        "fillColor": "rgba(251, 113, 133, 0.15)",
+        "strokeColor": "#818CF8",
+        "fillColor": "rgba(129,140,248,0.18)",
         "strokeWidth": 3,
         "opacity": 1,
         "fontSize": 16,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788279586452,
-      "linkedStepId": "step-2-source"
+      "createdAt": 1788292815190,
+      "linkedStepId": null
     },
     {
-      "id": "resistor",
+      "id": "s1_linked_list_container",
       "type": "shape",
       "authoredBy": "ai",
       "geometry": {
-        "x": 385.3333740234375,
-        "y": 150.888916015625,
-        "width": 120,
-        "height": 60,
+        "x": 320,
+        "y": 120,
+        "width": 150,
+        "height": 70,
         "subtype": "rectangle",
-        "label": "100 \u03a9 (R1 - Active)",
+        "label": "Linked List",
         "borderRadius": 8
       },
       "style": {
         "strokeColor": "#34D399",
-        "fillColor": "rgba(52, 211, 153, 0.15)",
+        "fillColor": "rgba(52,211,153,0.18)",
         "strokeWidth": 3,
         "opacity": 1,
         "fontSize": 16,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788279588299,
-      "linkedStepId": "step-3-load"
+      "createdAt": 1788292818116,
+      "linkedStepId": null
     },
     {
-      "id": "wire-top",
+      "id": "s1_stack_container",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 120,
+        "y": 260,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Stack",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#F87171",
+        "fillColor": "rgba(248,113,113,0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292821245,
+      "linkedStepId": null
+    },
+    {
+      "id": "s1_queue_container",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 320,
+        "y": 260,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Queue",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#FBBF24",
+        "fillColor": "rgba(251,191,36,0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292823990,
+      "linkedStepId": null
+    },
+    {
+      "id": "s1_tree_container",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 220,
+        "y": 380,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Tree",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#A78BFA",
+        "fillColor": "rgba(167,139,250,0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292826886,
+      "linkedStepId": null
+    },
+    {
+      "id": "stage_hdr_2",
+      "type": "text",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 870,
+        "y": 40,
+        "text": "Stage 2: Mechanics & Operations Deep Dive"
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 1,
+        "opacity": 1,
+        "fontSize": 20,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292906593,
+      "linkedStepId": null
+    },
+    {
+      "id": "s2_node_A",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 870,
+        "y": 150,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Node A",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#818CF8",
+        "fillColor": "rgba(129, 140, 248, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292910435,
+      "linkedStepId": null
+    },
+    {
+      "id": "s2_node_B",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 1050,
+        "y": 150,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Node B",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#34D399",
+        "fillColor": "rgba(52, 211, 153, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292912199,
+      "linkedStepId": null
+    },
+    {
+      "id": "s2_node_C",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 1230,
+        "y": 150,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Node C",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#F87171",
+        "fillColor": "rgba(248, 113, 113, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292912199,
+      "linkedStepId": null
+    },
+    {
+      "id": "s2_insert_label",
+      "type": "text",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 1140,
+        "y": 130,
+        "text": "Insert D"
+      },
+      "style": {
+        "strokeColor": "#818CF8",
+        "fillColor": "transparent",
+        "strokeWidth": 1,
+        "opacity": 1,
+        "fontSize": 18,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292915411,
+      "linkedStepId": null
+    },
+    {
+      "id": "s2_delete_arrow",
       "type": "arrow",
       "authoredBy": "ai",
       "geometry": {
         "from": {
-          "x": 210,
-          "y": 180
+          "x": 1020,
+          "y": 185
         },
         "to": {
-          "x": 380,
-          "y": 180
+          "x": 1230,
+          "y": 185
+        },
+        "arrowheadEnd": true
+      },
+      "style": {
+        "strokeColor": "#EF4444",
+        "fillColor": "transparent",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292922549,
+      "linkedStepId": null
+    },
+    {
+      "id": "s2_traverse_arrow",
+      "type": "arrow",
+      "authoredBy": "ai",
+      "geometry": {
+        "from": {
+          "x": 1020,
+          "y": 185
+        },
+        "to": {
+          "x": 1050,
+          "y": 185
+        },
+        "arrowheadEnd": true
+      },
+      "style": {
+        "strokeColor": "#3B82F6",
+        "fillColor": "transparent",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292927059,
+      "linkedStepId": null
+    },
+    {
+      "id": "stage_hdr_3",
+      "type": "text",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 1620,
+        "y": 40,
+        "text": "Stage 3: Complexity, Code & Edge Cases"
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 1,
+        "opacity": 1,
+        "fontSize": 20,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292935663,
+      "linkedStepId": null
+    },
+    {
+      "id": "s3_code_box",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 1620,
+        "y": 120,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Code Snippet",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#34D399",
+        "fillColor": "rgba(52, 211, 153, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292949240,
+      "linkedStepId": null
+    },
+    {
+      "id": "s3_bigo_chart",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 1880,
+        "y": 120,
+        "width": 150,
+        "height": 70,
+        "subtype": "rectangle",
+        "label": "Big\u2011O Chart",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#818CF8",
+        "fillColor": "rgba(129, 140, 248, 0.18)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788292949905,
+      "linkedStepId": null
+    },
+    {
+      "id": "s3_code_to_chart",
+      "type": "arrow",
+      "authoredBy": "ai",
+      "geometry": {
+        "from": {
+          "x": 1770,
+          "y": 155
+        },
+        "to": {
+          "x": 1880,
+          "y": 155
         },
         "arrowheadEnd": true
       },
@@ -96,34 +400,14 @@
         "fontSize": 16,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788279589240,
-      "linkedStepId": "step-4-current"
-    },
-    {
-      "id": "current-calc",
-      "type": "text",
-      "authoredBy": "ai",
-      "geometry": {
-        "x": 240,
-        "y": 130,
-        "text": "I = 9V / 100\u03a9 = 90 mA"
-      },
-      "style": {
-        "strokeColor": "#38BDF8",
-        "fillColor": "transparent",
-        "strokeWidth": 1,
-        "opacity": 1,
-        "fontSize": 16,
-        "fontFamily": "sans-serif"
-      },
-      "createdAt": 1788279590163,
-      "linkedStepId": "step-4-current"
+      "createdAt": 1788292950588,
+      "linkedStepId": null
     }
   ],
   "viewport": {
-    "x": 90,
-    "y": 70,
-    "scale": 1
+    "x": -101.56575828221185,
+    "y": 155.53746521520162,
+    "scale": 0.591059746816
   },
   "events": [
     {
@@ -498,6 +782,452 @@
             "style": {
               "strokeColor": "#34D399",
               "fillColor": "rgba(52, 211, 153, 0.18)"
+            }
+          }
+        }
+      ],
+      "resultingObjects": []
+    },
+    {
+      "id": "ev_1788292108794",
+      "type": "lecture_beat",
+      "timestampMs": 1788292108794,
+      "title": "Binary Search Tree Insertion",
+      "speechText": "Let's explore how a binary search tree grows. First, we place the root node with value 50 at the center. Next, we insert a node with value 30 to the left of the root. Then we add a node with value 70 to the right. Finally, we see the tree balanced with three nodes.",
+      "audioUrl": "http://localhost:8000/storage/tts/whiteboard_9e5e610f5469fae6.mp3",
+      "durationMs": 20250,
+      "timingMarks": [
+        {
+          "word": "Lets",
+          "raw_word": "Let's",
+          "offset_ms": 100,
+          "duration_ms": 490.1
+        },
+        {
+          "word": "explore",
+          "raw_word": "explore",
+          "offset_ms": 590.1,
+          "duration_ms": 686.2
+        },
+        {
+          "word": "how",
+          "raw_word": "how",
+          "offset_ms": 1276.3,
+          "duration_ms": 294.1
+        },
+        {
+          "word": "a",
+          "raw_word": "a",
+          "offset_ms": 1570.4,
+          "duration_ms": 98
+        },
+        {
+          "word": "binary",
+          "raw_word": "binary",
+          "offset_ms": 1668.4,
+          "duration_ms": 588.2
+        },
+        {
+          "word": "search",
+          "raw_word": "search",
+          "offset_ms": 2256.6,
+          "duration_ms": 588.2
+        },
+        {
+          "word": "tree",
+          "raw_word": "tree",
+          "offset_ms": 2844.7,
+          "duration_ms": 392.1
+        },
+        {
+          "word": "grows",
+          "raw_word": "grows.",
+          "offset_ms": 3236.8,
+          "duration_ms": 588.2
+        },
+        {
+          "word": "First",
+          "raw_word": "First,",
+          "offset_ms": 3775,
+          "duration_ms": 556.9
+        },
+        {
+          "word": "we",
+          "raw_word": "we",
+          "offset_ms": 4331.9,
+          "duration_ms": 185.6
+        },
+        {
+          "word": "place",
+          "raw_word": "place",
+          "offset_ms": 4517.6,
+          "duration_ms": 464.1
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 4981.6,
+          "duration_ms": 278.5
+        },
+        {
+          "word": "root",
+          "raw_word": "root",
+          "offset_ms": 5260.1,
+          "duration_ms": 371.3
+        },
+        {
+          "word": "node",
+          "raw_word": "node",
+          "offset_ms": 5631.4,
+          "duration_ms": 371.3
+        },
+        {
+          "word": "with",
+          "raw_word": "with",
+          "offset_ms": 6002.7,
+          "duration_ms": 371.3
+        },
+        {
+          "word": "value",
+          "raw_word": "value",
+          "offset_ms": 6373.9,
+          "duration_ms": 464.1
+        },
+        {
+          "word": "50",
+          "raw_word": "50",
+          "offset_ms": 6838,
+          "duration_ms": 185.6
+        },
+        {
+          "word": "at",
+          "raw_word": "at",
+          "offset_ms": 7023.7,
+          "duration_ms": 185.6
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 7209.3,
+          "duration_ms": 278.5
+        },
+        {
+          "word": "center",
+          "raw_word": "center.",
+          "offset_ms": 7487.8,
+          "duration_ms": 649.7
+        },
+        {
+          "word": "Next",
+          "raw_word": "Next,",
+          "offset_ms": 8137.5,
+          "duration_ms": 474
+        },
+        {
+          "word": "we",
+          "raw_word": "we",
+          "offset_ms": 8611.5,
+          "duration_ms": 189.6
+        },
+        {
+          "word": "insert",
+          "raw_word": "insert",
+          "offset_ms": 8801,
+          "duration_ms": 568.8
+        },
+        {
+          "word": "a",
+          "raw_word": "a",
+          "offset_ms": 9369.8,
+          "duration_ms": 94.8
+        },
+        {
+          "word": "node",
+          "raw_word": "node",
+          "offset_ms": 9464.6,
+          "duration_ms": 379.2
+        },
+        {
+          "word": "with",
+          "raw_word": "with",
+          "offset_ms": 9843.8,
+          "duration_ms": 379.2
+        },
+        {
+          "word": "value",
+          "raw_word": "value",
+          "offset_ms": 10222.9,
+          "duration_ms": 474
+        },
+        {
+          "word": "30",
+          "raw_word": "30",
+          "offset_ms": 10696.9,
+          "duration_ms": 189.6
+        },
+        {
+          "word": "to",
+          "raw_word": "to",
+          "offset_ms": 10886.5,
+          "duration_ms": 189.6
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 11076,
+          "duration_ms": 284.4
+        },
+        {
+          "word": "left",
+          "raw_word": "left",
+          "offset_ms": 11360.4,
+          "duration_ms": 379.2
+        },
+        {
+          "word": "of",
+          "raw_word": "of",
+          "offset_ms": 11739.6,
+          "duration_ms": 189.6
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 11929.2,
+          "duration_ms": 284.4
+        },
+        {
+          "word": "root",
+          "raw_word": "root.",
+          "offset_ms": 12213.5,
+          "duration_ms": 474
+        },
+        {
+          "word": "Then",
+          "raw_word": "Then",
+          "offset_ms": 12687.5,
+          "duration_ms": 402.8
+        },
+        {
+          "word": "we",
+          "raw_word": "we",
+          "offset_ms": 13090.3,
+          "duration_ms": 201.4
+        },
+        {
+          "word": "add",
+          "raw_word": "add",
+          "offset_ms": 13291.7,
+          "duration_ms": 302.1
+        },
+        {
+          "word": "a",
+          "raw_word": "a",
+          "offset_ms": 13593.8,
+          "duration_ms": 100.7
+        },
+        {
+          "word": "node",
+          "raw_word": "node",
+          "offset_ms": 13694.4,
+          "duration_ms": 402.8
+        },
+        {
+          "word": "with",
+          "raw_word": "with",
+          "offset_ms": 14097.2,
+          "duration_ms": 402.8
+        },
+        {
+          "word": "value",
+          "raw_word": "value",
+          "offset_ms": 14500,
+          "duration_ms": 503.5
+        },
+        {
+          "word": "70",
+          "raw_word": "70",
+          "offset_ms": 15003.5,
+          "duration_ms": 201.4
+        },
+        {
+          "word": "to",
+          "raw_word": "to",
+          "offset_ms": 15204.9,
+          "duration_ms": 201.4
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 15406.2,
+          "duration_ms": 302.1
+        },
+        {
+          "word": "right",
+          "raw_word": "right.",
+          "offset_ms": 15708.3,
+          "duration_ms": 604.2
+        },
+        {
+          "word": "Finally",
+          "raw_word": "Finally,",
+          "offset_ms": 16312.5,
+          "duration_ms": 732.6
+        },
+        {
+          "word": "we",
+          "raw_word": "we",
+          "offset_ms": 17045.1,
+          "duration_ms": 183.1
+        },
+        {
+          "word": "see",
+          "raw_word": "see",
+          "offset_ms": 17228.2,
+          "duration_ms": 274.7
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 17502.9,
+          "duration_ms": 274.7
+        },
+        {
+          "word": "tree",
+          "raw_word": "tree",
+          "offset_ms": 17777.6,
+          "duration_ms": 366.3
+        },
+        {
+          "word": "balanced",
+          "raw_word": "balanced",
+          "offset_ms": 18143.9,
+          "duration_ms": 732.6
+        },
+        {
+          "word": "with",
+          "raw_word": "with",
+          "offset_ms": 18876.5,
+          "duration_ms": 366.3
+        },
+        {
+          "word": "three",
+          "raw_word": "three",
+          "offset_ms": 19242.7,
+          "duration_ms": 457.8
+        },
+        {
+          "word": "nodes",
+          "raw_word": "nodes.",
+          "offset_ms": 19700.6,
+          "duration_ms": 549.4
+        }
+      ],
+      "commands": [
+        {
+          "triggerWord": "explore",
+          "command": {
+            "op": "add_text",
+            "id": "title_text",
+            "x": 240,
+            "y": 40,
+            "text": "Binary Search Tree Insertion",
+            "style": {
+              "strokeColor": "#F8FAFC",
+              "fontSize": 22
+            }
+          }
+        },
+        {
+          "triggerWord": "root",
+          "command": {
+            "op": "add_shape",
+            "id": "root_node",
+            "subtype": "rectangle",
+            "x": 380,
+            "y": 220,
+            "width": 80,
+            "height": 50,
+            "label": "50",
+            "style": {
+              "strokeColor": "#818CF8",
+              "fillColor": "rgba(129, 140, 248, 0.18)",
+              "strokeWidth": 3
+            }
+          }
+        },
+        {
+          "triggerWord": "30",
+          "command": {
+            "op": "add_shape",
+            "id": "node_30",
+            "subtype": "rectangle",
+            "x": 180,
+            "y": 220,
+            "width": 80,
+            "height": 50,
+            "label": "30",
+            "style": {
+              "strokeColor": "#818CF8",
+              "fillColor": "rgba(129, 140, 248, 0.18)",
+              "strokeWidth": 3
+            }
+          }
+        },
+        {
+          "triggerWord": "70",
+          "command": {
+            "op": "add_shape",
+            "id": "node_70",
+            "subtype": "rectangle",
+            "x": 620,
+            "y": 220,
+            "width": 80,
+            "height": 50,
+            "label": "70",
+            "style": {
+              "strokeColor": "#818CF8",
+              "fillColor": "rgba(129, 140, 248, 0.18)",
+              "strokeWidth": 3
+            }
+          }
+        },
+        {
+          "triggerWord": "left",
+          "command": {
+            "op": "connect_arrow",
+            "id": "arrow_left",
+            "from": "root_node.left",
+            "to": "node_30.right",
+            "style": {
+              "strokeColor": "#38BDF8",
+              "strokeWidth": 3
+            }
+          }
+        },
+        {
+          "triggerWord": "right",
+          "command": {
+            "op": "connect_arrow",
+            "id": "arrow_right",
+            "from": "root_node.right",
+            "to": "node_70.left",
+            "style": {
+              "strokeColor": "#38BDF8",
+              "strokeWidth": 3
+            }
+          }
+        },
+        {
+          "triggerWord": "balanced",
+          "command": {
+            "op": "add_text",
+            "id": "summary_text",
+            "x": 260,
+            "y": 380,
+            "text": "Tree with 3 nodes",
+            "style": {
+              "strokeColor": "#34D399",
+              "fontSize": 18
             }
           }
         }

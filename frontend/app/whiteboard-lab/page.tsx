@@ -10,6 +10,7 @@ import {
   WhiteboardLessonBeat,
   WhiteboardSessionRecord,
   SessionEvent,
+  MultiStageCourseRecord,
 } from '@/lib/whiteboard/types';
 import { Toolbar } from '@/components/whiteboard/Toolbar';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
@@ -21,6 +22,7 @@ import { InterruptionTray } from '@/components/whiteboard/InterruptionTray';
 import { StudentReviewModal } from '@/components/whiteboard/StudentReviewModal';
 import { SessionReplayPlayer } from '@/components/whiteboard/SessionReplayPlayer';
 import { SessionHistoryModal } from '@/components/whiteboard/SessionHistoryModal';
+import { MultiStageCoursePlayer } from '@/components/whiteboard/MultiStageCoursePlayer';
 import { WhiteboardSessionManager } from '@/lib/whiteboard/sessionManager';
 import { LESSON_CIRCUIT_SYNCHRONIZED } from '@/lib/whiteboard/lessonPresets';
 import {
@@ -44,6 +46,7 @@ import {
   Film,
   FolderOpen,
   Save,
+  GraduationCap,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -66,8 +69,13 @@ export default function WhiteboardLabPage() {
   const [historyPast, setHistoryPast] = useState<CanvasObject[][]>([]);
   const [historyFuture, setHistoryFuture] = useState<CanvasObject[][]>([]);
 
-  // Studio Mode: 'sync_lesson' | 'replay_studio' | 'command_player' (Step 9)
-  const [studioMode, setStudioMode] = useState<'sync_lesson' | 'replay_studio' | 'command_player'>('sync_lesson');
+  // Studio Mode: 'multi_stage_course' | 'sync_lesson' | 'replay_studio' | 'command_player'
+  const [studioMode, setStudioMode] = useState<
+    'multi_stage_course' | 'sync_lesson' | 'replay_studio' | 'command_player'
+  >('sync_lesson');
+
+  // Multi-Stage Course State
+  const [activeCourse, setActiveCourse] = useState<MultiStageCourseRecord | null>(null);
 
   // AI Generation State (Step 5)
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -346,6 +354,20 @@ export default function WhiteboardLabPage() {
 
           {/* Mode Switcher */}
           <div className="flex items-center gap-1 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs">
+            {activeCourse && (
+              <button
+                onClick={() => setStudioMode('multi_stage_course')}
+                className={`px-3 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                  studioMode === 'multi_stage_course'
+                    ? 'bg-gradient-to-r from-indigo-600 to-sky-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-amber-300" />
+                <span>Masterclass ({activeCourse.syllabus.totalStages} Stages)</span>
+              </button>
+            )}
+
             <button
               onClick={() => setStudioMode('sync_lesson')}
               className={`px-3 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
@@ -408,10 +430,17 @@ export default function WhiteboardLabPage() {
 
       {/* Main Canvas Workspace */}
       <div className="relative flex-1 w-full h-full overflow-hidden">
-        {/* Floating AI Generator Modal (Step 5) */}
+        {/* Floating AI Generator Modal (Step 5 & Multi-Stage Masterclass) */}
         <AILessonGeneratorModal
           isOpen={isAiModalOpen}
           onClose={() => setIsAiModalOpen(false)}
+          onCourseGenerated={(course) => {
+            setActiveCourse(course);
+            setStudioMode('multi_stage_course');
+            // Clear or reset canvas for fresh masterclass if desired
+            setObjects([]);
+            setViewport({ x: 0, y: 0, scale: 1.0 });
+          }}
           onLessonGenerated={(lesson) => {
             setActiveAiLesson(lesson);
             setStudioMode('sync_lesson');
@@ -551,7 +580,22 @@ export default function WhiteboardLabPage() {
         />
 
         {/* Bottom Playback Engine Dock (Mode Dependent) */}
-        {studioMode === 'sync_lesson' ? (
+        {studioMode === 'multi_stage_course' ? (
+          <MultiStageCoursePlayer
+            course={activeCourse}
+            onUpdateCourse={setActiveCourse}
+            objects={objects}
+            setObjects={setObjects}
+            onCommitAction={commitAction}
+            viewport={viewport}
+            setViewport={setViewport}
+            onTriggerHighlight={triggerHighlight}
+            onRaiseHand={(timeMs) => {
+              setInterruptedTimestampMs(timeMs);
+              setIsInterruptionOpen(true);
+            }}
+          />
+        ) : studioMode === 'sync_lesson' ? (
           <SynchronizedLessonPlayer
             objects={objects}
             setObjects={setObjects}

@@ -308,6 +308,53 @@ export interface SessionSummary {
   eventsCount: number;
 }
 
+// ---------------------------------------------------------------------------
+// Multi-Stage Structured Lecture Course Schema
+// ---------------------------------------------------------------------------
+
+export interface CourseStageOutline {
+  stageIndex: number;
+  title: string;
+  conceptGoal: string;
+  spatialZone: {
+    x: number;
+    y: number;
+    scale: number;
+  };
+}
+
+export interface CourseSyllabus {
+  courseId: string;
+  topic: string;
+  title: string;
+  overview: string;
+  totalStages: number;
+  stages: CourseStageOutline[];
+}
+
+export interface CourseStageBeat {
+  stageIndex: number;
+  title: string;
+  conceptGoal: string;
+  speechScript: string;
+  audioUrl: string;
+  durationMs: number;
+  timingMarks: TimingMark[];
+  timedCommands: TimedDrawCommand[];
+  cameraFocus: {
+    x: number;
+    y: number;
+    scale: number;
+  };
+}
+
+export interface MultiStageCourseRecord {
+  syllabus: CourseSyllabus;
+  stages: Record<number, CourseStageBeat>; // stageIndex -> beat
+  currentStageIndex: number;
+}
+
+
 
 
 

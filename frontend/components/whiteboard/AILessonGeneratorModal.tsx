@@ -11,13 +11,16 @@ import {
   CheckCircle2,
   Loader2,
   Zap,
+  GraduationCap,
+  Layers,
 } from 'lucide-react';
-import { WhiteboardLessonBeat } from '@/lib/whiteboard/types';
+import { MultiStageCourseRecord, WhiteboardLessonBeat } from '@/lib/whiteboard/types';
 
 interface AILessonGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLessonGenerated: (lesson: WhiteboardLessonBeat) => void;
+  onCourseGenerated?: (course: MultiStageCourseRecord) => void;
 }
 
 const PRESET_TOPICS = [
@@ -51,8 +54,10 @@ export const AILessonGeneratorModal: React.FC<AILessonGeneratorModalProps> = ({
   isOpen,
   onClose,
   onLessonGenerated,
+  onCourseGenerated,
 }) => {
   const [prompt, setPrompt] = useState<string>(PRESET_TOPICS[0].prompt);
+  const [generationType, setGenerationType] = useState<'multi_stage' | 'single_beat'>('multi_stage');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationStep, setGenerationStep] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -66,28 +71,57 @@ export const AILessonGeneratorModal: React.FC<AILessonGeneratorModalProps> = ({
       setIsGenerating(true);
       setErrorMsg(null);
 
-      setGenerationStep('Designing vector layout & teaching narrative with LLM...');
-      
-      const res = await fetch('http://localhost:8000/api/whiteboard/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
+      if (generationType === 'multi_stage') {
+        setGenerationStep('Planning 3-4 stage masterclass curriculum & layout...');
+        const res = await fetch('http://localhost:8000/api/whiteboard/course/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: prompt }),
+        });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `Generation failed with HTTP ${res.status}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Course generation failed with HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const courseRecord: MultiStageCourseRecord = {
+          syllabus: data.syllabus,
+          stages: { 1: data.stage1 },
+          currentStageIndex: 1,
+        };
+
+        setGenerationStep('Stage 1 ready! Pre-generating remaining stages in background...');
+        setTimeout(() => {
+          setIsGenerating(false);
+          if (onCourseGenerated) {
+            onCourseGenerated(courseRecord);
+          }
+          onClose();
+        }, 400);
+      } else {
+        setGenerationStep('Designing vector layout & teaching narrative with LLM...');
+        const res = await fetch('http://localhost:8000/api/whiteboard/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Generation failed with HTTP ${res.status}`);
+        }
+
+        setGenerationStep('Synthesizing neural voice & extracting timing marks...');
+        const lesson: WhiteboardLessonBeat = await res.json();
+
+        setGenerationStep('Synchronizing speech with vector draw commands...');
+        setTimeout(() => {
+          setIsGenerating(false);
+          onLessonGenerated(lesson);
+          onClose();
+        }, 400);
       }
-
-      setGenerationStep('Synthesizing neural voice & extracting timing marks...');
-      const lesson: WhiteboardLessonBeat = await res.json();
-
-      setGenerationStep('Synchronizing speech with vector draw commands...');
-      setTimeout(() => {
-        setIsGenerating(false);
-        onLessonGenerated(lesson);
-        onClose();
-      }, 400);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Failed to generate AI lesson');
@@ -123,6 +157,37 @@ export const AILessonGeneratorModal: React.FC<AILessonGeneratorModalProps> = ({
             className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Generation Type Selector */}
+        <div className="flex items-center gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs">
+          <button
+            type="button"
+            onClick={() => setGenerationType('multi_stage')}
+            disabled={isGenerating}
+            className={`flex-1 py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+              generationType === 'multi_stage'
+                ? 'bg-gradient-to-r from-indigo-600 to-sky-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4 text-amber-300" />
+            <span>Multi-Stage Masterclass (Deep Dive)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setGenerationType('single_beat')}
+            disabled={isGenerating}
+            className={`flex-1 py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+              generationType === 'single_beat'
+                ? 'bg-gradient-to-r from-indigo-600 to-sky-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-sky-300" />
+            <span>Single Concept (Fast 1-Beat)</span>
           </button>
         </div>
 
