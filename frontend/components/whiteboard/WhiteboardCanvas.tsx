@@ -51,6 +51,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   // In-progress drawing states
   const [draftStroke, setDraftStroke] = useState<Point[] | null>(null);
   const [draftShape, setDraftShape] = useState<{ start: Point; current: Point } | null>(null);
+  const [selectionBox, setSelectionBox] = useState<{ start: Point; current: Point } | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [textInputPos, setTextInputPos] = useState<Point | null>(null);
   const [textInputVal, setTextInputVal] = useState('');
@@ -178,7 +179,9 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           });
         }
       } else {
+        // Dragging on empty space starts the marquee selection light box
         setSelectedId(null);
+        setSelectionBox({ start: worldPoint, current: worldPoint });
       }
     } else if (activeTool === 'eraser') {
       const clickedObj = [...objects].reverse().find((obj) => hitTest(obj, worldPoint));
@@ -216,7 +219,9 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       return;
     }
 
-    if (activeTool === 'pen' && draftStroke) {
+    if (selectionBox) {
+      setSelectionBox((prev) => (prev ? { ...prev, current: worldPoint } : null));
+    } else if (activeTool === 'pen' && draftStroke) {
       setDraftStroke((prev) => (prev ? [...prev, worldPoint] : [worldPoint]));
     } else if (draftShape) {
       setDraftShape((prev) => (prev ? { ...prev, current: worldPoint } : null));
@@ -258,6 +263,51 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     setIsPointerDown(false);
     setIsDraggingObject(false);
     setDragObjectOffset(null);
+
+    // If we were drawing a marquee selection box
+    if (selectionBox) {
+      const minX = Math.min(selectionBox.start.x, selectionBox.current.x);
+      const maxX = Math.max(selectionBox.start.x, selectionBox.current.x);
+      const minY = Math.min(selectionBox.start.y, selectionBox.current.y);
+      const maxY = Math.max(selectionBox.start.y, selectionBox.current.y);
+      const boxWidth = maxX - minX;
+      const boxHeight = maxY - minY;
+
+      if (boxWidth > 5 || boxHeight > 5) {
+        // Find objects inside or intersecting this selection box
+        const found = [...objects].reverse().find((obj) => {
+          if (obj.type === 'shape') {
+            const geo = obj.geometry as ShapeGeometry;
+            return (
+              geo.x < maxX &&
+              geo.x + geo.width > minX &&
+              geo.y < maxY &&
+              geo.y + geo.height > minY
+            );
+          } else if (obj.type === 'text') {
+            const geo = obj.geometry as TextGeometry;
+            return geo.x < maxX && geo.x + 80 > minX && geo.y < maxY && geo.y + 30 > minY;
+          } else if (obj.type === 'stroke') {
+            const geo = obj.geometry as StrokeGeometry;
+            return geo.points.some((pt) => pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY);
+          } else if (obj.type === 'arrow') {
+            const geo = obj.geometry as ArrowGeometry;
+            return (
+              (geo.from.x >= minX && geo.from.x <= maxX && geo.from.y >= minY && geo.from.y <= maxY) ||
+              (geo.to.x >= minX && geo.to.x <= maxX && geo.to.y >= minY && geo.to.y <= maxY)
+            );
+          }
+          return false;
+        });
+
+        if (found) {
+          setSelectedId(found.id);
+          if (onObjectClick) onObjectClick(found);
+        }
+      }
+      setSelectionBox(null);
+      return;
+    }
 
     const style: ObjectStyle = {
       strokeColor,
@@ -421,6 +471,19 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           >
             <polygon points="0 0, 10 3.5, 0 7" fill={strokeColor || '#818CF8'} />
           </marker>
+
+          {/* Selection Light Filter & Gradient */}
+          <filter id="selection-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="glow" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <linearGradient id="selection-light-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#818CF8" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#6366F1" stopOpacity="0.06" />
+          </linearGradient>
         </defs>
 
         {/* Existing Canvas Objects */}
@@ -454,6 +517,48 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             strokeColor={strokeColor}
             strokeWidth={strokeWidth}
           />
+        )}
+
+        {/* Marquee Area Selection Light */}
+        {selectionBox && (
+          <g>
+            <rect
+              x={Math.min(selectionBox.start.x, selectionBox.current.x)}
+              y={Math.min(selectionBox.start.y, selectionBox.current.y)}
+              width={Math.abs(selectionBox.current.x - selectionBox.start.x)}
+              height={Math.abs(selectionBox.current.y - selectionBox.start.y)}
+              rx={6}
+              fill="url(#selection-light-grad)"
+              stroke="#818CF8"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+            />
+            {/* 4 subtle corner light dots */}
+            <circle
+              cx={Math.min(selectionBox.start.x, selectionBox.current.x)}
+              cy={Math.min(selectionBox.start.y, selectionBox.current.y)}
+              r="2.5"
+              fill="#818CF8"
+            />
+            <circle
+              cx={Math.max(selectionBox.start.x, selectionBox.current.x)}
+              cy={Math.min(selectionBox.start.y, selectionBox.current.y)}
+              r="2.5"
+              fill="#818CF8"
+            />
+            <circle
+              cx={Math.min(selectionBox.start.x, selectionBox.current.x)}
+              cy={Math.max(selectionBox.start.y, selectionBox.current.y)}
+              r="2.5"
+              fill="#818CF8"
+            />
+            <circle
+              cx={Math.max(selectionBox.start.x, selectionBox.current.x)}
+              cy={Math.max(selectionBox.start.y, selectionBox.current.y)}
+              r="2.5"
+              fill="#818CF8"
+            />
+          </g>
         )}
       </svg>
 
@@ -570,17 +675,12 @@ const RenderCanvasObject: React.FC<{
             </text>
           )}
           {isSelected && (
-            <rect
+            <SelectionBoundingHalo
               x={geo.x - 4}
               y={geo.y - 4}
               width={geo.width + 8}
               height={geo.height + 8}
               rx={12}
-              ry={12}
-              fill="none"
-              stroke="#818CF8"
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
             />
           )}
         </g>
@@ -615,16 +715,12 @@ const RenderCanvasObject: React.FC<{
             </text>
           )}
           {isSelected && (
-            <rect
+            <SelectionBoundingHalo
               x={geo.x - 4}
               y={geo.y - 4}
               width={geo.width + 8}
               height={geo.height + 8}
-              rx={4}
-              fill="none"
-              stroke="#818CF8"
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
+              rx={8}
             />
           )}
         </g>
@@ -647,6 +743,18 @@ const RenderCanvasObject: React.FC<{
 
     return (
       <g>
+        {isSelected && (
+          <line
+            x1={geo.from.x}
+            y1={geo.from.y}
+            x2={geo.to.x}
+            y2={geo.to.y}
+            stroke="#818CF8"
+            strokeWidth={style.strokeWidth + 10}
+            strokeLinecap="round"
+            opacity={0.25}
+          />
+        )}
         <line
           x1={geo.from.x}
           y1={geo.from.y}
@@ -663,16 +771,10 @@ const RenderCanvasObject: React.FC<{
           />
         )}
         {isSelected && (
-          <line
-            x1={geo.from.x}
-            y1={geo.from.y}
-            x2={geo.to.x}
-            y2={geo.to.y}
-            stroke="#818CF8"
-            strokeWidth={style.strokeWidth + 6}
-            strokeLinecap="round"
-            opacity={0.3}
-          />
+          <g>
+            <circle cx={geo.from.x} cy={geo.from.y} r="3.5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="1.5" />
+            <circle cx={geo.to.x} cy={geo.to.y} r="3.5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="1.5" />
+          </g>
         )}
       </g>
     );
@@ -680,6 +782,8 @@ const RenderCanvasObject: React.FC<{
 
   if (type === 'text') {
     const geo = geometry as TextGeometry;
+    const estW = (geo.text.length * (style.fontSize || 18) * 0.6) + 8;
+    const estH = (style.fontSize || 18) + 10;
     return (
       <g>
         <text
@@ -693,16 +797,12 @@ const RenderCanvasObject: React.FC<{
           {geo.text}
         </text>
         {isSelected && (
-          <rect
+          <SelectionBoundingHalo
             x={geo.x - 4}
             y={geo.y - 2}
-            width={(geo.text.length * (style.fontSize || 18) * 0.6) + 8}
-            height={(style.fontSize || 18) + 10}
-            fill="none"
-            stroke="#818CF8"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            rx={4}
+            width={estW}
+            height={estH}
+            rx={6}
           />
         )}
       </g>
@@ -710,6 +810,37 @@ const RenderCanvasObject: React.FC<{
   }
 
   return null;
+};
+
+// Sleek Selection Halo with ambient light and corner accent nodes
+const SelectionBoundingHalo: React.FC<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rx?: number;
+}> = ({ x, y, width, height, rx = 6 }) => {
+  return (
+    <g className="pointer-events-none">
+      {/* Soft Ambient Light Glow Fill */}
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rx={rx}
+        fill="rgba(99, 102, 241, 0.08)"
+        stroke="#818CF8"
+        strokeWidth="1.5"
+        strokeDasharray="4 4"
+      />
+      {/* Corner Nodes */}
+      <rect x={x - 3} y={y - 3} width="6" height="6" rx="1.5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="1.5" />
+      <rect x={x + width - 3} y={y - 3} width="6" height="6" rx="1.5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="1.5" />
+      <rect x={x - 3} y={y + height - 3} width="6" height="6" rx="1.5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="1.5" />
+      <rect x={x + width - 3} y={y + height - 3} width="6" height="6" rx="1.5" fill="#FFFFFF" stroke="#6366F1" strokeWidth="1.5" />
+    </g>
+  );
 };
 
 const RenderDraftShape: React.FC<{
