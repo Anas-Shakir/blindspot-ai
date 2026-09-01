@@ -1,0 +1,508 @@
+{
+  "sessionId": "session_1788279068451",
+  "lessonId": "circuit-sync",
+  "title": "Ohm's Law Circuit Session",
+  "createdAt": 1788279068451,
+  "updatedAt": 1788281387047,
+  "activeObjects": [
+    {
+      "id": "title-txt",
+      "type": "text",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 120,
+        "y": 40,
+        "text": "Ohm's Law: V = I \u00d7 R"
+      },
+      "style": {
+        "strokeColor": "#F8FAFC",
+        "fillColor": "transparent",
+        "strokeWidth": 1,
+        "opacity": 1,
+        "fontSize": 24,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788279585519,
+      "linkedStepId": "step-1-intro"
+    },
+    {
+      "id": "battery",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 120,
+        "y": 150,
+        "width": 90,
+        "height": 60,
+        "subtype": "rectangle",
+        "label": "9V DC",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#FB7185",
+        "fillColor": "rgba(251, 113, 133, 0.15)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788279586452,
+      "linkedStepId": "step-2-source"
+    },
+    {
+      "id": "resistor",
+      "type": "shape",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 385.3333740234375,
+        "y": 150.888916015625,
+        "width": 120,
+        "height": 60,
+        "subtype": "rectangle",
+        "label": "100 \u03a9 (R1 - Active)",
+        "borderRadius": 8
+      },
+      "style": {
+        "strokeColor": "#34D399",
+        "fillColor": "rgba(52, 211, 153, 0.15)",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788279588299,
+      "linkedStepId": "step-3-load"
+    },
+    {
+      "id": "wire-top",
+      "type": "arrow",
+      "authoredBy": "ai",
+      "geometry": {
+        "from": {
+          "x": 210,
+          "y": 180
+        },
+        "to": {
+          "x": 380,
+          "y": 180
+        },
+        "arrowheadEnd": true
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 3,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788279589240,
+      "linkedStepId": "step-4-current"
+    },
+    {
+      "id": "current-calc",
+      "type": "text",
+      "authoredBy": "ai",
+      "geometry": {
+        "x": 240,
+        "y": 130,
+        "text": "I = 9V / 100\u03a9 = 90 mA"
+      },
+      "style": {
+        "strokeColor": "#38BDF8",
+        "fillColor": "transparent",
+        "strokeWidth": 1,
+        "opacity": 1,
+        "fontSize": 16,
+        "fontFamily": "sans-serif"
+      },
+      "createdAt": 1788279590163,
+      "linkedStepId": "step-4-current"
+    }
+  ],
+  "viewport": {
+    "x": 90,
+    "y": 70,
+    "scale": 1
+  },
+  "events": [
+    {
+      "id": "ev_init_lecture",
+      "type": "lecture_beat",
+      "timestampMs": 0,
+      "title": "Lesson: Ohm's Law Circuit",
+      "speechText": "Let's build a circuit. First, we place a 9-volt DC battery on the left. Next, we connect a 100-ohm resistor on the right. Now, let's draw a wire from the battery to the resistor. Watch how the current flows at 90 milliamps.",
+      "audioUrl": "http://localhost:8000/storage/tts/whiteboard_8e86de1ae80afe69.mp3",
+      "durationMs": 18087.5,
+      "timingMarks": [
+        {
+          "word": "Lets",
+          "raw_word": "Let's",
+          "offset_ms": 100,
+          "duration_ms": 549.3
+        },
+        {
+          "word": "build",
+          "raw_word": "build",
+          "offset_ms": 649.3,
+          "duration_ms": 549.3
+        },
+        {
+          "word": "a",
+          "raw_word": "a",
+          "offset_ms": 1198.7,
+          "duration_ms": 109.9
+        },
+        {
+          "word": "circuit",
+          "raw_word": "circuit.",
+          "offset_ms": 1308.6,
+          "duration_ms": 878.9
+        },
+        {
+          "word": "First",
+          "raw_word": "First,",
+          "offset_ms": 2137.5,
+          "duration_ms": 661.5
+        },
+        {
+          "word": "we",
+          "raw_word": "we",
+          "offset_ms": 2799,
+          "duration_ms": 220.5
+        },
+        {
+          "word": "place",
+          "raw_word": "place",
+          "offset_ms": 3019.6,
+          "duration_ms": 551.3
+        },
+        {
+          "word": "a",
+          "raw_word": "a",
+          "offset_ms": 3570.8,
+          "duration_ms": 110.3
+        },
+        {
+          "word": "9volt",
+          "raw_word": "9-volt",
+          "offset_ms": 3681.1,
+          "duration_ms": 661.5
+        },
+        {
+          "word": "DC",
+          "raw_word": "DC",
+          "offset_ms": 4342.6,
+          "duration_ms": 220.5
+        },
+        {
+          "word": "battery",
+          "raw_word": "battery",
+          "offset_ms": 4563.1,
+          "duration_ms": 771.8
+        },
+        {
+          "word": "on",
+          "raw_word": "on",
+          "offset_ms": 5334.9,
+          "duration_ms": 220.5
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 5555.4,
+          "duration_ms": 330.8
+        },
+        {
+          "word": "left",
+          "raw_word": "left.",
+          "offset_ms": 5886.2,
+          "duration_ms": 551.3
+        },
+        {
+          "word": "Next",
+          "raw_word": "Next,",
+          "offset_ms": 6437.5,
+          "duration_ms": 490.9
+        },
+        {
+          "word": "we",
+          "raw_word": "we",
+          "offset_ms": 6928.4,
+          "duration_ms": 196.3
+        },
+        {
+          "word": "connect",
+          "raw_word": "connect",
+          "offset_ms": 7124.7,
+          "duration_ms": 687.2
+        },
+        {
+          "word": "a",
+          "raw_word": "a",
+          "offset_ms": 7811.9,
+          "duration_ms": 98.2
+        },
+        {
+          "word": "100ohm",
+          "raw_word": "100-ohm",
+          "offset_ms": 7910.1,
+          "duration_ms": 687.2
+        },
+        {
+          "word": "resistor",
+          "raw_word": "resistor",
+          "offset_ms": 8597.3,
+          "duration_ms": 785.4
+        },
+        {
+          "word": "on",
+          "raw_word": "on",
+          "offset_ms": 9382.6,
+          "duration_ms": 196.3
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 9579,
+          "duration_ms": 294.5
+        },
+        {
+          "word": "right",
+          "raw_word": "right.",
+          "offset_ms": 9873.5,
+          "duration_ms": 589
+        },
+        {
+          "word": "Now",
+          "raw_word": "Now,",
+          "offset_ms": 10462.5,
+          "duration_ms": 351.1
+        },
+        {
+          "word": "lets",
+          "raw_word": "let's",
+          "offset_ms": 10813.6,
+          "duration_ms": 438.9
+        },
+        {
+          "word": "draw",
+          "raw_word": "draw",
+          "offset_ms": 11252.4,
+          "duration_ms": 351.1
+        },
+        {
+          "word": "a",
+          "raw_word": "a",
+          "offset_ms": 11603.5,
+          "duration_ms": 87.8
+        },
+        {
+          "word": "wire",
+          "raw_word": "wire",
+          "offset_ms": 11691.3,
+          "duration_ms": 351.1
+        },
+        {
+          "word": "from",
+          "raw_word": "from",
+          "offset_ms": 12042.4,
+          "duration_ms": 351.1
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 12393.5,
+          "duration_ms": 263.3
+        },
+        {
+          "word": "battery",
+          "raw_word": "battery",
+          "offset_ms": 12656.8,
+          "duration_ms": 614.4
+        },
+        {
+          "word": "to",
+          "raw_word": "to",
+          "offset_ms": 13271.2,
+          "duration_ms": 175.5
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 13446.7,
+          "duration_ms": 263.3
+        },
+        {
+          "word": "resistor",
+          "raw_word": "resistor.",
+          "offset_ms": 13710.1,
+          "duration_ms": 789.9
+        },
+        {
+          "word": "Watch",
+          "raw_word": "Watch",
+          "offset_ms": 14500,
+          "duration_ms": 484.8
+        },
+        {
+          "word": "how",
+          "raw_word": "how",
+          "offset_ms": 14984.8,
+          "duration_ms": 290.9
+        },
+        {
+          "word": "the",
+          "raw_word": "the",
+          "offset_ms": 15275.7,
+          "duration_ms": 290.9
+        },
+        {
+          "word": "current",
+          "raw_word": "current",
+          "offset_ms": 15566.6,
+          "duration_ms": 678.7
+        },
+        {
+          "word": "flows",
+          "raw_word": "flows",
+          "offset_ms": 16245.3,
+          "duration_ms": 484.8
+        },
+        {
+          "word": "at",
+          "raw_word": "at",
+          "offset_ms": 16730.1,
+          "duration_ms": 193.9
+        },
+        {
+          "word": "90",
+          "raw_word": "90",
+          "offset_ms": 16924,
+          "duration_ms": 193.9
+        },
+        {
+          "word": "milliamps",
+          "raw_word": "milliamps.",
+          "offset_ms": 17117.9,
+          "duration_ms": 969.6
+        }
+      ],
+      "commands": [
+        {
+          "triggerWord": "circuit",
+          "command": {
+            "op": "add_text",
+            "id": "circuit-title",
+            "x": 120,
+            "y": 40,
+            "text": "Ohm's Law: V = I \u00d7 R",
+            "style": {
+              "strokeColor": "#F8FAFC",
+              "fontSize": 24
+            },
+            "linkedStepId": "step-1-intro"
+          }
+        },
+        {
+          "triggerWord": "battery",
+          "command": {
+            "op": "add_shape",
+            "id": "battery",
+            "subtype": "rectangle",
+            "x": 120,
+            "y": 150,
+            "width": 90,
+            "height": 60,
+            "label": "9V DC",
+            "style": {
+              "strokeColor": "#FB7185",
+              "fillColor": "rgba(251, 113, 133, 0.18)",
+              "strokeWidth": 3
+            },
+            "linkedStepId": "step-2-source"
+          }
+        },
+        {
+          "triggerWord": "left",
+          "command": {
+            "op": "highlight",
+            "targetId": "battery",
+            "durationMs": 1200,
+            "color": "#FB7185"
+          }
+        },
+        {
+          "triggerWord": "resistor",
+          "command": {
+            "op": "add_shape",
+            "id": "resistor",
+            "subtype": "rectangle",
+            "x": 380,
+            "y": 150,
+            "width": 120,
+            "height": 60,
+            "label": "100 \u03a9",
+            "style": {
+              "strokeColor": "#FBBF24",
+              "fillColor": "rgba(251, 191, 36, 0.18)",
+              "strokeWidth": 3
+            },
+            "linkedStepId": "step-3-load"
+          }
+        },
+        {
+          "triggerWord": "wire",
+          "command": {
+            "op": "connect_arrow",
+            "id": "wire-top",
+            "from": "battery.right",
+            "to": "resistor.left",
+            "style": {
+              "strokeColor": "#38BDF8",
+              "strokeWidth": 3
+            },
+            "linkedStepId": "step-4-wire"
+          }
+        },
+        {
+          "triggerWord": "current",
+          "command": {
+            "op": "add_text",
+            "id": "current-calc",
+            "x": 230,
+            "y": 130,
+            "text": "I = 9V / 100\u03a9 = 90 mA",
+            "style": {
+              "strokeColor": "#38BDF8",
+              "fontSize": 16
+            },
+            "linkedStepId": "step-5-calc"
+          }
+        },
+        {
+          "triggerWord": "flows",
+          "command": {
+            "op": "highlight",
+            "targetId": "wire-top",
+            "durationMs": 1800,
+            "color": "#38BDF8"
+          }
+        },
+        {
+          "triggerWord": "milliamps",
+          "command": {
+            "op": "update_shape",
+            "targetId": "resistor",
+            "label": "100 \u03a9 (Active: 90mA)",
+            "style": {
+              "strokeColor": "#34D399",
+              "fillColor": "rgba(52, 211, 153, 0.18)"
+            }
+          }
+        }
+      ],
+      "resultingObjects": []
+    }
+  ]
+}

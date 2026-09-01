@@ -81,6 +81,11 @@ export function applyCommand(
   switch (cmd.op) {
     case 'add_shape': {
       const existingIdx = objects.findIndex((o) => o.id === cmd.id);
+      const label = cmd.label || '';
+      // Ensure shape width and height provide generous breathing space for labels
+      const minRequiredWidth = label ? Math.max(cmd.width, label.length * 8.5 + 36) : cmd.width;
+      const minRequiredHeight = Math.max(cmd.height, 48);
+
       const newShape: CanvasObject = {
         id: cmd.id,
         type: 'shape',
@@ -88,8 +93,8 @@ export function applyCommand(
         geometry: {
           x: cmd.x,
           y: cmd.y,
-          width: cmd.width,
-          height: cmd.height,
+          width: minRequiredWidth,
+          height: minRequiredHeight,
           subtype: cmd.subtype || 'rectangle',
           label: cmd.label,
           borderRadius: 8,

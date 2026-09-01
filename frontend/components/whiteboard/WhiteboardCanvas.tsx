@@ -677,6 +677,61 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
 // Helper Render Subcomponents
 // ---------------------------------------------------------------------------
 
+const RenderShapeLabel: React.FC<{
+  label?: string;
+  cx: number;
+  cy: number;
+  maxWidth: number;
+  maxHeight: number;
+  color: string;
+  baseFontSize?: number;
+}> = ({ label, cx, cy, maxWidth, maxHeight, color, baseFontSize = 14 }) => {
+  if (!label) return null;
+
+  // Split multi-line labels if present
+  const lines = label.split('\n');
+  const maxLineLen = Math.max(...lines.map((l) => l.length));
+
+  // Ensure healthy internal breathing margins (24px horizontal, 16px vertical)
+  const usableWidth = Math.max(20, maxWidth - 24);
+  const usableHeight = Math.max(16, maxHeight - 14);
+
+  // Approximate character width ratio in sans-serif
+  const charWidthRatio = 0.58;
+  const estWidth = maxLineLen * baseFontSize * charWidthRatio;
+  const estHeight = lines.length * baseFontSize * 1.25;
+
+  let fontSize = baseFontSize;
+  if (estWidth > usableWidth) {
+    fontSize = Math.min(fontSize, Math.max(10, Math.floor(usableWidth / (maxLineLen * charWidthRatio))));
+  }
+  if (estHeight > usableHeight) {
+    fontSize = Math.min(fontSize, Math.max(10, Math.floor(usableHeight / (lines.length * 1.25))));
+  }
+
+  const lineHeight = fontSize * 1.25;
+  const totalHeight = lines.length * lineHeight;
+  const startY = cy - totalHeight / 2 + fontSize * 0.85;
+
+  return (
+    <text
+      x={cx}
+      y={startY}
+      textAnchor="middle"
+      fill={color}
+      fontSize={fontSize}
+      fontWeight="500"
+      fontFamily="system-ui, -apple-system, sans-serif"
+    >
+      {lines.map((line, idx) => (
+        <tspan key={idx} x={cx} dy={idx === 0 ? 0 : lineHeight}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+};
+
 const RenderCanvasObject: React.FC<{
   object: CanvasObject;
   isSelected: boolean;
@@ -755,19 +810,15 @@ const RenderCanvasObject: React.FC<{
             strokeWidth={isSelected ? style.strokeWidth + 1 : style.strokeWidth}
             className="transition-colors"
           />
-          {geo.label && (
-            <text
-              x={geo.x + geo.width / 2}
-              y={geo.y + geo.height / 2 + 5}
-              textAnchor="middle"
-              fill={style.strokeColor}
-              fontSize={style.fontSize || 14}
-              fontWeight="500"
-              fontFamily="sans-serif"
-            >
-              {geo.label}
-            </text>
-          )}
+          <RenderShapeLabel
+            label={geo.label}
+            cx={geo.x + geo.width / 2}
+            cy={geo.y + geo.height / 2}
+            maxWidth={geo.width}
+            maxHeight={geo.height}
+            color={style.strokeColor}
+            baseFontSize={style.fontSize || 14}
+          />
           {isSelected && (
             <SelectionBoundingHalo
               x={geo.x - 4}
@@ -808,19 +859,15 @@ const RenderCanvasObject: React.FC<{
             stroke={isSelected ? '#818CF8' : style.strokeColor}
             strokeWidth={isSelected ? style.strokeWidth + 1 : style.strokeWidth}
           />
-          {geo.label && (
-            <text
-              x={cx}
-              y={cy + 5}
-              textAnchor="middle"
-              fill={style.strokeColor}
-              fontSize={style.fontSize || 14}
-              fontWeight="500"
-              fontFamily="sans-serif"
-            >
-              {geo.label}
-            </text>
-          )}
+          <RenderShapeLabel
+            label={geo.label}
+            cx={cx}
+            cy={cy}
+            maxWidth={rx * 2 * 0.85}
+            maxHeight={ry * 2 * 0.85}
+            color={style.strokeColor}
+            baseFontSize={style.fontSize || 14}
+          />
           {isSelected && (
             <SelectionBoundingHalo
               x={geo.x - 4}

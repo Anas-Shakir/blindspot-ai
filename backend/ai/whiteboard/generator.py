@@ -111,11 +111,15 @@ class LLMTimedCommand(BaseModel):
             shape_info = data.get("shape", {}) if isinstance(data.get("shape"), dict) else data
             cmd_dict["id"] = shape_info.get("id") or data.get("id") or f"elem_{uuid.uuid4().hex[:6]}"
             cmd_dict["subtype"] = shape_info.get("subtype") or shape_info.get("type") or "rectangle"
-            cmd_dict["x"] = shape_info.get("x", 200.0)
-            cmd_dict["y"] = shape_info.get("y", 180.0)
-            cmd_dict["width"] = shape_info.get("width", 110.0)
-            cmd_dict["height"] = shape_info.get("height", 60.0)
-            cmd_dict["label"] = shape_info.get("label") or data.get("label")
+            cmd_dict["x"] = float(shape_info.get("x", 200.0))
+            cmd_dict["y"] = float(shape_info.get("y", 180.0))
+            
+            lbl = shape_info.get("label") or data.get("label") or ""
+            base_w = float(shape_info.get("width", 140.0))
+            min_w = max(base_w, len(lbl) * 8.5 + 40.0) if lbl else base_w
+            cmd_dict["width"] = min_w
+            cmd_dict["height"] = max(float(shape_info.get("height", 65.0)), 50.0)
+            cmd_dict["label"] = lbl if lbl else None
             cmd_dict["stroke_color"] = shape_info.get("stroke_color") or "#818CF8"
             cmd_dict["fill_color"] = shape_info.get("fill_color") or "rgba(129, 140, 248, 0.18)"
         elif action in ("add_arrow", "connect_arrow", "arrow"):

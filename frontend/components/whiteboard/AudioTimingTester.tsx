@@ -12,6 +12,7 @@ import {
   Mic,
   Activity,
   ListOrdered,
+  X,
 } from 'lucide-react';
 import { TimingMark, TTSWithTimingResponse } from '@/lib/whiteboard/types';
 import { AudioSyncEngine, fetchSpeechWithTiming } from '@/lib/whiteboard/audioSyncEngine';
@@ -34,7 +35,11 @@ const SAMPLE_SCRIPTS = [
   },
 ];
 
-export const AudioTimingTester: React.FC = () => {
+interface AudioTimingTesterProps {
+  onClose?: () => void;
+}
+
+export const AudioTimingTester: React.FC<AudioTimingTesterProps> = ({ onClose }) => {
   const [inputText, setInputText] = useState<string>(SAMPLE_SCRIPTS[0].text);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [ttsResult, setTtsResult] = useState<TTSWithTimingResponse | null>(null);
@@ -130,12 +135,23 @@ export const AudioTimingTester: React.FC = () => {
           </div>
         </div>
 
-        {ttsResult && (
-          <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-mono text-[11px]">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>{ttsResult.timing_marks.length} word marks ready</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {ttsResult && (
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-mono text-[11px]">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{ttsResult.timing_marks.length} word marks ready</span>
+            </div>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              title="Close Modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Preset Script Selector */}

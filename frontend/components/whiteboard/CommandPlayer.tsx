@@ -52,6 +52,11 @@ export const CommandPlayer: React.FC<CommandPlayerProps> = ({
   // Snapshot history per step to support step-back
   const stepSnapshotsRef = useRef<CanvasObject[][]>([[]]);
   const playTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentStepIndexRef = useRef<number>(currentStepIndex);
+
+  useEffect(() => {
+    currentStepIndexRef.current = currentStepIndex;
+  }, [currentStepIndex]);
 
   // Initialize or switch batch
   const loadBatch = (batch: CommandBatch) => {
@@ -130,40 +135,40 @@ export const CommandPlayer: React.FC<CommandPlayerProps> = ({
     const intervalMs = Math.max(900 / playbackSpeed, 200);
 
     playTimerRef.current = setInterval(() => {
-      setCurrentStepIndex((prevIdx) => {
-        if (prevIdx >= selectedBatch.commands.length) {
-          setIsPlaying(false);
-          return prevIdx;
-        }
+      const idx = currentStepIndexRef.current;
+      if (idx >= selectedBatch.commands.length) {
+        setIsPlaying(false);
+        return;
+      }
 
-        const cmd = selectedBatch.commands[prevIdx];
-        const currentObjs = stepSnapshotsRef.current[prevIdx] || objects;
-        const nextObjs = applyCommand(currentObjs, cmd);
+      const cmd = selectedBatch.commands[idx];
+      const currentObjs = stepSnapshotsRef.current[idx] || objects;
+      const nextObjs = applyCommand(currentObjs, cmd);
 
-        if (cmd.op === 'highlight') {
-          onTriggerHighlight(cmd.targetId, cmd.color || '#818CF8', cmd.durationMs || 1500);
-        } else if (cmd.op === 'pan_zoom') {
-          setViewport((v) => ({
-            ...v,
-            x: cmd.x,
-            y: cmd.y,
-            scale: cmd.scale || v.scale,
-          }));
-        }
+      if (cmd.op === 'highlight') {
+        onTriggerHighlight(cmd.targetId, cmd.color || '#818CF8', cmd.durationMs || 1500);
+      } else if (cmd.op === 'pan_zoom') {
+        setViewport((v) => ({
+          ...v,
+          x: cmd.x,
+          y: cmd.y,
+          scale: cmd.scale || v.scale,
+        }));
+      }
 
-        const nextSnapshots = [...stepSnapshotsRef.current];
-        nextSnapshots[prevIdx + 1] = nextObjs;
-        stepSnapshotsRef.current = nextSnapshots;
+      const nextSnapshots = [...stepSnapshotsRef.current];
+      nextSnapshots[idx + 1] = nextObjs;
+      stepSnapshotsRef.current = nextSnapshots;
 
-        setObjects(nextObjs);
-        onCommitAction(nextObjs);
+      setObjects(nextObjs);
+      onCommitAction(nextObjs);
 
-        if (prevIdx + 1 >= selectedBatch.commands.length) {
-          setIsPlaying(false);
-        }
+      const nextIdx = idx + 1;
+      setCurrentStepIndex(nextIdx);
 
-        return prevIdx + 1;
-      });
+      if (nextIdx >= selectedBatch.commands.length) {
+        setIsPlaying(false);
+      }
     }, intervalMs);
 
     return () => {

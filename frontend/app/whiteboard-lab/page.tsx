@@ -497,13 +497,7 @@ export default function WhiteboardLabPage() {
         {isTtsTesterOpen && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4 animate-fade-in">
             <div className="relative shadow-2xl">
-              <button
-                onClick={() => setIsTtsTesterOpen(false)}
-                className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xs px-2 py-0.5 rounded bg-slate-800 z-10"
-              >
-                ✕ Close
-              </button>
-              <AudioTimingTester />
+              <AudioTimingTester onClose={() => setIsTtsTesterOpen(false)} />
             </div>
           </div>
         )}
