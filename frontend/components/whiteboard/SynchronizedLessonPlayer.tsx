@@ -29,6 +29,7 @@ interface SynchronizedLessonPlayerProps {
   onCommitAction: (newObjects: CanvasObject[]) => void;
   setViewport: React.Dispatch<React.SetStateAction<ViewportTransform>>;
   onTriggerHighlight: (targetId: string, color: string, durationMs: number) => void;
+  activeLesson?: WhiteboardLessonBeat | null;
 }
 
 export const SynchronizedLessonPlayer: React.FC<SynchronizedLessonPlayerProps> = ({
@@ -37,14 +38,22 @@ export const SynchronizedLessonPlayer: React.FC<SynchronizedLessonPlayerProps> =
   onCommitAction,
   setViewport,
   onTriggerHighlight,
+  activeLesson,
 }) => {
   const [selectedLesson, setSelectedLesson] = useState<WhiteboardLessonBeat>(
-    LESSON_CIRCUIT_SYNCHRONIZED
+    activeLesson || LESSON_CIRCUIT_SYNCHRONIZED
   );
+
+  useEffect(() => {
+    if (activeLesson) {
+      setSelectedLesson(activeLesson);
+    }
+  }, [activeLesson]);
+
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTimeMs, setCurrentTimeMs] = useState<number>(0);
   const [durationMs, setDurationMs] = useState<number>(
-    LESSON_CIRCUIT_SYNCHRONIZED.durationMs || 18000
+    selectedLesson.durationMs || 18000
   );
   const [activeWordIndex, setActiveWordIndex] = useState<number>(-1);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
@@ -224,6 +233,12 @@ export const SynchronizedLessonPlayer: React.FC<SynchronizedLessonPlayerProps> =
               <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
               BST Lesson
             </button>
+            {selectedLesson.id.startsWith('lesson-ai-') && (
+              <div className="px-3 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-sky-600 text-white font-semibold flex items-center gap-1.5 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                <span className="max-w-[140px] truncate">{selectedLesson.title}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

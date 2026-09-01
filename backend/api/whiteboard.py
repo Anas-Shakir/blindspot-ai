@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException
 
 from backend.ai.whiteboard.tts_sync import synthesize_speech_with_timing
+from backend.ai.whiteboard.generator import generate_whiteboard_lesson
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,12 @@ class TTSTimingResponse(BaseModel):
     timing_marks: List[TimingMarkSchema]
 
 
+class GenerateLessonRequest(BaseModel):
+    prompt: str = Field(..., min_length=3, description="Topic or question to explain on whiteboard")
+    voice: Optional[str] = Field(default=None, description="Optional voice ID")
+    context: Optional[str] = Field(default=None, description="Optional background context")
+
+
 @router.post("/tts", response_model=TTSTimingResponse)
 async def generate_speech_with_timing(req: TTSTimingRequest):
     """Synthesizes speech and returns the audio URL and word-level timing marks."""
@@ -50,3 +57,19 @@ async def generate_speech_with_timing(req: TTSTimingRequest):
     except Exception as e:
         logger.exception("Failed to synthesize speech with timing: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/generate")
+def generate_ai_whiteboard_lesson(req: GenerateLessonRequest):
+    """Generates an interleaved whiteboard lesson with spoken audio and synchronized draw commands using LLM."""
+    try:
+        lesson = generate_whiteboard_lesson(
+            prompt=req.prompt,
+            voice=req.voice,
+            context=req.context,
+        )
+        return lesson
+    except Exception as e:
+        logger.exception("Failed to generate AI whiteboard lesson: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+

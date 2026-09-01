@@ -7,12 +7,14 @@ import {
   ToolType,
   ViewportTransform,
   WhiteboardState,
+  WhiteboardLessonBeat,
 } from '@/lib/whiteboard/types';
 import { Toolbar } from '@/components/whiteboard/Toolbar';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { CommandPlayer } from '@/components/whiteboard/CommandPlayer';
 import { AudioTimingTester } from '@/components/whiteboard/AudioTimingTester';
 import { SynchronizedLessonPlayer } from '@/components/whiteboard/SynchronizedLessonPlayer';
+import { AILessonGeneratorModal } from '@/components/whiteboard/AILessonGeneratorModal';
 import {
   Layers,
   Code2,
@@ -28,6 +30,7 @@ import {
   Volume2,
   Radio,
   Sliders,
+  Wand2,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -50,8 +53,12 @@ export default function WhiteboardLabPage() {
   const [historyPast, setHistoryPast] = useState<CanvasObject[][]>([]);
   const [historyFuture, setHistoryFuture] = useState<CanvasObject[][]>([]);
 
-  // Studio Mode: 'sync_lesson' (Step 4) | 'command_player' (Step 2)
+  // Studio Mode: 'sync_lesson' (Step 4 & 5) | 'command_player' (Step 2)
   const [studioMode, setStudioMode] = useState<'sync_lesson' | 'command_player'>('sync_lesson');
+
+  // AI Generation State (Step 5)
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [activeAiLesson, setActiveAiLesson] = useState<WhiteboardLessonBeat | null>(null);
 
   // UI state
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
@@ -209,13 +216,22 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 4 — Speech-Synchronized Whiteboard
+              Step 5 — LLM Visual Lesson Generator
             </span>
           </div>
         </div>
 
-        {/* Header Center / Right Mode Switcher */}
+        {/* Header Center / Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Step 5 AI Generation Button */}
+          <button
+            onClick={() => setIsAiModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all active:scale-95 animate-pulse"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Generate with AI</span>
+          </button>
+
           {/* Mode Switcher */}
           <div className="flex items-center gap-1 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs">
             <button
@@ -227,7 +243,7 @@ export default function WhiteboardLabPage() {
               }`}
             >
               <Radio className="w-3 h-3 text-emerald-400" />
-              <span>Step 4: Synchronized Lesson</span>
+              <span>Synchronized Lesson</span>
             </button>
             <button
               onClick={() => setStudioMode('command_player')}
@@ -238,7 +254,7 @@ export default function WhiteboardLabPage() {
               }`}
             >
               <PlaySquare className="w-3 h-3 text-indigo-400" />
-              <span>Step 2: Command Dock</span>
+              <span>Command Dock</span>
             </button>
           </div>
 
@@ -267,6 +283,16 @@ export default function WhiteboardLabPage() {
 
       {/* Main Canvas Workspace */}
       <div className="relative flex-1 w-full h-full overflow-hidden">
+        {/* Floating AI Generator Modal (Step 5) */}
+        <AILessonGeneratorModal
+          isOpen={isAiModalOpen}
+          onClose={() => setIsAiModalOpen(false)}
+          onLessonGenerated={(lesson) => {
+            setActiveAiLesson(lesson);
+            setStudioMode('sync_lesson');
+          }}
+        />
+
         {/* Floating TTS Timing Tester Modal */}
         {isTtsTesterOpen && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4 animate-fade-in">
@@ -327,6 +353,7 @@ export default function WhiteboardLabPage() {
             onCommitAction={commitAction}
             setViewport={setViewport}
             onTriggerHighlight={triggerHighlight}
+            activeLesson={activeAiLesson}
           />
         ) : (
           <CommandPlayer
@@ -393,7 +420,7 @@ export default function WhiteboardLabPage() {
               ) : (
                 <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-slate-500 flex items-center gap-2">
                   <Info className="w-4 h-4 text-slate-600 shrink-0" />
-                  <span>Click Start Live Lesson below to watch speech and vector drawing in perfect lockstep.</span>
+                  <span>Click Generate with AI or Start Live Lesson below to watch the live synchronized lecture.</span>
                 </div>
               )}
 
