@@ -213,3 +213,26 @@ export interface TTSWithTimingResponse {
   timing_marks: TimingMark[];
 }
 
+// ---------------------------------------------------------------------------
+// Synchronized Lesson & Timed Commands Schema (Step 4)
+// ---------------------------------------------------------------------------
+
+export interface TimedDrawCommand {
+  command: DrawCommand;
+  triggerWord?: string;     // Exact spoken word that triggers this command (e.g. "battery")
+  triggerOffsetMs?: number; // Calculated or explicit millisecond timestamp trigger
+}
+
+export interface WhiteboardLessonBeat {
+  id: string;
+  title: string;
+  description: string;
+  speechScript: string;
+  audioUrl?: string;
+  durationMs?: number;
+  timingMarks?: TimingMark[];
+  timedCommands: TimedDrawCommand[];
+  initialViewport?: ViewportTransform;
+}
+
+

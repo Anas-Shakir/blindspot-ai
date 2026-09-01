@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import {
   CanvasObject,
@@ -12,6 +12,7 @@ import { Toolbar } from '@/components/whiteboard/Toolbar';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { CommandPlayer } from '@/components/whiteboard/CommandPlayer';
 import { AudioTimingTester } from '@/components/whiteboard/AudioTimingTester';
+import { SynchronizedLessonPlayer } from '@/components/whiteboard/SynchronizedLessonPlayer';
 import {
   Layers,
   Code2,
@@ -25,6 +26,8 @@ import {
   Trash2,
   PlaySquare,
   Volume2,
+  Radio,
+  Sliders,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -47,11 +50,19 @@ export default function WhiteboardLabPage() {
   const [historyPast, setHistoryPast] = useState<CanvasObject[][]>([]);
   const [historyFuture, setHistoryFuture] = useState<CanvasObject[][]>([]);
 
+  // Studio Mode: 'sync_lesson' (Step 4) | 'command_player' (Step 2)
+  const [studioMode, setStudioMode] = useState<'sync_lesson' | 'command_player'>('sync_lesson');
+
   // UI state
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
   const [isTtsTesterOpen, setIsTtsTesterOpen] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const objectsRef = useRef<CanvasObject[]>(objects);
+  useEffect(() => {
+    objectsRef.current = objects;
+  }, [objects]);
 
   // Trigger temporary highlight glow
   const triggerHighlight = useCallback((targetId: string, color: string, durationMs: number = 1500) => {
@@ -65,14 +76,14 @@ export default function WhiteboardLabPage() {
     }, durationMs);
   }, []);
 
-  // Commit action to history stack
+  // Commit action to history stack (stable reference)
   const commitAction = useCallback(
     (newObjects: CanvasObject[]) => {
-      setHistoryPast((prev) => [...prev, objects]);
+      setHistoryPast((prev) => [...prev, objectsRef.current]);
       setHistoryFuture([]);
       setObjects(newObjects);
     },
-    [objects]
+    []
   );
 
   // Undo / Redo handlers
@@ -80,21 +91,21 @@ export default function WhiteboardLabPage() {
     if (historyPast.length === 0) return;
     const previous = historyPast[historyPast.length - 1];
     const newPast = historyPast.slice(0, historyPast.length - 1);
-    setHistoryFuture((prev) => [objects, ...prev]);
+    setHistoryFuture((prev) => [objectsRef.current, ...prev]);
     setHistoryPast(newPast);
     setObjects(previous);
     setSelectedId(null);
-  }, [historyPast, objects]);
+  }, [historyPast]);
 
   const handleRedo = useCallback(() => {
     if (historyFuture.length === 0) return;
     const next = historyFuture[0];
     const newFuture = historyFuture.slice(1);
-    setHistoryPast((prev) => [...prev, objects]);
+    setHistoryPast((prev) => [...prev, objectsRef.current]);
     setHistoryFuture(newFuture);
     setObjects(next);
     setSelectedId(null);
-  }, [historyFuture, objects]);
+  }, [historyFuture]);
 
   // Zoom handlers
   const handleZoomIn = () =>
@@ -198,28 +209,55 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 3 — TTS with Timing Marks
+              Step 4 — Speech-Synchronized Whiteboard
             </span>
           </div>
         </div>
 
-        {/* Header Right Actions */}
+        {/* Header Center / Right Mode Switcher */}
         <div className="flex items-center gap-2">
+          {/* Mode Switcher */}
+          <div className="flex items-center gap-1 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs">
+            <button
+              onClick={() => setStudioMode('sync_lesson')}
+              className={`px-3 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                studioMode === 'sync_lesson'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Radio className="w-3 h-3 text-emerald-400" />
+              <span>Step 4: Synchronized Lesson</span>
+            </button>
+            <button
+              onClick={() => setStudioMode('command_player')}
+              className={`px-3 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                studioMode === 'command_player'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <PlaySquare className="w-3 h-3 text-indigo-400" />
+              <span>Step 2: Command Dock</span>
+            </button>
+          </div>
+
           <button
             onClick={() => setIsTtsTesterOpen(!isTtsTesterOpen)}
-            className={`px-3 py-1 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all ${
+            className={`px-2.5 py-1 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all ${
               isTtsTesterOpen
                 ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30'
                 : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-300'
             }`}
+            title="Open Speech & Timing Verification Card"
           >
             <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
-            <span>TTS Timing Sync Tester</span>
+            <span className="hidden md:inline">TTS Tester</span>
           </button>
 
           <button
             onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-            className="p-1.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 transition-colors ml-1"
+            className="p-1.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-700 transition-colors"
             title={isInspectorOpen ? 'Collapse Inspector' : 'Expand Inspector'}
           >
             <Code2 className="w-4 h-4 text-indigo-400" />
@@ -243,6 +281,7 @@ export default function WhiteboardLabPage() {
             </div>
           </div>
         )}
+
         {/* Floating Top Toolbar */}
         <Toolbar
           activeTool={activeTool}
@@ -280,18 +319,28 @@ export default function WhiteboardLabPage() {
           activeHighlights={activeHighlights}
         />
 
-        {/* Floating Step 2 Command Playback Dock */}
-        <CommandPlayer
-          objects={objects}
-          setObjects={setObjects}
-          onCommitAction={commitAction}
-          setViewport={setViewport}
-          onTriggerHighlight={triggerHighlight}
-        />
+        {/* Bottom Playback Engine Dock (Mode Dependent) */}
+        {studioMode === 'sync_lesson' ? (
+          <SynchronizedLessonPlayer
+            objects={objects}
+            setObjects={setObjects}
+            onCommitAction={commitAction}
+            setViewport={setViewport}
+            onTriggerHighlight={triggerHighlight}
+          />
+        ) : (
+          <CommandPlayer
+            objects={objects}
+            setObjects={setObjects}
+            onCommitAction={commitAction}
+            setViewport={setViewport}
+            onTriggerHighlight={triggerHighlight}
+          />
+        )}
 
         {/* Floating Debug / Inspector Drawer */}
         {isInspectorOpen && (
-          <aside className="absolute right-4 top-4 bottom-24 w-80 bg-slate-900/95 backdrop-blur-lg border border-slate-800 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden">
+          <aside className="absolute right-4 top-4 bottom-32 w-80 bg-slate-900/95 backdrop-blur-lg border border-slate-800 rounded-2xl shadow-2xl flex flex-col z-20 overflow-hidden">
             {/* Header */}
             <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -344,7 +393,7 @@ export default function WhiteboardLabPage() {
               ) : (
                 <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-slate-500 flex items-center gap-2">
                   <Info className="w-4 h-4 text-slate-600 shrink-0" />
-                  <span>Use the Play button below to watch structured draw commands execute step-by-step.</span>
+                  <span>Click Start Live Lesson below to watch speech and vector drawing in perfect lockstep.</span>
                 </div>
               )}
 

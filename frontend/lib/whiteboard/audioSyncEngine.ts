@@ -24,6 +24,12 @@ export class AudioSyncEngine {
   private animationFrameId: number | null = null;
   private lastFiredWordIndex: number = -1;
 
+  // Event listener handlers for clean detachment
+  private onPlayListener: (() => void) | null = null;
+  private onPauseListener: (() => void) | null = null;
+  private onEndedListener: (() => void) | null = null;
+  private onErrorListener: ((e: any) => void) | null = null;
+
   constructor(callbacks?: AudioSyncCallbacks) {
     if (callbacks) {
       this.callbacks = callbacks;
@@ -36,30 +42,41 @@ export class AudioSyncEngine {
 
   public load(audioUrl: string, timingMarks: TimingMark[]) {
     this.stop();
+    if (!audioUrl) return;
+
     this.timingMarks = timingMarks;
     this.lastFiredWordIndex = -1;
 
-    this.audio = new Audio(audioUrl);
-    this.audio.preload = 'auto';
+    const audio = new Audio(audioUrl);
+    audio.preload = 'auto';
 
-    this.audio.addEventListener('play', () => {
+    this.onPlayListener = () => {
       this.callbacks.onPlay?.();
       this.startSyncLoop();
-    });
+    };
 
-    this.audio.addEventListener('pause', () => {
+    this.onPauseListener = () => {
       this.callbacks.onPause?.();
       this.stopSyncLoop();
-    });
+    };
 
-    this.audio.addEventListener('ended', () => {
+    this.onEndedListener = () => {
       this.stopSyncLoop();
       this.callbacks.onEnded?.();
-    });
+    };
 
-    this.audio.addEventListener('error', (e) => {
+    this.onErrorListener = (e: any) => {
+      // Ignore errors if audio has been stopped/detached
+      if (!this.audio || !this.audio.src) return;
       this.callbacks.onError?.(e);
-    });
+    };
+
+    audio.addEventListener('play', this.onPlayListener);
+    audio.addEventListener('pause', this.onPauseListener);
+    audio.addEventListener('ended', this.onEndedListener);
+    audio.addEventListener('error', this.onErrorListener);
+
+    this.audio = audio;
   }
 
   public async play() {
@@ -67,7 +84,9 @@ export class AudioSyncEngine {
     try {
       await this.audio.play();
     } catch (err) {
-      this.callbacks.onError?.(err);
+      if (this.audio) {
+        this.callbacks.onError?.(err);
+      }
     }
   }
 
@@ -105,11 +124,20 @@ export class AudioSyncEngine {
   public stop() {
     this.stopSyncLoop();
     if (this.audio) {
+      if (this.onPlayListener) this.audio.removeEventListener('play', this.onPlayListener);
+      if (this.onPauseListener) this.audio.removeEventListener('pause', this.onPauseListener);
+      if (this.onEndedListener) this.audio.removeEventListener('ended', this.onEndedListener);
+      if (this.onErrorListener) this.audio.removeEventListener('error', this.onErrorListener);
+
       this.audio.pause();
       this.audio.src = '';
       this.audio = null;
     }
     this.lastFiredWordIndex = -1;
+    this.onPlayListener = null;
+    this.onPauseListener = null;
+    this.onEndedListener = null;
+    this.onErrorListener = null;
   }
 
   private startSyncLoop() {
