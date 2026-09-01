@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Sparkles } from 'lucide-react';
 import {
   CanvasObject,
   ToolType,
@@ -12,6 +13,7 @@ import {
   StrokeGeometry,
   ArrowGeometry,
 } from '@/lib/whiteboard/types';
+import { getObjectBoundingBox } from '@/lib/whiteboard/perceptionEngine';
 
 interface WhiteboardCanvasProps {
   objects: CanvasObject[];
@@ -26,7 +28,9 @@ interface WhiteboardCanvasProps {
   setSelectedId: (id: string | null) => void;
   onCommitAction: (newObjects: CanvasObject[]) => void;
   onObjectClick?: (object: CanvasObject) => void;
+  onAskAboutObject?: (object: CanvasObject) => void;
   activeHighlights?: Record<string, string>; // targetId -> color
+  hideFloatingBadge?: boolean;
 }
 
 export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
@@ -42,7 +46,9 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   setSelectedId,
   onCommitAction,
   onObjectClick,
+  onAskAboutObject,
   activeHighlights = {},
+  hideFloatingBadge = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -77,12 +83,14 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     [viewport]
   );
 
-  // Handle Zooming via Wheel
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+  // Handle Zooming via Wheel (non-passive listener to avoid browser preventDefault warning)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
@@ -94,9 +102,13 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       const newY = mouseY - (mouseY - viewport.y) * (newScale / viewport.scale);
 
       setViewport({ x: newX, y: newY, scale: newScale });
-    },
-    [viewport, setViewport]
-  );
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [viewport, setViewport]);
 
   // Keyboard shortcut listeners (Space for Pan, Escape, Delete)
   useEffect(() => {
@@ -429,7 +441,6 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -605,6 +616,59 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           </div>
         </div>
       )}
+
+      {/* Floating Deictic Ask AI Badge for Selected Element (Step 7) */}
+      {!hideFloatingBadge && selectedId && (() => {
+        const selObj = objects.find((o) => o.id === selectedId);
+        if (!selObj) return null;
+        const box = getObjectBoundingBox(selObj);
+        return (
+          <div
+            className="absolute z-50 pointer-events-auto -translate-x-1/2 -translate-y-full select-none"
+            style={{
+              left: `${viewport.x + (box.x + box.width / 2) * viewport.scale}px`,
+              top: `${viewport.y + box.y * viewport.scale - 12}px`,
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAskAboutObject?.(selObj);
+            }}
+          >
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                onAskAboutObject?.(selObj);
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAskAboutObject?.(selObj);
+              }}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white rounded-full text-xs font-bold flex items-center gap-1.5 shadow-2xl shadow-indigo-600/60 border border-indigo-300/80 active:scale-95 transition-all cursor-pointer animate-bounce"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Ask AI about this</span>
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 };

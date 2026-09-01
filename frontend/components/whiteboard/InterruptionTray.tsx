@@ -25,6 +25,7 @@ import {
 import { SpeechRecognizer } from '@/lib/whiteboard/speechRecognizer';
 import { AudioSyncEngine } from '@/lib/whiteboard/audioSyncEngine';
 import { applyCommand } from '@/lib/whiteboard/commandInterpreter';
+import { compileDeicticContext } from '@/lib/whiteboard/perceptionEngine';
 
 interface InterruptionTrayProps {
   isOpen: boolean;
@@ -36,9 +37,10 @@ interface InterruptionTrayProps {
   currentTimestampMs: number;
   onResumeLesson: () => void;
   onTriggerHighlight: (targetId: string, color: string, durationMs: number) => void;
+  selectedObject?: CanvasObject | null;
 }
 
-const QUICK_QUESTIONS = [
+const DEFAULT_QUESTIONS = [
   'Why is this component placed here?',
   'What does this arrow represent?',
   'Can you clarify the formula being used?',
@@ -55,6 +57,7 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
   currentTimestampMs,
   onResumeLesson,
   onTriggerHighlight,
+  selectedObject,
 }) => {
   const [questionText, setQuestionText] = useState<string>('');
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -65,6 +68,18 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
 
   const recognizerRef = useRef<SpeechRecognizer | null>(null);
   const answerAudioEngineRef = useRef<AudioSyncEngine | null>(null);
+
+  const deicticInfo = compileDeicticContext(selectedObject || null, currentBoardObjects);
+
+  // Dynamic context questions when an object is selected
+  const contextQuestions = selectedObject
+    ? [
+        `What is this ${deicticInfo?.label || selectedObject.type} and what is its purpose?`,
+        `Why is this ${deicticInfo?.label || selectedObject.type} connected here?`,
+        `What happens if we remove or change this ${selectedObject.type}?`,
+        'Can you give another example of this?',
+      ]
+    : DEFAULT_QUESTIONS;
 
   // Initialize SpeechRecognizer
   useEffect(() => {
@@ -82,11 +97,16 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
       setQaResponse(null);
       setActiveWordIdx(-1);
       setErrorMsg(null);
+      if (selectedObject) {
+        setQuestionText(`What is this ${deicticInfo?.label || selectedObject.type}?`);
+      } else {
+        setQuestionText('');
+      }
     } else {
       recognizerRef.current?.stop();
       answerAudioEngineRef.current?.stop();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedObject]);
 
   if (!isOpen) return null;
 
@@ -128,6 +148,18 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
       recognizerRef.current?.stop();
       setIsRecording(false);
 
+      const focusedList = selectedObject
+        ? [
+            {
+              id: selectedObject.id,
+              type: selectedObject.type,
+              label: (selectedObject.geometry as any).label || (selectedObject.geometry as any).text,
+              summary: deicticInfo?.summary,
+              connectedArrows: deicticInfo?.connectedArrows,
+            },
+          ]
+        : [];
+
       const payload = {
         student_query: questionText,
         current_board_objects: currentBoardObjects,
@@ -137,6 +169,7 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
           speechScript: activeLesson?.speechScript || '',
           currentTimestampMs,
         },
+        focused_objects: focusedList,
       };
 
       const res = await fetch('http://localhost:8000/api/whiteboard/interruption', {
@@ -248,13 +281,31 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
         {/* State: LISTENING / ASKING */}
         {(state === 'INTERRUPTED_LISTENING' || state === 'AI_THINKING') && (
           <div className="space-y-3">
+            {/* Deictic Focus Badge if object is selected */}
+            {selectedObject && (
+              <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/30 rounded-xl flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
+                  </span>
+                  <span className="font-semibold text-indigo-300">
+                    Pointing at: <span className="text-white">{deicticInfo?.label || selectedObject.type}</span>
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+                  ID: {selectedObject.id}
+                </span>
+              </div>
+            )}
+
             {/* Quick Questions */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Quick Questions
+                {selectedObject ? 'Suggested Questions for this Component' : 'Quick Questions'}
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {QUICK_QUESTIONS.map((q, idx) => (
+                {contextQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     onClick={() => setQuestionText(q)}

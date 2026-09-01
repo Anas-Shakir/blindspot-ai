@@ -222,7 +222,7 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 6 — STT & Interruption Handling
+              Step 7 — Perception & Visual Referencing
             </span>
           </div>
         </div>
@@ -299,7 +299,7 @@ export default function WhiteboardLabPage() {
           }}
         />
 
-        {/* Floating Student Interruption Tray (Step 6) */}
+        {/* Floating Student Interruption Tray (Step 6 & 7) */}
         <InterruptionTray
           isOpen={isInterruptionOpen}
           onClose={() => setIsInterruptionOpen(false)}
@@ -308,6 +308,7 @@ export default function WhiteboardLabPage() {
           onCommitAction={commitAction}
           activeLesson={activeAiLesson}
           currentTimestampMs={interruptedTimestampMs}
+          selectedObject={selectedObject}
           onResumeLesson={() => {
             setIsInterruptionOpen(false);
           }}
@@ -363,7 +364,12 @@ export default function WhiteboardLabPage() {
           selectedId={selectedId}
           setSelectedId={setSelectedId}
           onCommitAction={commitAction}
+          onAskAboutObject={(obj) => {
+            setSelectedId(obj.id);
+            setIsInterruptionOpen(true);
+          }}
           activeHighlights={activeHighlights}
+          hideFloatingBadge={isInterruptionOpen || isAiModalOpen || isTtsTesterOpen}
         />
 
         {/* Bottom Playback Engine Dock (Mode Dependent) */}
@@ -441,6 +447,17 @@ export default function WhiteboardLabPage() {
                   <div className="bg-slate-900 p-2 rounded border border-slate-800 font-mono text-[10px] text-slate-300 max-h-24 overflow-y-auto">
                     {JSON.stringify(selectedObject.geometry, null, 2)}
                   </div>
+
+                  {/* Ask AI about this object button */}
+                  <button
+                    onClick={() => {
+                      setIsInterruptionOpen(true);
+                    }}
+                    className="w-full py-2 bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all active:scale-95 mt-2"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Ask AI About This Component</span>
+                  </button>
                 </div>
               ) : (
                 <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 text-slate-500 flex items-center gap-2">

@@ -49,6 +49,7 @@ class InterruptionApiRequest(BaseModel):
     student_query: str = Field(..., min_length=1, description="Student voice/text question")
     current_board_objects: List[dict] = Field(default_factory=list, description="Visible board objects snapshot")
     active_lesson_context: dict = Field(default_factory=dict, description="Current lesson metadata")
+    focused_objects: Optional[List[dict]] = Field(default=None, description="Objects the student is pointing at")
     voice: Optional[str] = Field(default=None, description="Voice ID")
 
 
@@ -90,11 +91,13 @@ def handle_interruption_qa(req: InterruptionApiRequest):
             student_query=req.student_query,
             current_board_objects=req.current_board_objects,
             active_lesson_context=req.active_lesson_context,
+            focused_objects=req.focused_objects,
             voice=req.voice,
         )
         return response
     except Exception as e:
         logger.exception("Failed to process student interruption: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 

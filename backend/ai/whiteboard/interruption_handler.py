@@ -102,6 +102,7 @@ def handle_student_interruption(
     student_query: str,
     current_board_objects: List[dict[str, Any]],
     active_lesson_context: dict[str, Any],
+    focused_objects: Optional[List[dict[str, Any]]] = None,
     voice: Optional[str] = None,
 ) -> dict[str, Any]:
     """Answers a student's mid-lesson question with voice + whiteboard actions.
@@ -110,6 +111,7 @@ def handle_student_interruption(
         student_query: The question transcribed from student STT.
         current_board_objects: Active elements on the board at the time of pause.
         active_lesson_context: Info about current lesson beat.
+        focused_objects: Elements the student is currently clicking/selecting.
         voice: Optional neural voice ID.
 
     Returns:
@@ -126,8 +128,16 @@ def handle_student_interruption(
         }
         board_summary.append(summary_item)
 
-    user_prompt = (
-        f"STUDENT QUESTION:\n{student_query}\n\n"
+    user_prompt = f"STUDENT QUESTION:\n{student_query}\n\n"
+
+    if focused_objects and len(focused_objects) > 0:
+        user_prompt += (
+            f"STUDENT IS DIRECTLY POINTING AT THIS ELEMENT ON THE BOARD:\n"
+            f"{json.dumps(focused_objects, indent=2)}\n"
+            f"(Please answer the question specifically explaining this focused element, and emit a highlight command on its ID)\n\n"
+        )
+
+    user_prompt += (
         f"ACTIVE LESSON CONTEXT:\n"
         f"- Title: {active_lesson_context.get('lessonTitle', 'Lesson')}\n"
         f"- What was being said: {active_lesson_context.get('speechScript', '')}\n\n"
