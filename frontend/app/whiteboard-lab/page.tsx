@@ -16,6 +16,7 @@ import { AudioTimingTester } from '@/components/whiteboard/AudioTimingTester';
 import { SynchronizedLessonPlayer } from '@/components/whiteboard/SynchronizedLessonPlayer';
 import { AILessonGeneratorModal } from '@/components/whiteboard/AILessonGeneratorModal';
 import { InterruptionTray } from '@/components/whiteboard/InterruptionTray';
+import { StudentReviewModal } from '@/components/whiteboard/StudentReviewModal';
 import {
   Layers,
   Code2,
@@ -33,6 +34,7 @@ import {
   Sliders,
   Wand2,
   Hand,
+  Award,
 } from 'lucide-react';
 
 export default function WhiteboardLabPage() {
@@ -65,6 +67,10 @@ export default function WhiteboardLabPage() {
   // Student Interruption State (Step 6)
   const [isInterruptionOpen, setIsInterruptionOpen] = useState(false);
   const [interruptedTimestampMs, setInterruptedTimestampMs] = useState(0);
+
+  // Student Work Review State (Step 8)
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const userElementsCount = objects.filter((o) => o.authoredBy === 'user').length;
 
   // UI state
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
@@ -222,17 +228,28 @@ export default function WhiteboardLabPage() {
               Whiteboard Lab
             </span>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-              Step 7 — Perception & Visual Referencing
+              Step 8 — Student Drawing & AI Solution Review
             </span>
           </div>
         </div>
 
         {/* Header Center / Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Step 8 Check My Work Button */}
+          {userElementsCount > 0 && (
+            <button
+              onClick={() => setIsReviewModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all active:scale-95 animate-pulse"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-300" />
+              <span>Check My Work ({userElementsCount})</span>
+            </button>
+          )}
+
           {/* Step 5 AI Generation Button */}
           <button
             onClick={() => setIsAiModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all active:scale-95 animate-pulse"
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all active:scale-95"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>Generate with AI</span>
@@ -315,6 +332,17 @@ export default function WhiteboardLabPage() {
           onTriggerHighlight={triggerHighlight}
         />
 
+        {/* Floating Student Work Review Modal (Step 8) */}
+        <StudentReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          objects={objects}
+          setObjects={setObjects}
+          onCommitAction={commitAction}
+          activeLesson={activeAiLesson}
+          onTriggerHighlight={triggerHighlight}
+        />
+
         {/* Floating TTS Timing Tester Modal */}
         {isTtsTesterOpen && (
           <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4 animate-fade-in">
@@ -369,7 +397,7 @@ export default function WhiteboardLabPage() {
             setIsInterruptionOpen(true);
           }}
           activeHighlights={activeHighlights}
-          hideFloatingBadge={isInterruptionOpen || isAiModalOpen || isTtsTesterOpen}
+          hideFloatingBadge={isInterruptionOpen || isAiModalOpen || isTtsTesterOpen || isReviewModalOpen}
         />
 
         {/* Bottom Playback Engine Dock (Mode Dependent) */}

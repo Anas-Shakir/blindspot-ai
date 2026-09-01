@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 from backend.ai.whiteboard.tts_sync import synthesize_speech_with_timing
 from backend.ai.whiteboard.generator import generate_whiteboard_lesson
 from backend.ai.whiteboard.interruption_handler import handle_student_interruption
+from backend.ai.whiteboard.student_review import evaluate_student_work
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,13 @@ class InterruptionApiRequest(BaseModel):
     current_board_objects: List[dict] = Field(default_factory=list, description="Visible board objects snapshot")
     active_lesson_context: dict = Field(default_factory=dict, description="Current lesson metadata")
     focused_objects: Optional[List[dict]] = Field(default=None, description="Objects the student is pointing at")
+    voice: Optional[str] = Field(default=None, description="Voice ID")
+
+
+class ReviewApiRequest(BaseModel):
+    student_work_summary: str = Field(..., description="Summary of student-drawn objects")
+    all_board_objects: List[dict] = Field(default_factory=list, description="All board objects")
+    lesson_context: dict = Field(default_factory=dict, description="Lesson problem metadata")
     voice: Optional[str] = Field(default=None, description="Voice ID")
 
 
@@ -98,6 +106,23 @@ def handle_interruption_qa(req: InterruptionApiRequest):
     except Exception as e:
         logger.exception("Failed to process student interruption: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/review")
+def handle_student_review(req: ReviewApiRequest):
+    """Evaluates student-drawn whiteboard solutions, speaking feedback and applying live corrections."""
+    try:
+        response = evaluate_student_work(
+            student_work_summary=req.student_work_summary,
+            all_board_objects=req.all_board_objects,
+            lesson_context=req.lesson_context,
+            voice=req.voice,
+        )
+        return response
+    except Exception as e:
+        logger.exception("Failed to evaluate student whiteboard work: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 
