@@ -55,7 +55,7 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
   const [activeWordIndex, setActiveWordIndex] = useState<number>(-1);
   const [currentTimeMs, setCurrentTimeMs] = useState<number>(0);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
-  const [isLoadingStage, setIsLoadingStage] = useState<boolean>(false);
+  const [loadingStageIndex, setLoadingStageIndex] = useState<number | null>(null);
 
   const audioEngineRef = useRef<AudioSyncEngine | null>(null);
   const objectsRef = useRef<CanvasObject[]>(objects);
@@ -91,13 +91,13 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
               });
             }
           } catch (e) {
-            console.warn(`Background prefetch for stage ${sIdx} failed:`, e);
+            // Background pre-fetch silent catch
           }
         }
       }
     };
 
-    const timer = setTimeout(prefetchNextStages, 800);
+    const timer = setTimeout(prefetchNextStages, 600);
     return () => clearTimeout(timer);
   }, [syllabus, course, onUpdateCourse]);
 
@@ -184,7 +184,7 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
 
   if (!course || !syllabus) return null;
 
-  // Jump to specific stage
+  // Jump to specific stage with graceful retries if still processing in backend
   const handleGoToStage = async (targetStageIndex: number) => {
     if (targetStageIndex < 1 || targetStageIndex > syllabus.totalStages) return;
 
@@ -202,28 +202,42 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
       return;
     }
 
-    // Otherwise fetch on-demand
-    try {
-      setIsLoadingStage(true);
-      const res = await fetch(
-        `http://localhost:8000/api/whiteboard/course/${syllabus.courseId}/stage/${targetStageIndex}`
-      );
-      if (!res.ok) throw new Error('Stage not ready');
-      const stageData: CourseStageBeat = await res.json();
+    // Otherwise fetch on-demand with up to 5 retries
+    setLoadingStageIndex(targetStageIndex);
+    let attempts = 0;
+    const maxAttempts = 5;
 
-      onUpdateCourse({
-        ...course,
-        stages: {
-          ...course.stages,
-          [targetStageIndex]: stageData,
-        },
-        currentStageIndex: targetStageIndex,
-      });
-      setIsLoadingStage(false);
-    } catch (e) {
-      console.error(e);
-      setIsLoadingStage(false);
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        const res = await fetch(
+          `http://localhost:8000/api/whiteboard/course/${syllabus.courseId}/stage/${targetStageIndex}`
+        );
+        if (res.ok) {
+          const stageData: CourseStageBeat = await res.json();
+          onUpdateCourse({
+            ...course,
+            stages: {
+              ...course.stages,
+              [targetStageIndex]: stageData,
+            },
+            currentStageIndex: targetStageIndex,
+          });
+          setLoadingStageIndex(null);
+          return;
+        }
+        // Wait 1.5s before retry if backend is still generating
+        await new Promise((r) => setTimeout(r, 1500));
+      } catch (e) {
+        if (attempts >= maxAttempts) {
+          console.warn(`Stage ${targetStageIndex} generation timeout:`, e);
+          setLoadingStageIndex(null);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1500));
+      }
     }
+    setLoadingStageIndex(null);
   };
 
   const togglePlay = () => {
@@ -289,6 +303,7 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
             const sIdx = stageOutline.stageIndex;
             const isCurrent = sIdx === currentStageIndex;
             const isCached = !!course.stages[sIdx];
+            const isLoadingThis = loadingStageIndex === sIdx;
 
             return (
               <button
@@ -301,10 +316,14 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
                 }`}
               >
                 <span className="w-4 h-4 rounded-full bg-slate-900/80 text-[10px] font-mono flex items-center justify-center font-bold">
-                  {sIdx}
+                  {isLoadingThis ? (
+                    <Loader2 className="w-2.5 h-2.5 animate-spin text-amber-300" />
+                  ) : (
+                    sIdx
+                  )}
                 </span>
                 <span className="truncate max-w-[140px]">{stageOutline.title}</span>
-                {isCached && (
+                {isCached && !isLoadingThis && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Pre-fetched & Ready" />
                 )}
               </button>
@@ -312,8 +331,18 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
           })}
         </div>
 
-        {/* Live Spoken Karaoke Transcript for Active Stage */}
-        {currentStageBeat ? (
+        {/* Live Spoken Karaoke Transcript for Active Stage or Inline Loader */}
+        {loadingStageIndex !== null ? (
+          <div className="px-3.5 py-2.5 bg-slate-950/90 rounded-xl border border-indigo-500/30 flex items-center justify-between min-h-[46px]">
+            <div className="flex items-center gap-2 text-xs text-indigo-200">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+              <span>Preparing Stage {loadingStageIndex}... (Synthesizing Voice & Diagrams)</span>
+            </div>
+            <span className="text-[10px] font-mono text-indigo-300 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20 animate-pulse">
+              AI Processing
+            </span>
+          </div>
+        ) : currentStageBeat ? (
           <div className="px-3.5 py-2.5 bg-slate-950/90 rounded-xl border border-slate-800 flex flex-wrap gap-1 leading-relaxed text-xs min-h-[46px] items-center">
             {currentStageBeat.timingMarks.map((mark, idx) => {
               const isCurrent = idx === activeWordIndex;
@@ -346,7 +375,7 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
           {/* Previous Stage */}
           <button
             onClick={() => handleGoToStage(currentStageIndex - 1)}
-            disabled={currentStageIndex <= 1 || isLoadingStage}
+            disabled={currentStageIndex <= 1 || loadingStageIndex !== null}
             className="px-3 py-1.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/80 text-slate-300 hover:text-white disabled:opacity-30 text-xs font-semibold flex items-center gap-1 transition-all"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -357,7 +386,8 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
           <div className="flex items-center gap-2.5">
             <button
               onClick={handleReset}
-              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+              disabled={loadingStageIndex !== null}
+              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-colors"
               title="Restart Current Stage"
             >
               <RotateCcw className="w-4 h-4" />
@@ -365,7 +395,7 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
 
             <button
               onClick={togglePlay}
-              disabled={!currentStageBeat || isLoadingStage}
+              disabled={!currentStageBeat || loadingStageIndex !== null}
               className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 disabled:opacity-40 text-white font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 active:scale-95 transition-all text-xs"
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -375,7 +405,8 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
             {/* Raise Hand Interruption */}
             <button
               onClick={() => onRaiseHand(currentTimeMs)}
-              className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
+              disabled={loadingStageIndex !== null}
+              className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-30 transition-all"
               title="Raise Hand to Ask Question (H)"
             >
               <Hand className="w-3.5 h-3.5" />
@@ -386,11 +417,20 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
           {/* Next Stage */}
           <button
             onClick={() => handleGoToStage(currentStageIndex + 1)}
-            disabled={currentStageIndex >= syllabus.totalStages || isLoadingStage}
-            className="px-3 py-1.5 rounded-xl border border-indigo-500/40 hover:border-indigo-500 bg-indigo-600/20 text-indigo-300 hover:text-white disabled:opacity-30 text-xs font-semibold flex items-center gap-1 transition-all"
+            disabled={currentStageIndex >= syllabus.totalStages || loadingStageIndex !== null}
+            className="px-3 py-1.5 rounded-xl border border-indigo-500/40 hover:border-indigo-500 bg-indigo-600/20 text-indigo-300 hover:text-white disabled:opacity-30 text-xs font-semibold flex items-center gap-1.5 transition-all"
           >
-            <span>Next Stage</span>
-            <ChevronRight className="w-4 h-4" />
+            {loadingStageIndex !== null ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Loading Stage...</span>
+              </>
+            ) : (
+              <>
+                <span>Next Stage</span>
+                <ChevronRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </div>
       </div>

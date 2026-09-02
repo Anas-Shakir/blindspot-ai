@@ -12,6 +12,7 @@ import asyncio
 import logging
 import sys
 import threading
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # In-memory course storage: courseId -> CourseData
 _COURSE_CACHE: Dict[str, Dict[str, Any]] = {}
+_STAGE_LOCKS: Dict[str, threading.Lock] = defaultdict(threading.Lock)
 
 
 def _background_prefetch_stages(
@@ -45,7 +47,6 @@ def _background_prefetch_stages(
         if stage_idx == 1:
             continue  # Stage 1 is already generated
 
-        # Check if already generated
         course_data = _COURSE_CACHE.get(course_id)
         if not course_data:
             break
@@ -53,25 +54,29 @@ def _background_prefetch_stages(
         if stage_idx in course_data["stages"]:
             continue
 
-        try:
-            logger.info(f"Background prefetching Stage {stage_idx} for course {course_id}...")
-            stage_beat = generate_course_stage(
-                topic=topic,
-                course_title=course_title,
-                stage_outline=stage_outline,
-                previous_stages_summary=accumulated_summary,
-                voice=voice,
-            )
+        lock_key = f"{course_id}_{stage_idx}"
+        with _STAGE_LOCKS[lock_key]:
+            if stage_idx in course_data["stages"]:
+                continue
 
-            # Store in cache
-            if course_id in _COURSE_CACHE:
-                _COURSE_CACHE[course_id]["stages"][stage_idx] = stage_beat
+            try:
+                logger.info(f"Background prefetching Stage {stage_idx} for course {course_id}...")
+                stage_beat = generate_course_stage(
+                    topic=topic,
+                    course_title=course_title,
+                    stage_outline=stage_outline,
+                    previous_stages_summary=accumulated_summary,
+                    voice=voice,
+                )
 
-            accumulated_summary += f" Stage {stage_idx} ({stage_outline.get('title')}) completed."
-            logger.info(f"Stage {stage_idx} successfully pre-generated for course {course_id}!")
+                if course_id in _COURSE_CACHE:
+                    _COURSE_CACHE[course_id]["stages"][stage_idx] = stage_beat
 
-        except Exception as e:
-            logger.error(f"Failed to prefetch stage {stage_idx} for course {course_id}: {e}", exc_info=True)
+                accumulated_summary += f" Stage {stage_idx} ({stage_outline.get('title')}) completed."
+                logger.info(f"Stage {stage_idx} successfully pre-generated for course {course_id}!")
+
+            except Exception as e:
+                logger.error(f"Failed to prefetch stage {stage_idx} for course {course_id}: {e}", exc_info=True)
 
 
 def start_course(
@@ -133,24 +138,29 @@ def get_course_stage(course_id: str, stage_idx: int) -> Optional[Dict[str, Any]]
     if stage_idx in course_data["stages"]:
         return course_data["stages"][stage_idx]
 
-    # If not yet generated, synthesize on-demand
-    syllabus = course_data["syllabus"]
-    stages_outline = syllabus.get("stages", [])
-    matching_outline = next((s for s in stages_outline if s.get("stageIndex") == stage_idx), None)
+    lock_key = f"{course_id}_{stage_idx}"
+    with _STAGE_LOCKS[lock_key]:
+        if stage_idx in course_data["stages"]:
+            return course_data["stages"][stage_idx]
 
-    if not matching_outline:
-        return None
+        syllabus = course_data["syllabus"]
+        stages_outline = syllabus.get("stages", [])
+        matching_outline = next((s for s in stages_outline if s.get("stageIndex") == stage_idx), None)
 
-    stage_beat = generate_course_stage(
-        topic=course_data["topic"],
-        course_title=syllabus["title"],
-        stage_outline=matching_outline,
-        previous_stages_summary=f"Up to stage {stage_idx - 1}",
-        voice=course_data.get("voice"),
-    )
+        if not matching_outline:
+            return None
 
-    course_data["stages"][stage_idx] = stage_beat
-    return stage_beat
+        logger.info(f"On-demand synthesizing Stage {stage_idx} for course {course_id}...")
+        stage_beat = generate_course_stage(
+            topic=course_data["topic"],
+            course_title=syllabus["title"],
+            stage_outline=matching_outline,
+            previous_stages_summary=f"Up to stage {stage_idx - 1}",
+            voice=course_data.get("voice"),
+        )
+
+        course_data["stages"][stage_idx] = stage_beat
+        return stage_beat
 
 
 def get_course_status(course_id: str) -> Dict[str, Any]:

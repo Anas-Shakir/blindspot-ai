@@ -3,63 +3,63 @@
   "lessonId": "new_session",
   "title": "Whiteboard Session 9/1/2026",
   "createdAt": 1788294952989,
-  "updatedAt": 1788295352474,
+  "updatedAt": 1788328069697,
   "activeObjects": [
     {
-      "id": "stage_hdr_1",
+      "id": "circuit-title",
       "type": "text",
       "authoredBy": "ai",
       "geometry": {
         "x": 120,
         "y": 40,
-        "text": "Stage 1: Intuition & Money Mindset"
+        "text": "Ohm's Law: V = I \u00d7 R"
       },
       "style": {
-        "strokeColor": "#38BDF8",
+        "strokeColor": "#F8FAFC",
         "fillColor": "transparent",
         "strokeWidth": 1,
         "opacity": 1,
-        "fontSize": 20,
+        "fontSize": 24,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788295308284,
-      "linkedStepId": null
+      "createdAt": 1788328068339,
+      "linkedStepId": "step-1-intro"
     },
     {
-      "id": "s1_need_box",
+      "id": "battery",
       "type": "shape",
       "authoredBy": "ai",
       "geometry": {
         "x": 120,
         "y": 150,
-        "width": 150,
-        "height": 70,
+        "width": 90,
+        "height": 60,
         "subtype": "rectangle",
-        "label": "Need",
+        "label": "9V DC",
         "borderRadius": 8
       },
       "style": {
-        "strokeColor": "#818CF8",
-        "fillColor": "rgba(129, 140, 248, 0.18)",
+        "strokeColor": "#FB7185",
+        "fillColor": "rgba(251, 113, 133, 0.18)",
         "strokeWidth": 3,
         "opacity": 1,
         "fontSize": 16,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788295303022,
-      "linkedStepId": null
+      "createdAt": 1788328068339,
+      "linkedStepId": "step-2-source"
     },
     {
-      "id": "s1_solution_box",
+      "id": "resistor",
       "type": "shape",
       "authoredBy": "ai",
       "geometry": {
-        "x": 320,
+        "x": 380,
         "y": 150,
-        "width": 150,
-        "height": 70,
+        "width": 120,
+        "height": 60,
         "subtype": "rectangle",
-        "label": "Solution",
+        "label": "100 \u03a9 (Active: 90mA)",
         "borderRadius": 8
       },
       "style": {
@@ -70,21 +70,21 @@
         "fontSize": 16,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788295306850,
-      "linkedStepId": null
+      "createdAt": 1788328068339,
+      "linkedStepId": "step-3-load"
     },
     {
-      "id": "s1_arrow2",
+      "id": "wire-top",
       "type": "arrow",
       "authoredBy": "ai",
       "geometry": {
         "from": {
-          "x": 470,
-          "y": 185
+          "x": 210,
+          "y": 180
         },
         "to": {
-          "x": 520,
-          "y": 185
+          "x": 380,
+          "y": 180
         },
         "arrowheadEnd": true
       },
@@ -96,83 +96,33 @@
         "fontSize": 16,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788295310767,
-      "linkedStepId": null
+      "createdAt": 1788328068339,
+      "linkedStepId": "step-4-wire"
     },
     {
-      "id": "s1_payment_box",
-      "type": "shape",
-      "authoredBy": "ai",
-      "geometry": {
-        "x": 520,
-        "y": 150,
-        "width": 150,
-        "height": 70,
-        "subtype": "rectangle",
-        "label": "Payment",
-        "borderRadius": 8
-      },
-      "style": {
-        "strokeColor": "#FBBF24",
-        "fillColor": "rgba(251, 191, 36, 0.18)",
-        "strokeWidth": 3,
-        "opacity": 1,
-        "fontSize": 16,
-        "fontFamily": "sans-serif"
-      },
-      "createdAt": 1788295309261,
-      "linkedStepId": null
-    },
-    {
-      "id": "s1_arrow1",
-      "type": "arrow",
-      "authoredBy": "ai",
-      "geometry": {
-        "from": {
-          "x": 270,
-          "y": 185
-        },
-        "to": {
-          "x": 320,
-          "y": 185
-        },
-        "arrowheadEnd": true
-      },
-      "style": {
-        "strokeColor": "#38BDF8",
-        "fillColor": "transparent",
-        "strokeWidth": 3,
-        "opacity": 1,
-        "fontSize": 16,
-        "fontFamily": "sans-serif"
-      },
-      "createdAt": 1788295313405,
-      "linkedStepId": null
-    },
-    {
-      "id": "stage_hdr_2",
+      "id": "current-calc",
       "type": "text",
       "authoredBy": "ai",
       "geometry": {
-        "x": 870,
-        "y": 40,
-        "text": "Stage 2: Mechanics & Revenue Models"
+        "x": 230,
+        "y": 130,
+        "text": "I = 9V / 100\u03a9 = 90 mA"
       },
       "style": {
         "strokeColor": "#38BDF8",
         "fillColor": "transparent",
         "strokeWidth": 1,
         "opacity": 1,
-        "fontSize": 20,
+        "fontSize": 16,
         "fontFamily": "sans-serif"
       },
-      "createdAt": 1788295344472,
-      "linkedStepId": null
+      "createdAt": 1788328068339,
+      "linkedStepId": "step-5-calc"
     }
   ],
   "viewport": {
-    "x": -750,
-    "y": 0,
+    "x": 356.66644287109375,
+    "y": 57.77799987792969,
     "scale": 1
   },
   "events": []
