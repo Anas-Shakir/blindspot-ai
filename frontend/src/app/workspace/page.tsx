@@ -33,11 +33,11 @@ import {
   SessionEvent,
   VoiceOption,
 } from "@/lib/api";
-import RobotCompanionWrapper from "@/components/RobotCompanionWrapper";
-import QuizCard, { QuizOption } from "@/components/QuizCard";
-import Sidebar from "@/components/Sidebar";
-import KnowledgeGraphView from "@/components/KnowledgeGraphView";
-import FlowStepsCard, { FlowStepItem } from "@/components/FlowStepsCard";
+import RobotCompanionWrapper from "@/components/player/RobotCompanionWrapper";
+import QuizCard, { QuizOption } from "@/components/player/QuizCard";
+import Sidebar from "@/components/common/Sidebar";
+import KnowledgeGraphView from "@/components/player/KnowledgeGraphView";
+import FlowStepsCard, { FlowStepItem } from "@/components/landing/FlowStepsCard";
 
 interface PhaseData {
   id: number;
