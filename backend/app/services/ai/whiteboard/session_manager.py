@@ -15,10 +15,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from backend.app.core.paths import SESSION_STORAGE_DIR
 
-SESSION_STORAGE_DIR = Path(__file__).resolve().parent.parent.parent / "storage_data" / "sessions"
-SESSION_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def save_session(session_data: Dict[str, Any]) -> Dict[str, Any]:

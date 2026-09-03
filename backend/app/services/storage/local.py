@@ -15,12 +15,8 @@ instead of:
     from backend.storage import save, get_url
 """
 
-import shutil
-import uuid
-from pathlib import Path
+from backend.app.core.paths import STORAGE_DIR
 
-STORAGE_DIR = Path(__file__).parent / "storage_data"
-STORAGE_DIR.mkdir(exist_ok=True)
 
 
 def save(source_path: str, original_filename: str) -> str:

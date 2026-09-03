@@ -17,14 +17,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+from backend.app.core.paths import TTS_STORAGE_DIR
 
-logger = logging.getLogger(__name__)
-
-TTS_STORAGE_DIR = Path(__file__).resolve().parent.parent.parent / "storage_data" / "tts"
-TTS_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-ChristopherNeural")
 

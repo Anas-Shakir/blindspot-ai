@@ -32,16 +32,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-# Ensure project root is on sys.path
-_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+from backend.app.core.paths import TTS_STORAGE_DIR as TTS_CACHE_DIR
 
-logger = logging.getLogger(__name__)
-
-# Directory where generated TTS audio files will be stored
-TTS_CACHE_DIR = Path(__file__).resolve().parent.parent / "storage_data" / "tts"
-TTS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Default voices
 DEFAULT_EDGE_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-ChristopherNeural")

@@ -48,12 +48,11 @@ app.include_router(lectures.router, prefix="/api", tags=["lectures"])
 app.include_router(session.router, prefix="/api", tags=["session"])
 app.include_router(whiteboard.router, prefix="/api/whiteboard", tags=["whiteboard"])
 
-# Mount static storage for serving generated audio files
 from fastapi.staticfiles import StaticFiles
+from backend.app.core.paths import STORAGE_DIR
+app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
 
-storage_dir = Path(__file__).resolve().parent / "storage_data"
-storage_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/storage", StaticFiles(directory=str(storage_dir)), name="storage")
+
 
 
 @app.get("/health")
