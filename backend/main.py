@@ -12,14 +12,18 @@ Run locally with:
 Runs on http://localhost:8000 by default.
 """
 
+from pathlib import Path
+
 from dotenv import load_dotenv
-load_dotenv()
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.db import init_db
-from backend.api import lectures, session, whiteboard
+from backend.app.core.db import init_db
+from backend.app.api import whiteboard
+from backend.app.api.v1.endpoints import lectures, session
 
 # Initialize database tables on startup
 init_db()
@@ -45,7 +49,6 @@ app.include_router(session.router, prefix="/api", tags=["session"])
 app.include_router(whiteboard.router, prefix="/api/whiteboard", tags=["whiteboard"])
 
 # Mount static storage for serving generated audio files
-from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 
 storage_dir = Path(__file__).resolve().parent / "storage_data"

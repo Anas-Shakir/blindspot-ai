@@ -1,3 +1,0 @@
-"""
-backend/ai/whiteboard package
-"""
