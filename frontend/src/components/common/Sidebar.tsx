@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  Presentation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, Lecture } from "@/lib/api";
@@ -43,6 +44,13 @@ const defaultNavItems: NavItem[] = [
     label: "Workspace",
     href: "/workspace",
     icon: Compass,
+  },
+  {
+    id: "whiteboard",
+    label: "AI Whiteboard",
+    href: "/whiteboard-lab",
+    icon: Presentation,
+    badge: "Live",
   },
   {
     id: "lectures",

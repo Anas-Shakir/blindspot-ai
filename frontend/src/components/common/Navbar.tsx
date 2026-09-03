@@ -54,6 +54,15 @@ export const Navbar: React.FC = () => {
           <Link href="/workspace" className="hover:text-white transition-colors">
             Workspace
           </Link>
+          <Link
+            href="/whiteboard-lab"
+            className="flex items-center gap-1.5 text-amber-400/90 hover:text-amber-300 transition-colors font-semibold"
+          >
+            <span>Whiteboard</span>
+            <span className="px-1.5 py-0.2 text-[9px] font-mono uppercase bg-amber-500/20 border border-amber-500/30 rounded text-amber-300">
+              Live
+            </span>
+          </Link>
         </nav>
 
         {/* Right Actions */}

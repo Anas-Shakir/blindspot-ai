@@ -120,7 +120,8 @@ const defaultMockPhases: PhaseData[] = [
 
 export default function WorkspacePage() {
   const params = useParams();
-  const lectureId = params?.id ? String(params.id) : null;
+  const rawId = params?.id ? String(params.id) : null;
+  const lectureId = rawId && !isNaN(Number(rawId)) && Number(rawId) > 0 ? Number(rawId) : null;
   const [lecture, setLecture] = useState<Lecture | null>(null);
 
   // Live session state
@@ -707,7 +708,7 @@ export default function WorkspacePage() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* View Mode Switcher: Lesson Canvas vs Knowledge Graph */}
+            {/* View Mode Switcher: Learning Plan vs Knowledge Graph vs AI Whiteboard */}
             <div className="flex items-center bg-zinc-900 border border-white/[0.08] p-0.5 rounded-lg text-xs">
               <button
                 type="button"
@@ -720,7 +721,7 @@ export default function WorkspacePage() {
                 )}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Lesson</span>
+                <span className="hidden sm:inline">Learning Plan</span>
               </button>
               <button
                 type="button"
@@ -735,6 +736,13 @@ export default function WorkspacePage() {
                 <Network className="w-3.5 h-3.5 text-sky-400" />
                 <span className="hidden sm:inline">Knowledge Graph</span>
               </button>
+              <Link
+                href="/whiteboard-lab"
+                className="px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs text-amber-300/85 hover:text-amber-200 hover:bg-amber-950/40 border border-amber-500/20 hover:border-amber-500/50"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span className="hidden sm:inline font-medium">AI Whiteboard</span>
+              </Link>
             </div>
 
             {/* 1. Text Reading Language Selector */}

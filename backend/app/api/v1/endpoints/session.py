@@ -29,7 +29,7 @@ router = APIRouter()
 @router.get("/session/voices")
 def list_available_voices():
     """Returns the list of available TTS neural voices and languages."""
-    from app.services.ai.tts import get_available_voices
+    from backend.app.services.ai.tts import get_available_voices
     return get_available_voices()
 
 

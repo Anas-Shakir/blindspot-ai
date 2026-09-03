@@ -3,7 +3,7 @@
   "lessonId": "circuit-sync",
   "title": "Ohm's Law Circuit Session",
   "createdAt": 1788452724517,
-  "updatedAt": 1788452833990,
+  "updatedAt": 1788454274407,
   "activeObjects": [
     {
       "id": "stage_hdr_1",
@@ -315,9 +315,9 @@
     }
   ],
   "viewport": {
-    "x": 112.41773351341749,
-    "y": 93.95138059981775,
-    "scale": 0.6996328745550368
+    "x": 398.60901481031806,
+    "y": 119.69540178241303,
+    "scale": 0.5038938135677126
   },
   "events": [
     {

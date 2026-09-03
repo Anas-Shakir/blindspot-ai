@@ -36,7 +36,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from app.services.ai.transcription import transcribe
+from backend.app.services.ai.transcription import transcribe
 from backend.app.services.ai.planning import run_full_pipeline
 
 

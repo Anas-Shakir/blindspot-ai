@@ -295,11 +295,11 @@ export default function WhiteboardLabPage() {
       <header className="h-14 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
           <Link
-            href="/"
+            href="/workspace"
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 px-2.5 py-1.5 bg-slate-800/50 hover:bg-slate-800 rounded-lg border border-slate-700/50 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to App
+            Back to Workspace
           </Link>
           <div className="h-4 w-[1px] bg-slate-800" />
           <div className="flex items-center gap-2">
