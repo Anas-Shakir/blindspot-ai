@@ -17,6 +17,7 @@ import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import CTASection from "@/components/landing/CTASection";
 import Footer from "@/components/common/Footer";
 import GradientWaves from "@/components/landing/GradientWaves";
+import type { Lecture } from "@/lib/api";
 
 
 export default function BlindspotLandingPage() {
