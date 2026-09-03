@@ -305,9 +305,15 @@ export async function getGraph(
  */
 export async function startSession(
   lectureId: number | string,
-  sessionId?: string
+  sessionId?: string,
+  voice?: string,
+  textLanguage?: string
 ): Promise<SessionEvent[]> {
-  const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
+  const params = new URLSearchParams();
+  if (sessionId) params.set("session_id", sessionId);
+  if (voice) params.set("voice", voice);
+  if (textLanguage) params.set("text_language", textLanguage);
+  const query = params.toString() ? `?${params.toString()}` : "";
   return fetchJson<SessionEvent[]>(`/api/lectures/${lectureId}/session${query}`, {
     method: "POST",
     body: JSON.stringify({}),
@@ -346,7 +352,7 @@ export function resolveAudioUrl(pathOrUrl?: string | null): string | null {
   }
   // If it's a relative storage path or local file path
   const normalized = pathOrUrl.replace(/\\/g, "/");
-  const match = normalized.match(/storage_data\/(.+)$/);
+  const match = normalized.match(/(?:storage_data|storage)\/(.+)$/);
   if (match) {
     return `${API_BASE_URL}/storage/${match[1]}`;
   }
@@ -364,6 +370,11 @@ export interface VoiceOption {
   flag?: string;
 }
 
+export interface UserPreferences {
+  voice: string;
+  text_language: string;
+}
+
 /**
  * Get the direct streaming URL for the original uploaded lecture recording.
  */
@@ -378,6 +389,50 @@ export async function getVoices(): Promise<VoiceOption[]> {
   return fetchJson<VoiceOption[]>("/api/session/voices", {
     method: "GET",
     cache: "no-store",
+  });
+}
+
+/**
+ * Get the active session preferences (voice and text reading language).
+ */
+export async function getPreferences(): Promise<UserPreferences> {
+  return fetchJson<UserPreferences>("/api/session/preferences", {
+    method: "GET",
+    cache: "no-store",
+  }).catch(() => {
+    return {
+      voice:
+        typeof window !== "undefined"
+          ? localStorage.getItem("blindspot_selected_voice") || "en-US-ChristopherNeural"
+          : "en-US-ChristopherNeural",
+      text_language:
+        typeof window !== "undefined"
+          ? localStorage.getItem("blindspot_selected_text_language") || "English"
+          : "English",
+    };
+  });
+}
+
+/**
+ * Update the active session preferences (voice and text reading language).
+ */
+export async function setPreferences(
+  prefs: Partial<UserPreferences>
+): Promise<UserPreferences> {
+  if (typeof window !== "undefined") {
+    if (prefs.voice) localStorage.setItem("blindspot_selected_voice", prefs.voice);
+    if (prefs.text_language) localStorage.setItem("blindspot_selected_text_language", prefs.text_language);
+    window.dispatchEvent(new CustomEvent("blindspot_preferences_changed", { detail: prefs }));
+  }
+
+  return fetchJson<UserPreferences>("/api/session/preferences", {
+    method: "POST",
+    body: JSON.stringify(prefs),
+  }).catch(() => {
+    return {
+      voice: prefs.voice || "en-US-ChristopherNeural",
+      text_language: prefs.text_language || "English",
+    };
   });
 }
 
@@ -408,6 +463,8 @@ export const api = {
   resolveAudioUrl,
   getLectureStreamUrl,
   getVoices,
+  getPreferences,
+  setPreferences,
   checkHealth,
 };
 

@@ -67,7 +67,7 @@ const defaultNavItems: NavItem[] = [
   {
     id: "settings",
     label: "Settings",
-    href: "#settings",
+    href: "/settings",
     icon: Sliders,
   },
 ];
@@ -130,10 +130,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Top Section: Brand Header, Main Nav & History */}
       <div className="flex flex-col flex-1 min-h-0">
         {/* Brand Header */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-white/[0.07] shrink-0">
+        <div
+          className={cn(
+            "border-b border-white/[0.07] shrink-0 transition-all duration-200",
+            isCollapsed
+              ? "py-3 px-2 flex flex-col items-center gap-2"
+              : "h-16 px-4 flex items-center justify-between"
+          )}
+        >
           <Link
             href="/"
-            className="flex items-center gap-3 overflow-hidden group focus:outline-none"
+            title="Blindspot AI"
+            className={cn(
+              "flex items-center gap-3 overflow-hidden group focus:outline-none",
+              isCollapsed && "justify-center"
+            )}
           >
             {/* Minimalist Logo Mark with Oxblood Burgundy Tone */}
             <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200 group-hover:border-[#701a24] transition-colors duration-200">
@@ -167,11 +178,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             type="button"
             whileTap={{ scale: 0.95 }}
             onClick={toggleSidebar}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={cn(
               "flex h-7 w-7 items-center justify-center rounded-lg text-stone-400 hover:text-white",
-              "hover:bg-white/[0.05] transition-colors cursor-pointer focus:outline-none",
-              isCollapsed && "mx-auto"
+              "hover:bg-white/[0.08] transition-colors cursor-pointer focus:outline-none",
+              isCollapsed && "bg-white/[0.03] border border-white/[0.06] text-stone-300"
             )}
           >
             {isCollapsed ? (

@@ -21,9 +21,47 @@ from sqlalchemy.orm import Session
 from backend.app.core.db import get_db
 from backend.app.schemas.schemas import SessionCommand, SessionEvent
 from backend.app.services.ai.orchestrator import load_session_from_db, session_store
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+class PreferencesSchema(BaseModel):
+    voice: Optional[str] = None
+    text_language: Optional[str] = None
+
+
+DEFAULT_PREFERENCES = {
+    "voice": "en-US-ChristopherNeural",
+    "text_language": "English",
+}
+
+
+@router.get("/session/preferences")
+def get_session_preferences():
+    """Returns the user's active session voice and text language preferences."""
+    return DEFAULT_PREFERENCES
+
+
+@router.post("/session/preferences")
+def set_session_preferences(prefs: PreferencesSchema):
+    """Updates user session preferences and propagates them to active sessions."""
+    if prefs.voice:
+        DEFAULT_PREFERENCES["voice"] = prefs.voice
+    if prefs.text_language:
+        DEFAULT_PREFERENCES["text_language"] = prefs.text_language
+
+    # Propagate to all active sessions in memory
+    for sess_id in session_store.list_sessions():
+        sess = session_store.get_session(sess_id)
+        if sess:
+            if prefs.voice:
+                sess.set_voice(prefs.voice)
+            if prefs.text_language:
+                sess.set_text_language(prefs.text_language)
+
+    return DEFAULT_PREFERENCES
 
 
 @router.get("/session/voices")
@@ -37,13 +75,23 @@ def list_available_voices():
 def start_teaching_session(
     lecture_id: int,
     session_id: Optional[str] = None,
+    voice: Optional[str] = None,
+    text_language: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """Initializes a live teaching session from the database and returns the initial
     teaching events (phase_started, speaking, awaiting_command).
     """
+    actual_voice = voice or DEFAULT_PREFERENCES["voice"]
+    actual_text_lang = text_language or DEFAULT_PREFERENCES["text_language"]
     try:
-        session = load_session_from_db(lecture_id=lecture_id, session_id=session_id, db=db)
+        session = load_session_from_db(
+            lecture_id=lecture_id,
+            session_id=session_id,
+            db=db,
+            voice=actual_voice,
+            text_language=actual_text_lang,
+        )
         initial_events = session.start()
         return initial_events
     except Exception as e:

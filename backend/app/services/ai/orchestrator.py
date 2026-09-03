@@ -502,6 +502,7 @@ class SessionStore:
         quizzes: Optional[List[QuizItem]] = None,
         transcript_segments: Optional[List[TranscriptSegment]] = None,
         voice: Optional[str] = None,
+        text_language: Optional[str] = None,
     ) -> TeachingSession:
         session = TeachingSession(
             session_id=session_id,
@@ -510,6 +511,7 @@ class SessionStore:
             quizzes=quizzes,
             transcript_segments=transcript_segments,
             voice=voice,
+            text_language=text_language,
         )
         self._sessions[session_id] = session
         return session
@@ -537,6 +539,7 @@ def load_session_from_db(
     session_id: Optional[str] = None,
     db: Optional[any] = None,
     voice: Optional[str] = None,
+    text_language: Optional[str] = None,
 ) -> TeachingSession:
     """Loads a lecture's LearningPlan, QuizItems, and TranscriptChunks from the database
     and creates/registers an active TeachingSession.
@@ -643,6 +646,7 @@ def load_session_from_db(
             quizzes=quizzes,
             transcript_segments=transcripts,
             voice=voice,
+            text_language=text_language,
         )
         return session
 

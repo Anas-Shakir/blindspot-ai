@@ -38,6 +38,7 @@ import QuizCard, { QuizOption } from "@/components/player/QuizCard";
 import Sidebar from "@/components/common/Sidebar";
 import KnowledgeGraphView from "@/components/player/KnowledgeGraphView";
 import FlowStepsCard, { FlowStepItem } from "@/components/landing/FlowStepsCard";
+import CustomSelect from "@/components/common/CustomSelect";
 
 interface PhaseData {
   id: number;
@@ -162,21 +163,48 @@ export default function WorkspacePage() {
 
   // Voice & Text Language state
   const [voices, setVoices] = useState<VoiceOption[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>("en-US-ChristopherNeural");
-  const [selectedTextLanguage, setSelectedTextLanguage] = useState<string>("English");
+  const [selectedVoice, setSelectedVoice] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("blindspot_selected_voice") || "en-US-ChristopherNeural";
+    }
+    return "en-US-ChristopherNeural";
+  });
+  const [selectedTextLanguage, setSelectedTextLanguage] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("blindspot_selected_text_language") || "English";
+    }
+    return "English";
+  });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Fetch available neural voices on mount
+  // Fetch available neural voices and sync preferences on mount
   useEffect(() => {
     api.getVoices().then((res) => {
       if (res && res.length > 0) {
         setVoices(res);
       }
     }).catch(() => {});
+
+    api.getPreferences().then((prefs) => {
+      if (prefs.voice) setSelectedVoice(prefs.voice);
+      if (prefs.text_language) setSelectedTextLanguage(prefs.text_language);
+    }).catch(() => {});
+
+    const handlePrefChange = (e: any) => {
+      if (e.detail?.voice) setSelectedVoice(e.detail.voice);
+      if (e.detail?.text_language) setSelectedTextLanguage(e.detail.text_language);
+    };
+
+    window.addEventListener("blindspot_preferences_changed", handlePrefChange);
+    return () => {
+      window.removeEventListener("blindspot_preferences_changed", handlePrefChange);
+    };
   }, []);
 
   const handleVoiceChange = async (voiceId: string) => {
     setSelectedVoice(voiceId);
+    api.setPreferences({ voice: voiceId }).catch(() => {});
+
     const matchedVoice = voices.find((v) => v.id === voiceId);
     const label = matchedVoice
       ? `${matchedVoice.flag ? matchedVoice.flag + " " : ""}${matchedVoice.language} (${matchedVoice.name})`
@@ -198,6 +226,8 @@ export default function WorkspacePage() {
 
   const handleTextLanguageChange = async (targetLanguage: string) => {
     setSelectedTextLanguage(targetLanguage);
+    api.setPreferences({ text_language: targetLanguage }).catch(() => {});
+
     const matchedLang = TEXT_LANGUAGES.find((t) => t.id === targetLanguage);
     const label = matchedLang ? `${matchedLang.flag} ${matchedLang.name}` : targetLanguage;
 
@@ -746,40 +776,38 @@ export default function WorkspacePage() {
             </div>
 
             {/* 1. Text Reading Language Selector */}
-            <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/[0.08] hover:border-white/[0.15] rounded-lg px-2.5 py-1 text-xs text-neutral-300 transition-colors">
-              <Globe className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-              <span className="text-[11px] text-neutral-400 hidden sm:inline">Text:</span>
-              <select
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-neutral-400 hidden xl:inline font-mono">Text:</span>
+              <CustomSelect
+                size="sm"
                 value={selectedTextLanguage}
-                onChange={(e) => handleTextLanguageChange(e.target.value)}
-                aria-label="Select Reading Text Language"
-                className="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer pr-1 hover:text-white"
-              >
-                {TEXT_LANGUAGES.map((t) => (
-                  <option key={t.id} value={t.id} className="bg-zinc-900 text-neutral-200">
-                    {t.flag} {t.name}
-                  </option>
-                ))}
-              </select>
+                onChange={handleTextLanguageChange}
+                options={TEXT_LANGUAGES.map((t) => ({
+                  value: t.id,
+                  label: t.name,
+                  flag: t.flag,
+                }))}
+                className="w-28 sm:w-36"
+              />
             </div>
 
             {/* 2. AI Voice & Accent Selector */}
             {voices.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/[0.08] hover:border-white/[0.15] rounded-lg px-2.5 py-1 text-xs text-neutral-300 transition-colors">
-                <Volume2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                <span className="text-[11px] text-neutral-400 hidden sm:inline">Voice:</span>
-                <select
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-neutral-400 hidden xl:inline font-mono">Voice:</span>
+                <CustomSelect
+                  size="sm"
                   value={selectedVoice}
-                  onChange={(e) => handleVoiceChange(e.target.value)}
-                  aria-label="Select Spoken AI Voice"
-                  className="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer pr-1 hover:text-white"
-                >
-                  {voices.map((v) => (
-                    <option key={v.id} value={v.id} className="bg-zinc-900 text-neutral-200">
-                      {v.flag ? `${v.flag} ` : ""}{v.language} ({v.name})
-                    </option>
-                  ))}
-                </select>
+                  onChange={handleVoiceChange}
+                  options={voices.map((v) => ({
+                    value: v.id,
+                    label: v.language,
+                    sublabel: v.name,
+                    flag: v.flag,
+                    badge: "Neural",
+                  }))}
+                  className="w-36 sm:w-48"
+                />
               </div>
             )}
 
