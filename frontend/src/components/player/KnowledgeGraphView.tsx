@@ -15,6 +15,7 @@ import {
   Layers,
   ChevronRight,
   Move,
+  Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, GraphNode, GraphEdge } from "@/lib/api";
@@ -65,6 +66,109 @@ function getBorderIntersection(
   };
 }
 
+/**
+ * Smart Cluster-Aware Layout Generator:
+ * - Arranges core concepts in a balanced ellipse matching 16:9 displays
+ * - Places each blindspot gap node naturally near its related core concept
+ * - Runs a lightweight 50-iteration force relaxation step to prevent any card overlaps
+ */
+function computeSmartLayout(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  centerX: number = 1000,
+  centerY: number = 800
+): Record<string, { x: number; y: number }> {
+  if (!nodes || nodes.length === 0) return {};
+
+  const coreNodes = nodes.filter((n) => !n.is_gap);
+  const gapNodes = nodes.filter((n) => n.is_gap);
+
+  // Build adjacency lookup
+  const adjacency: Record<string, Set<string>> = {};
+  nodes.forEach((n) => {
+    adjacency[n.id] = new Set();
+  });
+  edges.forEach((e) => {
+    if (adjacency[e.source]) adjacency[e.source].add(e.target);
+    if (adjacency[e.target]) adjacency[e.target].add(e.source);
+  });
+
+  const positions: Record<string, { x: number; y: number }> = {};
+  const coreCount = coreNodes.length;
+
+  // Ellipse proportions
+  const rx = Math.min(500, Math.max(300, coreCount * 25));
+  const ry = Math.min(340, Math.max(200, coreCount * 17));
+
+  // 1. Arrange core nodes around the primary ellipse
+  coreNodes.forEach((node, i) => {
+    const angle = (i / Math.max(1, coreCount)) * 2 * Math.PI - Math.PI / 2;
+    positions[node.id] = {
+      x: centerX + rx * Math.cos(angle),
+      y: centerY + ry * Math.sin(angle),
+    };
+  });
+
+  // 2. Place gap nodes directly next to their connected core concept
+  gapNodes.forEach((gap, i) => {
+    const neighbors = Array.from(adjacency[gap.id] || []).filter((id) => positions[id]);
+    if (neighbors.length > 0) {
+      const primaryCorePos = positions[neighbors[0]];
+      const dirX = primaryCorePos.x - centerX;
+      const dirY = primaryCorePos.y - centerY;
+      const len = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
+      const offsetDist = 175 + (i % 3) * 28;
+      positions[gap.id] = {
+        x: primaryCorePos.x + (dirX / len) * offsetDist + (i % 2 === 0 ? 25 : -25),
+        y: primaryCorePos.y + (dirY / len) * offsetDist + (i % 2 === 0 ? 15 : -15),
+      };
+    } else {
+      const angle = (i / Math.max(1, gapNodes.length)) * 2 * Math.PI;
+      positions[gap.id] = {
+        x: centerX + (rx + 190) * Math.cos(angle),
+        y: centerY + (ry + 130) * Math.sin(angle),
+      };
+    }
+  });
+
+  // 3. Fast iterative repulsion relaxation to eliminate card collisions
+  const nodeIds = nodes.map((n) => n.id);
+  const minSepX = CARD_WIDTH + 32; // 242px
+  const minSepY = CARD_HEIGHT + 26; // 84px
+
+  for (let iter = 0; iter < 45; iter++) {
+    for (let i = 0; i < nodeIds.length; i++) {
+      const idA = nodeIds[i];
+      const posA = positions[idA];
+      for (let j = i + 1; j < nodeIds.length; j++) {
+        const idB = nodeIds[j];
+        const posB = positions[idB];
+
+        const dx = posB.x - posA.x;
+        const dy = posB.y - posA.y;
+
+        const normDx = dx / minSepX;
+        const normDy = dy / minSepY;
+        const distSq = normDx * normDx + normDy * normDy;
+
+        if (distSq < 1.35 && distSq > 0.0001) {
+          const force = (1.35 - distSq) * 12;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+
+          posA.x -= fx;
+          posA.y -= fy;
+          posB.x += fx;
+          posB.y += fy;
+        }
+      }
+    }
+  }
+
+  return positions;
+}
+
 export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
   lectureId,
   onJumpToTimestamp,
@@ -82,16 +186,77 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Custom node positions: nodeId -> { x, y }
   const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
 
   // Active dragged node tracking
-  const draggingNodeRef = useRef<{ id: string; startX: number; startY: number; mouseStartX: number; mouseStartY: number } | null>(null);
+  const draggingNodeRef = useRef<{
+    id: string;
+    startX: number;
+    startY: number;
+    mouseStartX: number;
+    mouseStartY: number;
+  } | null>(null);
 
   // Center coordinate space
   const CENTER_X = 1000;
   const CENTER_Y = 800;
+
+  // Auto-fit helper: scales and centers the graph so all active concepts fit in the viewport
+  const fitGraphToView = useCallback(
+    (customPositions?: Record<string, { x: number; y: number }>, targetNodeList?: GraphNode[]) => {
+      const posMap = customPositions || nodePositions;
+      const targetNodes =
+        targetNodeList || (filterMode === "gaps" ? nodes.filter((n) => n.is_gap) : nodes);
+
+      if (!containerRef.current || targetNodes.length === 0) return;
+
+      const container = containerRef.current;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      if (width <= 0 || height <= 0) return;
+
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+
+      targetNodes.forEach((node) => {
+        const pos = posMap[node.id];
+        if (!pos) return;
+        if (pos.x < minX) minX = pos.x;
+        if (pos.x > maxX) maxX = pos.x;
+        if (pos.y < minY) minY = pos.y;
+        if (pos.y > maxY) maxY = pos.y;
+      });
+
+      if (minX === Infinity) return;
+
+      // Add generous margin around cards (card width = 210, height = 58)
+      const padX = CARD_WIDTH / 2 + 55;
+      const padY = CARD_HEIGHT / 2 + 55;
+
+      const bboxW = maxX - minX + padX * 2;
+      const bboxH = maxY - minY + padY * 2;
+
+      const scaleX = width / bboxW;
+      const scaleY = height / bboxH;
+      const targetScale = Math.min(1.05, Math.max(0.42, Math.min(scaleX, scaleY)));
+
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      // Center around content bounding box
+      const panX = (CENTER_X - centerX) * targetScale;
+      const panY = (CENTER_Y - centerY) * targetScale;
+
+      setZoomLevel(Number(targetScale.toFixed(3)));
+      setPanOffset({ x: Math.round(panX), y: Math.round(panY) });
+    },
+    [nodePositions, nodes, filterMode]
+  );
 
   // Fetch live knowledge graph from GET /api/lectures/{id}/graph
   useEffect(() => {
@@ -112,46 +277,15 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
         if (loadedNodes.length > 0) {
           setSelectedNodeId(loadedNodes[0].id);
 
-          // Compute generous, de-congested multi-tier orbital positions
-          const coreNodes = loadedNodes.filter((n) => !n.is_gap);
-          const gapNodes = loadedNodes.filter((n) => n.is_gap);
-
-          const tier1Core = coreNodes.slice(0, Math.ceil(coreNodes.length / 2));
-          const tier2Core = coreNodes.slice(Math.ceil(coreNodes.length / 2));
-
-          const initialMap: Record<string, { x: number; y: number }> = {};
-
-          // Tier 1: Inner Core ring (~280px radius)
-          tier1Core.forEach((node, i) => {
-            const radius = 280 + (i % 2 === 0 ? 0 : 35);
-            const angle = (i / Math.max(1, tier1Core.length)) * 2 * Math.PI - Math.PI / 2;
-            initialMap[node.id] = {
-              x: CENTER_X + radius * Math.cos(angle),
-              y: CENTER_Y + radius * Math.sin(angle),
-            };
-          });
-
-          // Tier 2: Intermediate ring (~500px radius)
-          tier2Core.forEach((node, i) => {
-            const radius = 500 + (i % 2 === 0 ? 0 : 45);
-            const angle = (i / Math.max(1, tier2Core.length)) * 2 * Math.PI - Math.PI / 3 + 0.3;
-            initialMap[node.id] = {
-              x: CENTER_X + radius * Math.cos(angle),
-              y: CENTER_Y + radius * Math.sin(angle),
-            };
-          });
-
-          // Tier 3: Blindspot Gaps outer ring (~740px radius with generous spacing)
-          gapNodes.forEach((node, i) => {
-            const radius = 740 + (i % 2 === 0 ? 0 : 55);
-            const angle = (i / Math.max(1, gapNodes.length)) * 2 * Math.PI - Math.PI / 4;
-            initialMap[node.id] = {
-              x: CENTER_X + radius * Math.cos(angle),
-              y: CENTER_Y + radius * Math.sin(angle),
-            };
-          });
-
+          const initialMap = computeSmartLayout(loadedNodes, loadedEdges, CENTER_X, CENTER_Y);
           setNodePositions(initialMap);
+
+          // Auto-fit once container is painted
+          setTimeout(() => {
+            if (isMounted) {
+              fitGraphToView(initialMap, loadedNodes);
+            }
+          }, 80);
         }
       })
       .catch((err) => {
@@ -166,15 +300,24 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
     };
   }, [lectureId]);
 
-  // Filtered nodes
-  const filteredNodes = useMemo(() => {
-    return nodes.filter((node) => {
-      const matchesSearch =
-        !searchQuery || node.label.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesMode = filterMode === "all" || (filterMode === "gaps" && node.is_gap);
-      return matchesSearch && matchesMode;
-    });
-  }, [nodes, searchQuery, filterMode]);
+  // Handle filter mode toggle ("all" vs "gaps")
+  const handleFilterToggle = (mode: "all" | "gaps") => {
+    setFilterMode(mode);
+    if (mode === "gaps") {
+      const firstGap = nodes.find((n) => n.is_gap);
+      if (firstGap) {
+        setSelectedNodeId(firstGap.id);
+      }
+    } else {
+      if (nodes.length > 0) {
+        setSelectedNodeId(nodes[0].id);
+      }
+    }
+
+    setTimeout(() => {
+      fitGraphToView(undefined, mode === "gaps" ? nodes.filter((n) => n.is_gap) : nodes);
+    }, 60);
+  };
 
   // Selected node object
   const selectedNode = useMemo(() => {
@@ -183,6 +326,17 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
 
   // Active focus ID (hovered or selected)
   const activeFocusId = hoveredNodeId || selectedNodeId;
+
+  // Set of core nodes connected directly to gaps (for contextual spotlight in "gaps" mode)
+  const gapConnectedNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    const gapIds = new Set(nodes.filter((n) => n.is_gap).map((n) => n.id));
+    edges.forEach((e) => {
+      if (gapIds.has(e.source)) ids.add(e.target);
+      if (gapIds.has(e.target)) ids.add(e.source);
+    });
+    return ids;
+  }, [nodes, edges]);
 
   // Active edges and neighbors set for focus highlighting
   const activeEdgeMap = useMemo(() => {
@@ -270,6 +424,44 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
     setIsPanning(false);
   };
 
+  // Trackpad / Mousepad scroll to zoom (anchored to cursor position)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      // Differentiate between trackpad pinch/scroll and mouse wheel ticks smoothly
+      const zoomIntensity = 0.0018;
+      const zoomFactor = Math.exp(-e.deltaY * zoomIntensity);
+
+      setZoomLevel((prevZoom) => {
+        const nextZoom = Math.min(2.0, Math.max(0.35, prevZoom * zoomFactor));
+        if (Math.abs(nextZoom - prevZoom) < 0.0001) return prevZoom;
+
+        // Anchor zooming directly towards cursor position in container
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left - rect.width / 2;
+        const mouseY = e.clientY - rect.top - rect.height / 2;
+
+        setPanOffset((prevPan) => {
+          const scaleChange = nextZoom / prevZoom;
+          const newPanX = mouseX - (mouseX - prevPan.x) * scaleChange;
+          const newPanY = mouseY - (mouseY - prevPan.y) * scaleChange;
+          return { x: Math.round(newPanX), y: Math.round(newPanY) };
+        });
+
+        return Number(nextZoom.toFixed(3));
+      });
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
   const formatTimestamp = (sec?: number | null) => {
     if (typeof sec !== "number") return "00:00";
     const m = Math.floor(sec / 60);
@@ -301,15 +493,15 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
               />
             </div>
 
-            {/* Filter Toggle */}
+            {/* Filter Toggle: All vs Spotlight Gaps */}
             <div className="flex items-center gap-1 bg-black/30 p-0.5 rounded-lg text-[11px] font-medium">
               <button
                 type="button"
-                onClick={() => setFilterMode("all")}
+                onClick={() => handleFilterToggle("all")}
                 className={cn(
                   "px-2.5 py-1 rounded-md transition-colors cursor-pointer",
                   filterMode === "all"
-                    ? "bg-zinc-800 text-white shadow-sm"
+                    ? "bg-zinc-800 text-white shadow-sm font-semibold"
                     : "text-neutral-400 hover:text-white"
                 )}
               >
@@ -317,11 +509,11 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setFilterMode("gaps")}
+                onClick={() => handleFilterToggle("gaps")}
                 className={cn(
-                  "px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors cursor-pointer",
+                  "px-2.5 py-1 rounded-md flex items-center gap-1 transition-all cursor-pointer",
                   filterMode === "gaps"
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    ? "bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)] font-semibold"
                     : "text-neutral-400 hover:text-amber-300"
                 )}
               >
@@ -331,26 +523,36 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
             </div>
           </div>
 
-          {/* Zoom, Drag Helper & Reset View */}
+          {/* Zoom, Auto-Fit & Reset View */}
           <div className="flex items-center gap-1.5 pointer-events-auto bg-zinc-900/90 backdrop-blur-md p-1.5 rounded-xl border border-white/[0.08] shadow-2xl">
-            <div className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-neutral-400 px-2 py-1 bg-black/30 rounded-lg">
-              <Move className="w-3 h-3 text-neutral-500" />
-              <span>Drag cards to position</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => fitGraphToView()}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs"
+              title="Fit all concepts to screen"
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden sm:inline text-[11px]">Fit View</span>
+            </button>
 
-            <div className="h-4 w-[1px] bg-white/[0.08] hidden sm:block" />
+            <div className="h-4 w-[1px] bg-white/[0.08]" />
 
             <button
               type="button"
-              onClick={() => setZoomLevel((z) => Math.min(1.8, z + 0.15))}
+              onClick={() => setZoomLevel((z) => Math.min(2.0, Number((z + 0.15).toFixed(2))))}
               className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
               title="Zoom In"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
+
+            <span className="text-[10px] font-mono text-neutral-400 w-9 text-center select-none">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+
             <button
               type="button"
-              onClick={() => setZoomLevel((z) => Math.max(0.35, z - 0.15))}
+              onClick={() => setZoomLevel((z) => Math.max(0.35, Number((z - 0.15).toFixed(2))))}
               className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
               title="Zoom Out"
             >
@@ -359,8 +561,7 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
             <button
               type="button"
               onClick={() => {
-                setZoomLevel(0.85);
-                setPanOffset({ x: 0, y: 0 });
+                fitGraphToView();
               }}
               className="p-1.5 rounded-lg hover:bg-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
               title="Reset View"
@@ -372,6 +573,7 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
 
         {/* Interactive Full-Bleed Viewport */}
         <div
+          ref={containerRef}
           onMouseDown={handleContainerMouseDown}
           onMouseMove={handleContainerMouseMove}
           onMouseUp={handleContainerMouseUp}
@@ -404,13 +606,13 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
                 style={{ overflow: "visible" }}
               >
                 <defs>
-                  {/* Subtle Gradient for Active Connections */}
+                  {/* Active Blue Connection Gradient */}
                   <linearGradient id="active-curve-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.95" />
                     <stop offset="100%" stopColor="#818cf8" stopOpacity="0.95" />
                   </linearGradient>
 
-                  {/* Clean Arrow Marker */}
+                  {/* Clean Blue Arrow Marker */}
                   <marker
                     id="arrowhead-active"
                     markerWidth="9"
@@ -422,19 +624,35 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
                     <polygon points="0 0, 9 3.5, 0 7" fill="#38bdf8" />
                   </marker>
 
+                  {/* Warm Amber Arrow Marker for Gaps */}
+                  <marker
+                    id="arrowhead-gap"
+                    markerWidth="9"
+                    markerHeight="7"
+                    refX="8"
+                    refY="3.5"
+                    orient="auto"
+                  >
+                    <polygon points="0 0, 9 3.5, 0 7" fill="#f59e0b" />
+                  </marker>
+
                   <marker
                     id="arrowhead-dim"
                     markerWidth="8"
                     markerHeight="6"
                     refX="7"
-                    refY="3"
+                    refY="3.5"
                     orient="auto"
                   >
-                    <polygon points="0 0, 8 3, 0 6" fill="rgba(255, 255, 255, 0.25)" />
+                    <polygon points="0 0, 8 3.5, 0 7" fill="rgba(255, 255, 255, 0.2)" />
                   </marker>
                 </defs>
 
                 {edges.map((edge, idx) => {
+                  const sourceNode = nodes.find((n) => n.id === edge.source);
+                  const targetNode = nodes.find((n) => n.id === edge.target);
+                  if (!sourceNode || !targetNode) return null;
+
                   const sourceCenter = nodePositions[edge.source];
                   const targetCenter = nodePositions[edge.target];
                   if (!sourceCenter || !targetCenter) return null;
@@ -442,18 +660,33 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
                   const edgeKey = `${edge.source}->${edge.target}-${idx}`;
                   const activeInfo = activeEdgeMap.get(edgeKey);
                   const isEdgeActive = !!activeInfo;
+                  const isGapEdge = sourceNode.is_gap || targetNode.is_gap;
+
+                  // In "Gaps" spotlight mode, completely hide edges that don't relate to gaps
+                  if (filterMode === "gaps" && !isGapEdge) {
+                    return null;
+                  }
+
+                  // If searching and neither endpoint matches, skip edge
+                  if (
+                    searchQuery &&
+                    !sourceNode.label.toLowerCase().includes(searchQuery.toLowerCase()) &&
+                    !targetNode.label.toLowerCase().includes(searchQuery.toLowerCase())
+                  ) {
+                    return null;
+                  }
 
                   // 1. Calculate Exact Card Border Intersections (Source Exit & Target Entry)
                   const startBorder = getBorderIntersection(targetCenter, sourceCenter, CARD_WIDTH, CARD_HEIGHT, 4);
                   const endBorder = getBorderIntersection(sourceCenter, targetCenter, CARD_WIDTH, CARD_HEIGHT, 6);
 
-                  // 2. Calculate Smooth Elastic Quadratic Bezier Curve
+                  // 2. Smooth subtle quadratic bezier curve (avoids wild looping)
                   const dx = endBorder.x - startBorder.x;
                   const dy = endBorder.y - startBorder.y;
                   const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
 
-                  // Gentle curvature offset perpendicular to connection ray
-                  const curvature = Math.min(48, Math.max(16, dist * 0.12));
+                  // Clean, subtle curve (max 18px offset) to prevent criss-crossing
+                  const curvature = Math.min(18, Math.max(6, dist * 0.04));
                   const nx = -dy / dist;
                   const ny = dx / dist;
 
@@ -461,32 +694,45 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
                   const controlY = (startBorder.y + endBorder.y) / 2 + ny * curvature;
 
                   const pathD = `M ${startBorder.x} ${startBorder.y} Q ${controlX} ${controlY} ${endBorder.x} ${endBorder.y}`;
+                  const isHighlighted = isEdgeActive || (filterMode === "gaps" && isGapEdge);
 
                   return (
                     <g key={`edge-${idx}`}>
-                      {/* Active Glowing Backing Beam */}
-                      {isEdgeActive && (
+                      {/* Active / Gap Glowing Backing Beam */}
+                      {isHighlighted && (
                         <path
                           d={pathD}
                           fill="none"
-                          stroke="rgba(56, 189, 248, 0.3)"
-                          strokeWidth={8}
+                          stroke={
+                            filterMode === "gaps" && isGapEdge
+                              ? "rgba(245, 158, 11, 0.3)"
+                              : "rgba(56, 189, 248, 0.3)"
+                          }
+                          strokeWidth={7}
                           strokeLinecap="round"
                         />
                       )}
 
-                      {/* Main Smooth Connection Curve */}
+                      {/* Main Connection Curve */}
                       <path
                         d={pathD}
                         fill="none"
                         stroke={
-                          isEdgeActive
+                          filterMode === "gaps" && isGapEdge
+                            ? "#f59e0b"
+                            : isEdgeActive
                             ? "url(#active-curve-gradient)"
-                            : "rgba(255, 255, 255, 0.12)"
+                            : "rgba(255, 255, 255, 0.16)"
                         }
-                        strokeWidth={isEdgeActive ? 2.6 : 1.2}
-                        strokeDasharray={isEdgeActive ? "none" : "5 5"}
-                        markerEnd={isEdgeActive ? "url(#arrowhead-active)" : "url(#arrowhead-dim)"}
+                        strokeWidth={isHighlighted ? 2.4 : 1.2}
+                        strokeDasharray={isHighlighted ? "none" : "5 5"}
+                        markerEnd={
+                          filterMode === "gaps" && isGapEdge
+                            ? "url(#arrowhead-gap)"
+                            : isEdgeActive
+                            ? "url(#arrowhead-active)"
+                            : "url(#arrowhead-dim)"
+                        }
                         className="transition-colors duration-200"
                       />
                     </g>
@@ -495,12 +741,34 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
               </svg>
 
               {/* Concept Nodes (Smooth Physics & High-Speed Drag) */}
-              {filteredNodes.map((node) => {
+              {nodes.map((node) => {
+                // Filter by search query if present
+                if (searchQuery && !node.label.toLowerCase().includes(searchQuery.toLowerCase())) {
+                  return null;
+                }
+
                 const pos = nodePositions[node.id] || { x: CENTER_X, y: CENTER_Y };
                 const isSelected = node.id === selectedNodeId;
                 const isHovered = node.id === hoveredNodeId;
-                const isNeighbor = neighborNodeIds.has(node.id);
-                const isDimmed = activeFocusId && node.id !== activeFocusId && !isNeighbor;
+
+                // Dimming & Spotlight logic:
+                let isDimmed = false;
+                if (filterMode === "gaps") {
+                  // In "Gaps" mode: ONLY gap nodes are highlighted! All other nodes are dimmed.
+                  isDimmed = !node.is_gap;
+                } else {
+                  // In "All" mode:
+                  // High visibility for ALL concepts by default.
+                  // Only dim when actively hovering a node to isolate its immediate web.
+                  if (hoveredNodeId) {
+                    const isNeighborOfHover = neighborNodeIds.has(node.id);
+                    isDimmed = node.id !== hoveredNodeId && !isNeighborOfHover;
+                  } else {
+                    isDimmed = false;
+                  }
+                }
+
+                const isGapSpotlight = filterMode === "gaps" && node.is_gap;
 
                 return (
                   <div
@@ -521,17 +789,17 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
                       height: `${CARD_HEIGHT}px`,
                     }}
                     className={cn(
-                      "graph-node-card cursor-grab active:cursor-grabbing px-3.5 py-2.5 rounded-2xl border backdrop-blur-xl transition-shadow transition-colors duration-150 flex items-center gap-2.5 select-none",
+                      "graph-node-card cursor-grab active:cursor-grabbing px-3.5 py-2.5 rounded-2xl border backdrop-blur-xl transition-all duration-200 flex items-center gap-2.5 select-none",
                       isSelected
                         ? "bg-zinc-800/95 border-sky-400 ring-4 ring-sky-400/25 z-40 shadow-2xl shadow-sky-500/30 scale-105"
                         : isHovered
                         ? "bg-zinc-800/95 border-sky-400/80 ring-2 ring-sky-400/20 z-30 shadow-xl shadow-sky-500/20 scale-105"
+                        : isGapSpotlight
+                        ? "bg-[#22160a]/95 border-amber-400 ring-4 ring-amber-400/35 z-30 shadow-[0_0_28px_rgba(245,158,11,0.35)] scale-[1.04]"
                         : node.is_gap
-                        ? "bg-[#16100a]/90 border-amber-500/60 hover:border-amber-400 z-20 shadow-lg shadow-amber-500/10"
-                        : isNeighbor
-                        ? "bg-zinc-900/90 border-sky-500/50 hover:border-sky-400 z-20 shadow-md shadow-sky-500/10"
-                        : "bg-[#101014]/90 border-white/[0.08] hover:border-white/[0.22] z-10",
-                      isDimmed ? "opacity-35 hover:opacity-100" : "opacity-100"
+                        ? "bg-[#18110a]/90 border-amber-500/60 hover:border-amber-400 z-20 shadow-md shadow-amber-500/10"
+                        : "bg-[#131318]/95 border-white/[0.14] hover:border-white/[0.3] z-10 shadow-sm",
+                      isDimmed ? "opacity-15 hover:opacity-75 scale-95" : "opacity-100"
                     )}
                   >
                     {node.is_gap ? (
@@ -711,3 +979,4 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
 };
 
 export default KnowledgeGraphView;
+
