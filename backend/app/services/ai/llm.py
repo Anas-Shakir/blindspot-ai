@@ -39,7 +39,7 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 
 _DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
-_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+_DEFAULT_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 
 # Loaded once per process, not per call — connection setup is the expensive part.
 _client: Optional[OpenAI] = None
@@ -55,9 +55,26 @@ def _get_client() -> OpenAI:
     return _client
 
 
+_active_model: Optional[str] = None
+
+
+def set_active_model(model_name: str) -> None:
+    """Sets the active LLM model identifier at runtime."""
+    global _active_model
+    _active_model = model_name
+
+
+def get_active_model() -> str:
+    """Returns the currently active model identifier (or env/default fallback)."""
+    global _active_model
+    if _active_model:
+        return _active_model
+    return os.getenv("LLM_MODEL", _DEFAULT_MODEL)
+
+
 def _get_model() -> str:
     """Returns the configured model identifier."""
-    return os.getenv("LLM_MODEL", _DEFAULT_MODEL)
+    return get_active_model()
 
 
 # ---------------------------------------------------------------------------
@@ -74,6 +91,7 @@ def chat_completion(
     temperature: float = 0.3,
     max_tokens: int = 4096,
     response_model: Optional[Type[T]] = None,
+    model: Optional[str] = None,
 ) -> str | T:
     """Sends a chat completion request and returns the response.
 
@@ -88,6 +106,7 @@ def chat_completion(
         response_model: If provided, the response text is parsed as JSON
             and validated against this Pydantic model. If None, returns
             the raw response text.
+        model: Optional model override. If None, uses get_active_model().
 
     Returns:
         The raw response string if response_model is None, or a validated
@@ -98,7 +117,7 @@ def chat_completion(
             cannot be parsed as valid JSON matching that model.
     """
     client = _get_client()
-    model = _get_model()
+    target_model = model or get_active_model()
 
     # When we need structured output, instruct the LLM in the system prompt
     extra_kwargs = {}
@@ -110,7 +129,7 @@ def chat_completion(
         extra_kwargs["response_format"] = {"type": "json_object"}
 
     response = client.chat.completions.create(
-        model=model,
+        model=target_model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

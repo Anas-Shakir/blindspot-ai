@@ -373,6 +373,7 @@ export interface VoiceOption {
 export interface UserPreferences {
   voice: string;
   text_language: string;
+  model: string;
 }
 
 /**
@@ -393,7 +394,7 @@ export async function getVoices(): Promise<VoiceOption[]> {
 }
 
 /**
- * Get the active session preferences (voice and text reading language).
+ * Get the active session preferences (voice, text reading language, and AI model).
  */
 export async function getPreferences(): Promise<UserPreferences> {
   return fetchJson<UserPreferences>("/api/session/preferences", {
@@ -409,12 +410,16 @@ export async function getPreferences(): Promise<UserPreferences> {
         typeof window !== "undefined"
           ? localStorage.getItem("blindspot_selected_text_language") || "English"
           : "English",
+      model:
+        typeof window !== "undefined"
+          ? localStorage.getItem("blindspot_selected_model") || "openai/gpt-oss-120b"
+          : "openai/gpt-oss-120b",
     };
   });
 }
 
 /**
- * Update the active session preferences (voice and text reading language).
+ * Update the active session preferences (voice, text reading language, and AI model).
  */
 export async function setPreferences(
   prefs: Partial<UserPreferences>
@@ -422,6 +427,7 @@ export async function setPreferences(
   if (typeof window !== "undefined") {
     if (prefs.voice) localStorage.setItem("blindspot_selected_voice", prefs.voice);
     if (prefs.text_language) localStorage.setItem("blindspot_selected_text_language", prefs.text_language);
+    if (prefs.model) localStorage.setItem("blindspot_selected_model", prefs.model);
     window.dispatchEvent(new CustomEvent("blindspot_preferences_changed", { detail: prefs }));
   }
 
@@ -432,6 +438,7 @@ export async function setPreferences(
     return {
       voice: prefs.voice || "en-US-ChristopherNeural",
       text_language: prefs.text_language || "English",
+      model: prefs.model || "openai/gpt-oss-120b",
     };
   });
 }

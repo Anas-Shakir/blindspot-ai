@@ -23,6 +23,8 @@ from backend.app.schemas.schemas import SessionCommand, SessionEvent
 from backend.app.services.ai.orchestrator import load_session_from_db, session_store
 from pydantic import BaseModel
 
+from backend.app.services.ai.llm import get_active_model, set_active_model
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -30,29 +32,35 @@ router = APIRouter()
 class PreferencesSchema(BaseModel):
     voice: Optional[str] = None
     text_language: Optional[str] = None
+    model: Optional[str] = None
 
 
 DEFAULT_PREFERENCES = {
     "voice": "en-US-ChristopherNeural",
     "text_language": "English",
+    "model": get_active_model(),
 }
 
 
 @router.get("/session/preferences")
 def get_session_preferences():
-    """Returns the user's active session voice and text language preferences."""
+    """Returns the user's active session voice, text language, and AI model preferences."""
+    DEFAULT_PREFERENCES["model"] = get_active_model()
     return DEFAULT_PREFERENCES
 
 
 @router.post("/session/preferences")
 def set_session_preferences(prefs: PreferencesSchema):
-    """Updates user session preferences and propagates them to active sessions."""
+    """Updates user session preferences and propagates them to active sessions and LLM runtime."""
     if prefs.voice:
         DEFAULT_PREFERENCES["voice"] = prefs.voice
     if prefs.text_language:
         DEFAULT_PREFERENCES["text_language"] = prefs.text_language
+    if prefs.model:
+        DEFAULT_PREFERENCES["model"] = prefs.model
+        set_active_model(prefs.model)
 
-    # Propagate to all active sessions in memory
+    # Propagate voice and language to all active sessions in memory
     for sess_id in session_store.list_sessions():
         sess = session_store.get_session(sess_id)
         if sess:

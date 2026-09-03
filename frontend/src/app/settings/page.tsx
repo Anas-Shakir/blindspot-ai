@@ -7,11 +7,11 @@ import {
   Sliders,
   Volume2,
   Sparkles,
-  Database,
   Moon,
   Check,
   Globe,
   HelpCircle,
+  Cpu,
 } from "lucide-react";
 import Sidebar from "@/components/common/Sidebar";
 import CustomSelect, { SelectOption } from "@/components/common/CustomSelect";
@@ -30,11 +30,17 @@ const TEXT_LANGUAGES = [
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"general" | "ai" | "storage">("ai");
+  const [activeTab, setActiveTab] = useState<"general" | "ai">("general");
   const [autoplayAudio, setAutoplayAudio] = useState(true);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState("1.0x");
   const [tutorVerbosity, setTutorVerbosity] = useState("balanced");
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("blindspot_selected_model") || "openai/gpt-oss-120b";
+    }
+    return "openai/gpt-oss-120b";
+  });
   const [savedToast, setSavedToast] = useState(false);
 
   // Live Neural Voices from Backend
@@ -61,6 +67,7 @@ export default function SettingsPage() {
       .then((prefs) => {
         if (prefs.voice) setSelectedVoice(prefs.voice);
         if (prefs.text_language) setSelectedTextLanguage(prefs.text_language);
+        if (prefs.model) setSelectedModel(prefs.model);
       })
       .catch((err) => {
         console.warn("Failed to load preferences:", err);
@@ -98,6 +105,45 @@ export default function SettingsPage() {
     }));
   }, []);
 
+  const modelOptions: SelectOption[] = [
+    {
+      value: "openai/gpt-oss-120b",
+      label: "GPT-OSS 120B",
+      sublabel: "Groq LPU · 120B flagship reasoning",
+      badge: "Recommended",
+    },
+    {
+      value: "openai/gpt-oss-20b",
+      label: "GPT-OSS 20B",
+      sublabel: "Groq LPU · Low-latency dialogue & fast response",
+      badge: "Ultra Fast",
+    },
+    {
+      value: "qwen/qwen3.8-27b",
+      label: "Qwen 3.8 27B",
+      sublabel: "Alibaba Qwen · High STEM reasoning & clarity",
+      badge: "Deep Reasoning",
+    },
+    {
+      value: "qwen/qwen3.6-27b",
+      label: "Qwen 3.6 27B",
+      sublabel: "Alibaba Qwen · Balanced academic pedagogy",
+      badge: "Balanced",
+    },
+    {
+      value: "groq/compound",
+      label: "Groq Compound",
+      sublabel: "Groq · Multi-step agentic reasoning engine",
+      badge: "Compound",
+    },
+    {
+      value: "groq/compound-mini",
+      label: "Groq Compound Mini",
+      sublabel: "Groq · Lightweight agentic inference",
+      badge: "Fast Engine",
+    },
+  ];
+
   const verbosityOptions: SelectOption[] = [
     { value: "concise", label: "Concise", sublabel: "Quick & direct takeaways" },
     { value: "balanced", label: "Balanced", sublabel: "Standard academic depth" },
@@ -112,11 +158,30 @@ export default function SettingsPage() {
     { value: "2.0x", label: "2.0x", sublabel: "Double speed" },
   ];
 
+  // Update AI model setting and sync with backend
+  const handleModelChange = async (modelId: string) => {
+    setSelectedModel(modelId);
+    try {
+      await api.setPreferences({
+        voice: selectedVoice,
+        text_language: selectedTextLanguage,
+        model: modelId,
+      });
+      showSavedToast();
+    } catch (err) {
+      console.warn("Failed to persist model preference:", err);
+    }
+  };
+
   // Update voice setting and sync with backend
   const handleVoiceChange = async (voiceId: string) => {
     setSelectedVoice(voiceId);
     try {
-      await api.setPreferences({ voice: voiceId, text_language: selectedTextLanguage });
+      await api.setPreferences({
+        voice: voiceId,
+        text_language: selectedTextLanguage,
+        model: selectedModel,
+      });
       showSavedToast();
     } catch (err) {
       console.warn("Failed to persist voice preference:", err);
@@ -127,7 +192,11 @@ export default function SettingsPage() {
   const handleTextLanguageChange = async (langId: string) => {
     setSelectedTextLanguage(langId);
     try {
-      await api.setPreferences({ voice: selectedVoice, text_language: langId });
+      await api.setPreferences({
+        voice: selectedVoice,
+        text_language: langId,
+        model: selectedModel,
+      });
       showSavedToast();
     } catch (err) {
       console.warn("Failed to persist text language preference:", err);
@@ -144,6 +213,7 @@ export default function SettingsPage() {
       await api.setPreferences({
         voice: selectedVoice,
         text_language: selectedTextLanguage,
+        model: selectedModel,
       });
       showSavedToast();
     } catch (err) {
@@ -201,25 +271,12 @@ export default function SettingsPage() {
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-white tracking-tight">System Settings</h2>
             <p className="text-xs text-neutral-400">
-              Configure your AI companion preferences, text languages, voice synthesis, and playback behavior.
+              Configure your general playback behavior, AI companion preferences, and language synthesis.
             </p>
           </div>
 
-          {/* Simple Tab Switcher */}
+          {/* Tab Switcher: General First, AI & Voice Second */}
           <div className="flex items-center gap-2 border-b border-white/[0.08] pb-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("ai")}
-              className={cn(
-                "px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5",
-                activeTab === "ai"
-                  ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08] font-semibold"
-                  : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
-              )}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#701a24]" />
-              <span>AI & Voice</span>
-            </button>
             <button
               type="button"
               onClick={() => setActiveTab("general")}
@@ -234,112 +291,20 @@ export default function SettingsPage() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("storage")}
+              onClick={() => setActiveTab("ai")}
               className={cn(
                 "px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5",
-                activeTab === "storage"
+                activeTab === "ai"
                   ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08] font-semibold"
                   : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
               )}
             >
-              <Database className="w-3.5 h-3.5 text-neutral-400" />
-              <span>Storage</span>
+              <Sparkles className="w-3.5 h-3.5 text-[#701a24]" />
+              <span>AI & Voice</span>
             </button>
           </div>
 
-          {/* Tab 1: AI & Voice */}
-          {activeTab === "ai" && (
-            <div className="space-y-4">
-              <div className="p-5 rounded-2xl bg-[#121216]/90 border border-white/[0.07] space-y-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>AI Tutor Voice & Language Settings</span>
-                  </h3>
-                  <span className="text-[10px] font-mono text-neutral-500">
-                    Synced with Workspace Top Bar & Backend
-                  </span>
-                </div>
-
-                {/* 1. Spoken Neural Voice Selection */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <Volume2 className="w-3.5 h-3.5 text-sky-400" />
-                      <span className="text-xs font-medium text-neutral-200">
-                        AI Spoken Voice & Accent
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-neutral-400 block mt-0.5">
-                      The neural voice and spoken accent used by the AI tutor when speaking and explaining concepts
-                    </span>
-                  </div>
-
-                  <CustomSelect
-                    value={selectedVoice}
-                    onChange={handleVoiceChange}
-                    options={voiceOptions}
-                    className="w-full sm:w-72 shrink-0"
-                  />
-                </div>
-
-                <div className="h-[1px] bg-white/[0.05]" />
-
-                {/* 2. Text Reading Language Selection */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-xs font-medium text-neutral-200">
-                        Reading Text Language
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-neutral-400 block mt-0.5">
-                      The language used for on-screen dialogue text, whiteboard notes, and subtitles
-                    </span>
-                  </div>
-
-                  <CustomSelect
-                    value={selectedTextLanguage}
-                    onChange={handleTextLanguageChange}
-                    options={textLanguageOptions}
-                    className="w-full sm:w-72 shrink-0"
-                  />
-                </div>
-
-                <div className="h-[1px] bg-white/[0.05]" />
-
-                {/* 3. Explanation Verbosity */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <span className="text-xs font-medium text-neutral-200 block">
-                      Explanation Verbosity
-                    </span>
-                    <span className="text-[11px] text-neutral-400">
-                      Depth of explanations when asking questions to the AI tutor
-                    </span>
-                  </div>
-
-                  <CustomSelect
-                    value={tutorVerbosity}
-                    onChange={setTutorVerbosity}
-                    options={verbosityOptions}
-                    className="w-full sm:w-72 shrink-0"
-                  />
-                </div>
-              </div>
-
-              {/* Sync Note Box */}
-              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.07] flex items-start gap-3 text-xs text-neutral-400">
-                <HelpCircle className="w-4 h-4 text-neutral-500 shrink-0 mt-0.5" />
-                <p className="leading-relaxed">
-                  Voice and text languages are independently configurable. Changes made here will immediately update the selectors on the <strong className="text-neutral-200">Workspace top bar</strong> and persist across all upcoming AI teaching steps.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: General Settings */}
+          {/* Tab 1: General Settings (First) */}
           {activeTab === "general" && (
             <div className="space-y-4">
               <div className="p-5 rounded-2xl bg-[#121216]/90 border border-white/[0.07] space-y-5">
@@ -445,45 +410,118 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* Tab 3: Storage & Data */}
-          {activeTab === "storage" && (
+          {/* Tab 2: AI & Voice (Second) */}
+          {activeTab === "ai" && (
             <div className="space-y-4">
               <div className="p-5 rounded-2xl bg-[#121216]/90 border border-white/[0.07] space-y-5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Data & Local Cache
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>AI Tutor Voice & Model Settings</span>
+                  </h3>
+                  <span className="text-[10px] font-mono text-neutral-500">
+                    Synced with Workspace Top Bar & Backend
+                  </span>
+                </div>
 
-                <div className="flex items-center justify-between py-1">
+                {/* 1. AI Reasoning Model Selection */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
                   <div>
-                    <span className="text-xs font-medium text-neutral-200 block">
-                      Local Session Cache
-                    </span>
-                    <span className="text-[11px] text-neutral-500">
-                      Cached audio snippets and whiteboard notes stored locally
+                    <div className="flex items-center gap-1.5">
+                      <Cpu className="w-3.5 h-3.5 text-purple-400" />
+                      <span className="text-xs font-medium text-neutral-200">
+                        AI Reasoning Model
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block mt-0.5">
+                      Select the primary foundation LLM engine for curriculum breakdown and tutoring
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => alert("Local cache cleared.")}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-neutral-300 transition-colors border border-white/[0.08] cursor-pointer"
-                  >
-                    Clear Cache
-                  </button>
+
+                  <CustomSelect
+                    value={selectedModel}
+                    onChange={handleModelChange}
+                    options={modelOptions}
+                    className="w-full sm:w-80 shrink-0"
+                  />
                 </div>
 
                 <div className="h-[1px] bg-white/[0.05]" />
 
-                <div className="flex items-center justify-between py-1">
+                {/* 2. Spoken Neural Voice Selection */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
                   <div>
-                    <span className="text-xs font-medium text-neutral-200 block">
-                      Backend Storage
-                    </span>
-                    <span className="text-[11px] text-neutral-500">
-                      Sessions and generated audio in backend/storage_data/
+                    <div className="flex items-center gap-1.5">
+                      <Volume2 className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="text-xs font-medium text-neutral-200">
+                        AI Spoken Voice & Accent
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block mt-0.5">
+                      The neural voice and spoken accent used by the AI tutor when speaking and explaining concepts
                     </span>
                   </div>
-                  <span className="text-xs font-mono text-neutral-400">Active</span>
+
+                  <CustomSelect
+                    value={selectedVoice}
+                    onChange={handleVoiceChange}
+                    options={voiceOptions}
+                    className="w-full sm:w-72 shrink-0"
+                  />
                 </div>
+
+                <div className="h-[1px] bg-white/[0.05]" />
+
+                {/* 3. Text Reading Language Selection */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-xs font-medium text-neutral-200">
+                        Reading Text Language
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block mt-0.5">
+                      The language used for on-screen dialogue text, whiteboard notes, and subtitles
+                    </span>
+                  </div>
+
+                  <CustomSelect
+                    value={selectedTextLanguage}
+                    onChange={handleTextLanguageChange}
+                    options={textLanguageOptions}
+                    className="w-full sm:w-72 shrink-0"
+                  />
+                </div>
+
+                <div className="h-[1px] bg-white/[0.05]" />
+
+                {/* 3. Explanation Verbosity */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                  <div>
+                    <span className="text-xs font-medium text-neutral-200 block">
+                      Explanation Verbosity
+                    </span>
+                    <span className="text-[11px] text-neutral-400">
+                      Depth of explanations when asking questions to the AI tutor
+                    </span>
+                  </div>
+
+                  <CustomSelect
+                    value={tutorVerbosity}
+                    onChange={setTutorVerbosity}
+                    options={verbosityOptions}
+                    className="w-full sm:w-72 shrink-0"
+                  />
+                </div>
+              </div>
+
+              {/* Sync Note Box */}
+              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.07] flex items-start gap-3 text-xs text-neutral-400">
+                <HelpCircle className="w-4 h-4 text-neutral-500 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  Voice and text languages are independently configurable. Changes made here will immediately update the selectors on the <strong className="text-neutral-200">Workspace top bar</strong> and persist across all upcoming AI teaching steps.
+                </p>
               </div>
             </div>
           )}
