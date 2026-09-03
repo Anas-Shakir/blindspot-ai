@@ -32,6 +32,8 @@ htmlcov/
 # =========================
 backend/uploads/
 backend/storage/
+backend/storage_data/
+storage_data/
 backend/data/
 *.db
 *.sqlite
