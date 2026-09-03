@@ -374,22 +374,30 @@ def get_lecture_audio_url(lecture_id: int, db: Session = Depends(get_db)):
     if not lecture or not lecture.audio_url:
         raise HTTPException(status_code=404, detail="Lecture audio recording not found")
 
-    from backend.app.storage.r2 import s3_client, BUCKET_NAME
+    if lecture.audio_url.startswith("http://") or lecture.audio_url.startswith("https://"):
+        return {"url": lecture.audio_url, "filename": lecture.filename}
 
     try:
-        presigned = s3_client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": BUCKET_NAME, "Key": lecture.audio_url},
-            ExpiresIn=3600 * 6,
-        )
-        return {"url": presigned, "filename": lecture.filename}
+        from backend.app.services.storage.r2 import s3_client, BUCKET_NAME
+        if s3_client:
+            presigned = s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": BUCKET_NAME, "Key": lecture.audio_url},
+                ExpiresIn=3600 * 6,
+            )
+            return {"url": presigned, "filename": lecture.filename}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate audio URL: {e}")
+        print(f"S3 presigned URL generation failed: {e}")
+
+    rel_path = lecture.audio_url.replace("\\", "/").lstrip("/")
+    if "storage_data/" in rel_path:
+        rel_path = rel_path.split("storage_data/", 1)[1]
+    return {"url": f"/storage/{rel_path}", "filename": lecture.filename}
 
 
 @router.get("/lectures/{lecture_id}/stream")
 def stream_lecture(lecture_id: int, db: Session = Depends(get_db)):
-    """Redirects directly to the presigned audio/video stream for HTML5 media players."""
+    """Redirects directly to the audio/video stream for HTML5 media players."""
     from fastapi.responses import RedirectResponse
     res = get_lecture_audio_url(lecture_id, db)
     return RedirectResponse(url=res["url"])

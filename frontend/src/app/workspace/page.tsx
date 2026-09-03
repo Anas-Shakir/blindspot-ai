@@ -609,7 +609,16 @@ export default function WorkspacePage() {
 
   // Play lecture recording audio from specific timestamp
   const handlePlayLectureAudio = useCallback((startSec?: number) => {
-    if (!lectureAudioRef.current || !lectureId) return;
+    const targetTime = typeof startSec === "number" ? startSec : (currentPhase.startSec ?? 0);
+    setPlaybackSeconds(Math.floor(targetTime));
+    setIsSourceDrawerOpen(true);
+
+    if (!lectureId) {
+      setIsPlayingLectureAudio(true);
+      return;
+    }
+
+    if (!lectureAudioRef.current) return;
 
     // Pause AI companion voice if speaking so they don't overlap
     if (audioPlayerRef.current) {
@@ -618,23 +627,40 @@ export default function WorkspacePage() {
       setIsSpeaking(false);
     }
 
+    const audio = lectureAudioRef.current;
     const streamUrl = api.getLectureStreamUrl(lectureId);
-    if (lectureAudioRef.current.src !== streamUrl) {
-      lectureAudioRef.current.src = streamUrl;
+    if (!audio.src || !audio.src.includes(`/api/lectures/${lectureId}/stream`)) {
+      audio.src = streamUrl;
     }
 
-    const targetTime = typeof startSec === "number" ? startSec : (currentPhase.startSec ?? 0);
-    lectureAudioRef.current.currentTime = targetTime;
-    setPlaybackSeconds(Math.floor(targetTime));
+    const applySeekAndPlay = () => {
+      try {
+        audio.currentTime = targetTime;
+      } catch (err) {
+        console.warn("Could not set currentTime on lecture audio:", err);
+      }
 
-    lectureAudioRef.current
-      .play()
-      .then(() => {
-        setIsPlayingLectureAudio(true);
-      })
-      .catch((err) => {
-        console.warn("Lecture audio playback blocked or failed:", err);
-      });
+      audio
+        .play()
+        .then(() => {
+          setIsPlayingLectureAudio(true);
+        })
+        .catch((err) => {
+          console.warn("Lecture audio playback blocked or failed:", err);
+          setIsPlayingLectureAudio(false);
+        });
+    };
+
+    if (audio.readyState >= 1) {
+      applySeekAndPlay();
+    } else {
+      const onMeta = () => {
+        applySeekAndPlay();
+        audio.removeEventListener("loadedmetadata", onMeta);
+      };
+      audio.addEventListener("loadedmetadata", onMeta);
+      audio.load();
+    }
   }, [lectureId, currentPhase]);
 
   const handleToggleLectureAudio = useCallback(() => {

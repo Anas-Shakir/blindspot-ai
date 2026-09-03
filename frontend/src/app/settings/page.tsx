@@ -233,18 +233,11 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/workspace"
-              className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors cursor-pointer group"
+              className="flex items-center gap-2 text-xs text-neutral-400 hover:text-white transition-colors cursor-pointer group px-2.5 py-1.5 rounded-lg hover:bg-white/[0.04]"
             >
               <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
               <span>Back to Workspace</span>
             </Link>
-
-            <div className="h-4 w-[1px] bg-white/[0.08]" />
-
-            <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-[#701a24]" />
-              <h1 className="text-sm font-semibold text-white tracking-tight">Settings</h1>
-            </div>
           </div>
 
           {/* Save Status Toast & Button */}
@@ -269,9 +262,14 @@ export default function SettingsPage() {
         <div className="flex-1 overflow-y-auto p-6 md:p-8 max-w-4xl w-full mx-auto space-y-6">
           {/* Header Title Section */}
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-white tracking-tight">System Settings</h2>
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-[#701a24]/20 border border-[#701a24]/40 text-[#e05364]">
+                <Sliders className="w-4 h-4" />
+              </div>
+              <h1 className="text-xl font-bold text-white tracking-tight">Preferences</h1>
+            </div>
             <p className="text-xs text-neutral-400">
-              Configure your general playback behavior, AI companion preferences, and language synthesis.
+              Customize your AI model engines, voice synthesis, dialogue languages, and playback options.
             </p>
           </div>
 
