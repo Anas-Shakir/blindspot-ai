@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Move,
   Maximize2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, GraphNode, GraphEdge } from "@/lib/api";
@@ -169,16 +170,97 @@ function computeSmartLayout(
   return positions;
 }
 
+// Center coordinate space
+const CENTER_X = 1000;
+const CENTER_Y = 800;
+
+export const DEFAULT_GRAPH_NODES: GraphNode[] = [
+  {
+    id: "concept-1",
+    lecture_id: 1,
+    label: "Supply & Demand",
+    is_gap: false,
+    source_timestamp: { start: 12, end: 45 },
+  },
+  {
+    id: "concept-2",
+    lecture_id: 1,
+    label: "Market Equilibrium",
+    is_gap: false,
+    source_timestamp: { start: 50, end: 95 },
+  },
+  {
+    id: "concept-3",
+    lecture_id: 1,
+    label: "Price Elasticity of Demand",
+    is_gap: false,
+    source_timestamp: { start: 102, end: 145 },
+  },
+  {
+    id: "concept-4",
+    lecture_id: 1,
+    label: "Price Signals & Allocation",
+    is_gap: false,
+    source_timestamp: { start: 155, end: 198 },
+  },
+  {
+    id: "concept-5",
+    lecture_id: 1,
+    label: "Consumer & Producer Surplus",
+    is_gap: false,
+    source_timestamp: { start: 210, end: 255 },
+  },
+  {
+    id: "concept-6",
+    lecture_id: 1,
+    label: "Deadweight Loss",
+    is_gap: false,
+    source_timestamp: { start: 270, end: 315 },
+  },
+  {
+    id: "gap-1",
+    lecture_id: 1,
+    label: "Cross-Price Elasticity",
+    is_gap: true,
+    source_timestamp: { start: 118, end: 135 },
+  },
+  {
+    id: "gap-2",
+    lecture_id: 1,
+    label: "Cobweb Theorem",
+    is_gap: true,
+    source_timestamp: { start: 65, end: 85 },
+  },
+  {
+    id: "gap-3",
+    lecture_id: 1,
+    label: "Giffen Good Paradox",
+    is_gap: true,
+    source_timestamp: { start: 130, end: 148 },
+  },
+];
+
+export const DEFAULT_GRAPH_EDGES: GraphEdge[] = [
+  { lecture_id: 1, source: "concept-1", target: "concept-2", relation: "determines" },
+  { lecture_id: 1, source: "concept-2", target: "concept-4", relation: "transmits" },
+  { lecture_id: 1, source: "concept-1", target: "concept-3", relation: "quantifies" },
+  { lecture_id: 1, source: "concept-2", target: "concept-5", relation: "maximizes" },
+  { lecture_id: 1, source: "concept-5", target: "concept-6", relation: "diminished by" },
+  { lecture_id: 1, source: "concept-3", target: "gap-1", relation: "unaddressed prerequisite" },
+  { lecture_id: 1, source: "concept-2", target: "gap-2", relation: "stability blindspot" },
+  { lecture_id: 1, source: "concept-3", target: "gap-3", relation: "violates law" },
+];
+
 export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
   lectureId,
   onJumpToTimestamp,
   onAskTutor,
   className,
 }) => {
-  const [nodes, setNodes] = useState<GraphNode[]>([]);
-  const [edges, setEdges] = useState<GraphEdge[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [nodes, setNodes] = useState<GraphNode[]>(DEFAULT_GRAPH_NODES);
+  const [edges, setEdges] = useState<GraphEdge[]>(DEFAULT_GRAPH_EDGES);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(DEFAULT_GRAPH_NODES[0].id);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterMode, setFilterMode] = useState<"all" | "gaps">("all");
@@ -189,7 +271,9 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Custom node positions: nodeId -> { x, y }
-  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>(() =>
+    computeSmartLayout(DEFAULT_GRAPH_NODES, DEFAULT_GRAPH_EDGES, CENTER_X, CENTER_Y)
+  );
 
   // Active dragged node tracking
   const draggingNodeRef = useRef<{
@@ -200,16 +284,22 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
     mouseStartY: number;
   } | null>(null);
 
-  // Center coordinate space
-  const CENTER_X = 1000;
-  const CENTER_Y = 800;
+  // Refs to avoid recreating callbacks or triggering infinite fetch loops
+  const nodePositionsRef = useRef(nodePositions);
+  nodePositionsRef.current = nodePositions;
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  const filterModeRef = useRef(filterMode);
+  filterModeRef.current = filterMode;
 
   // Auto-fit helper: scales and centers the graph so all active concepts fit in the viewport
   const fitGraphToView = useCallback(
     (customPositions?: Record<string, { x: number; y: number }>, targetNodeList?: GraphNode[]) => {
-      const posMap = customPositions || nodePositions;
+      const posMap = customPositions || nodePositionsRef.current;
+      const currentFilter = filterModeRef.current;
+      const currentNodes = nodesRef.current;
       const targetNodes =
-        targetNodeList || (filterMode === "gaps" ? nodes.filter((n) => n.is_gap) : nodes);
+        targetNodeList || (currentFilter === "gaps" ? currentNodes.filter((n) => n.is_gap) : currentNodes);
 
       if (!containerRef.current || targetNodes.length === 0) return;
 
@@ -255,27 +345,44 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
       setZoomLevel(Number(targetScale.toFixed(3)));
       setPanOffset({ x: Math.round(panX), y: Math.round(panY) });
     },
-    [nodePositions, nodes, filterMode]
+    []
   );
+
+  // Auto-fit once mounted
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fitGraphToView();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [fitGraphToView]);
 
   // Fetch live knowledge graph from GET /api/lectures/{id}/graph
   useEffect(() => {
     if (!lectureId) return;
 
     let isMounted = true;
-    setIsLoading(true);
+    if (nodesRef.current.length === 0) {
+      setIsLoading(true);
+    }
 
     api
       .getGraph(lectureId)
       .then((data) => {
         if (!isMounted) return;
-        const loadedNodes = data.nodes || [];
-        const loadedEdges = data.edges || [];
+        const hasLiveNodes = Array.isArray(data.nodes) && data.nodes.length > 0;
+        const loadedNodes = hasLiveNodes ? data.nodes : DEFAULT_GRAPH_NODES;
+        const loadedEdges =
+          hasLiveNodes && Array.isArray(data.edges) && data.edges.length > 0
+            ? data.edges
+            : DEFAULT_GRAPH_EDGES;
+
         setNodes(loadedNodes);
         setEdges(loadedEdges);
 
         if (loadedNodes.length > 0) {
-          setSelectedNodeId(loadedNodes[0].id);
+          setSelectedNodeId((prev) =>
+            prev && loadedNodes.some((n) => n.id === prev) ? prev : loadedNodes[0].id
+          );
 
           const initialMap = computeSmartLayout(loadedNodes, loadedEdges, CENTER_X, CENTER_Y);
           setNodePositions(initialMap);
@@ -289,7 +396,17 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
         }
       })
       .catch((err) => {
-        console.warn("Failed to load knowledge graph:", err);
+        console.warn("Failed to load knowledge graph from backend, using default fallback graph:", err);
+        if (!isMounted) return;
+        setNodes(DEFAULT_GRAPH_NODES);
+        setEdges(DEFAULT_GRAPH_EDGES);
+        const initialMap = computeSmartLayout(DEFAULT_GRAPH_NODES, DEFAULT_GRAPH_EDGES, CENTER_X, CENTER_Y);
+        setNodePositions(initialMap);
+        setTimeout(() => {
+          if (isMounted) {
+            fitGraphToView(initialMap, DEFAULT_GRAPH_NODES);
+          }
+        }, 80);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -846,134 +963,147 @@ export const KnowledgeGraphView: React.FC<KnowledgeGraphViewProps> = ({
         </div>
       </div>
 
-      {/* 2. Concept Detail Inspector Panel (30% Width) */}
-      <div className="w-full lg:w-96 flex flex-col h-full bg-[#0d0d10] p-6 overflow-y-auto border-t lg:border-t-0 border-white/[0.08]">
-        {selectedNode ? (
-          <div className="flex flex-col justify-between h-full space-y-6">
-            <div className="space-y-5">
-              {/* Badge & Type */}
-              <div className="flex items-center justify-between">
-                <span
-                  className={cn(
-                    "px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5",
-                    selectedNode.is_gap
-                      ? "bg-amber-950/60 text-amber-300 border border-amber-500/30 shadow-sm"
-                      : "bg-sky-950/60 text-sky-300 border border-sky-500/30 shadow-sm"
-                  )}
-                >
-                  {selectedNode.is_gap ? (
-                    <>
-                      <AlertTriangle className="w-3 h-3 text-amber-400" />
-                      <span>Blindspot Gap Concept</span>
-                    </>
-                  ) : (
-                    <>
-                      <Network className="w-3 h-3 text-sky-400" />
-                      <span>Core Lecture Topic</span>
-                    </>
-                  )}
-                </span>
-
-                {selectedNode.source_timestamp && (
-                  <span className="text-[11px] font-mono text-neutral-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-neutral-500" />
-                    <span>{formatTimestamp(selectedNode.source_timestamp.start)}</span>
+      {/* 2. Concept Detail Inspector Panel */}
+      <AnimatePresence>
+        {selectedNode && (
+          <motion.div
+            initial={{ opacity: 0, x: 28 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 28 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="w-full sm:w-80 lg:w-96 flex flex-col h-full bg-[#0d0d10]/95 backdrop-blur-xl p-5 overflow-y-auto border-t lg:border-t-0 lg:border-l border-white/[0.08] shadow-2xl shrink-0 absolute lg:relative right-0 top-0 bottom-0 z-30"
+          >
+            <div className="flex flex-col justify-between h-full space-y-6">
+              <div className="space-y-5">
+                {/* Badge & Close Button */}
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5",
+                      selectedNode.is_gap
+                        ? "bg-amber-950/60 text-amber-300 border border-amber-500/30 shadow-sm"
+                        : "bg-sky-950/60 text-sky-300 border border-sky-500/30 shadow-sm"
+                    )}
+                  >
+                    {selectedNode.is_gap ? (
+                      <>
+                        <AlertTriangle className="w-3 h-3 text-amber-400" />
+                        <span>Blindspot Gap Concept</span>
+                      </>
+                    ) : (
+                      <>
+                        <Network className="w-3 h-3 text-sky-400" />
+                        <span>Core Lecture Topic</span>
+                      </>
+                    )}
                   </span>
-                )}
-              </div>
 
-              {/* Title */}
-              <div>
-                <h3 className="text-lg font-bold text-white tracking-tight leading-snug">
-                  {selectedNode.label}
-                </h3>
-                <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
-                  {selectedNode.is_gap
-                    ? "This concept is foundational to understanding the lecture but was assumed or under-explained by the instructor."
-                    : "Extracted directly from the lecture transcript and connected to prerequisite ideas."}
-                </p>
-              </div>
+                  <div className="flex items-center gap-2">
+                    {selectedNode.source_timestamp && (
+                      <span className="text-[11px] font-mono text-neutral-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-neutral-500" />
+                        <span>{formatTimestamp(selectedNode.source_timestamp.start)}</span>
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedNodeId(null)}
+                      className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                      title="Close details"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
 
-              {/* Jump to Timestamp Action */}
-              {selectedNode.source_timestamp && onJumpToTimestamp && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onJumpToTimestamp(selectedNode.source_timestamp?.start || 0)
-                  }
-                  className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] hover:border-white/[0.15] text-xs font-semibold text-neutral-200 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
-                >
-                  <Play className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>
-                    Jump to Lecture Excerpt (
-                    {formatTimestamp(selectedNode.source_timestamp.start)})
-                  </span>
-                </button>
-              )}
+                {/* Title */}
+                <div>
+                  <h3 className="text-lg font-bold text-white tracking-tight leading-snug">
+                    {selectedNode.label}
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
+                    {selectedNode.is_gap
+                      ? "This concept is foundational to understanding the lecture but was assumed or under-explained by the instructor."
+                      : "Extracted directly from the lecture transcript and connected to prerequisite ideas."}
+                  </p>
+                </div>
 
-              {/* Connected Concepts / Relationships */}
-              <div className="space-y-3 pt-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-neutral-500" />
-                  <span>Connected Concepts ({neighborNodes.length})</span>
-                </span>
-
-                <div className="flex flex-col gap-2">
-                  {neighborNodes.length === 0 ? (
-                    <span className="text-xs text-neutral-500 italic">
-                      No direct adjacent nodes in current slice.
+                {/* Jump to Timestamp Action */}
+                {selectedNode.source_timestamp && onJumpToTimestamp && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onJumpToTimestamp(selectedNode.source_timestamp?.start || 0)
+                    }
+                    className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] hover:border-white/[0.15] text-xs font-semibold text-neutral-200 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                  >
+                    <Play className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>
+                      Jump to Lecture Excerpt (
+                      {formatTimestamp(selectedNode.source_timestamp.start)})
                     </span>
-                  ) : (
-                    neighborNodes.map((neighbor) => (
-                      <div
-                        key={neighbor.id}
-                        onClick={() => setSelectedNodeId(neighbor.id)}
-                        className="p-2.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-white/[0.05] hover:border-white/[0.12] flex items-center justify-between cursor-pointer transition-colors group"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className={cn(
-                              "w-1.5 h-1.5 rounded-full shrink-0",
-                              neighbor.is_gap ? "bg-amber-400" : "bg-sky-400"
-                            )}
-                          />
-                          <span className="text-xs text-neutral-200 truncate group-hover:text-white">
-                            {neighbor.label}
-                          </span>
+                  </button>
+                )}
+
+                {/* Connected Concepts / Relationships */}
+                <div className="space-y-3 pt-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-neutral-500" />
+                    <span>Connected Concepts ({neighborNodes.length})</span>
+                  </span>
+
+                  <div className="flex flex-col gap-2">
+                    {neighborNodes.length === 0 ? (
+                      <span className="text-xs text-neutral-500 italic">
+                        No direct adjacent nodes in current slice.
+                      </span>
+                    ) : (
+                      neighborNodes.map((neighbor) => (
+                        <div
+                          key={neighbor.id}
+                          onClick={() => setSelectedNodeId(neighbor.id)}
+                          className="p-2.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-white/[0.05] hover:border-white/[0.12] flex items-center justify-between cursor-pointer transition-colors group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full shrink-0",
+                                neighbor.is_gap ? "bg-amber-400" : "bg-sky-400"
+                              )}
+                            />
+                            <span className="text-xs text-neutral-200 truncate group-hover:text-white">
+                              {neighbor.label}
+                            </span>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-neutral-500 group-hover:text-white transition-transform group-hover:translate-x-0.5" />
                         </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-neutral-500 group-hover:text-white transition-transform group-hover:translate-x-0.5" />
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Ask AI Tutor Prompt */}
-            {onAskTutor && (
-              <div className="pt-4 border-t border-white/[0.08]">
-                <button
-                  type="button"
-                  onClick={() =>
-                    onAskTutor(
-                      `Can you explain the concept of "${selectedNode.label}" and how it connects to our lecture?`
-                    )
-                  }
-                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-stone-200 to-stone-100 hover:from-white hover:to-stone-200 text-neutral-950 text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-white/5 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#701a24]" />
-                  <span>Ask AI Tutor About This</span>
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center text-neutral-500 gap-2">
-            <Network className="w-8 h-8 text-neutral-600" />
-            <span className="text-xs">Select any concept node on the graph to inspect details.</span>
-          </div>
+              {/* Ask AI Tutor Prompt */}
+              {onAskTutor && (
+                <div className="pt-4 border-t border-white/[0.08]">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onAskTutor(
+                        `Can you explain the concept of "${selectedNode.label}" and how it connects to our lecture?`
+                      )
+                    }
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-stone-200 to-stone-100 hover:from-white hover:to-stone-200 text-neutral-950 text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-white/5 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#701a24]" />
+                    <span>Ask AI Tutor About This</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 };

@@ -32,6 +32,7 @@ import {
   Circle,
   Eraser,
   Trash2,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -45,6 +46,7 @@ import {
 } from "@/lib/api";
 import RobotCompanionWrapper from "@/components/player/RobotCompanionWrapper";
 import { WhiteboardCanvas } from "@/components/whiteboard/WhiteboardCanvas";
+import KnowledgeGraphView from "@/components/player/KnowledgeGraphView";
 import { CanvasObject, ToolType, ViewportTransform } from "@/lib/whiteboard/types";
 import QuizCard, { QuizOption } from "@/components/player/QuizCard";
 import Sidebar from "@/components/common/Sidebar";
@@ -418,8 +420,9 @@ export default function WorkspacePage() {
     };
   }, []);
 
-  // 2. Whiteboard View Toggle & Whiteboard States
-  const [isWhiteboardActive, setIsWhiteboardActive] = useState<boolean>(false);
+  // 2. Main Stage View Mode (3D Robot, Whiteboard, or Knowledge Graph)
+  type StageView = "robot" | "whiteboard" | "graph";
+  const [stageView, setStageView] = useState<StageView>("robot");
   const [whiteboardObjects, setWhiteboardObjects] = useState<CanvasObject[]>([]);
   const [whiteboardTool, setWhiteboardTool] = useState<ToolType>("pen");
   const [whiteboardColor] = useState<string>("#FFFFFF");
@@ -705,6 +708,22 @@ export default function WorkspacePage() {
     }
   }, [playAudio, phasesList.length, currentPhaseIndex]);
 
+  // Ask AI Tutor about a specific concept from the Knowledge Graph
+  const handleAskTutorAboutConcept = useCallback((question: string) => {
+    setUserQuery(question);
+    setStageView("robot");
+    if (lectureId) {
+      api
+        .sendCommand(lectureId, sessionId, question)
+        .then((events) => {
+          if (Array.isArray(events) && events.length > 0) {
+            processEvents(events);
+          }
+        })
+        .catch((err) => console.warn("Ask tutor fallback:", err));
+    }
+  }, [lectureId, sessionId, processEvents]);
+
   // Load Lecture, Plan, Quizzes, Transcripts, and start Orchestrator session
   useEffect(() => {
     if (!lectureId) return;
@@ -931,6 +950,11 @@ export default function WorkspacePage() {
         <Sidebar
           className="h-full border-none w-full"
           currentPathOverride="/workspace"
+          onNavigate={(href) => {
+            if (href === "#graph") {
+              setStageView("graph");
+            }
+          }}
         />
       </div>
 
@@ -962,33 +986,50 @@ export default function WorkspacePage() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            {/* Whiteboard Toggle Switch: 3D Robot vs Whiteboard Canvas */}
+            {/* 3-Way Stage View Switcher: 3D Robot vs Whiteboard vs Knowledge Graph */}
             <div className="flex items-center bg-neutral-900 border border-neutral-800 p-0.5 rounded-lg text-xs">
               <button
                 type="button"
-                onClick={() => setIsWhiteboardActive(false)}
+                onClick={() => setStageView("robot")}
                 className={cn(
-                  "px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
-                  !isWhiteboardActive
+                  "px-2.5 sm:px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
+                  stageView === "robot"
                     ? "bg-neutral-800 text-white shadow-sm font-semibold"
                     : "text-neutral-400 hover:text-white"
                 )}
+                title="3D Robot Companion"
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#701a24]" />
-                <span>3D Robot</span>
+                <span className="hidden sm:inline">3D Robot</span>
               </button>
               <button
                 type="button"
-                onClick={() => setIsWhiteboardActive(true)}
+                onClick={() => setStageView("whiteboard")}
                 className={cn(
-                  "px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
-                  isWhiteboardActive
+                  "px-2.5 sm:px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
+                  stageView === "whiteboard"
                     ? "bg-[#701a24]/40 text-[#fca5a5] border border-[#701a24] shadow-sm font-semibold"
                     : "text-neutral-400 hover:text-white"
                 )}
+                title="Interactive Whiteboard"
               >
                 <Presentation className="w-3.5 h-3.5 text-amber-400" />
-                <span>Whiteboard</span>
+                <span className="hidden sm:inline">Whiteboard</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStageView("graph")}
+                className={cn(
+                  "px-2.5 sm:px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
+                  stageView === "graph"
+                    ? "bg-blue-950/60 text-blue-300 border border-blue-800/80 shadow-sm font-semibold"
+                    : "text-neutral-400 hover:text-white"
+                )}
+                title="Concept Knowledge Graph"
+              >
+                <Network className="w-3.5 h-3.5 text-blue-400" />
+                <span className="hidden sm:inline">Knowledge Graph</span>
+                <span className="sm:hidden">Graph</span>
               </button>
             </div>
 
@@ -1013,9 +1054,9 @@ export default function WorkspacePage() {
           </div>
         </header>
 
-        {/* Top/Center Stage: Prominent Container for 3D Robot OR WhiteboardCanvas */}
+        {/* Top/Center Stage: Prominent Container for 3D Robot, WhiteboardCanvas, OR KnowledgeGraphView */}
         <div className="flex-1 relative flex flex-col items-center justify-center p-3 min-h-0 overflow-hidden bg-gradient-to-b from-neutral-950 via-[#0a0a0a] to-[#0a0a0a]">
-          {!isWhiteboardActive ? (
+          {stageView === "robot" ? (
             /* 3D Canvas Avatar with unified, minimal luxury subtitle overlay */
             <div className="relative w-full h-full max-h-[460px] flex items-center justify-center pointer-events-auto">
               <RobotCompanionWrapper
@@ -1026,7 +1067,7 @@ export default function WorkspacePage() {
                 stopIntroSignal={stopIntroSignal}
               />
             </div>
-          ) : (
+          ) : stageView === "whiteboard" ? (
             /* Whiteboard View: Active Whiteboard Canvas with interactive drawing tools */
             <div className="relative w-full h-full min-h-0 overflow-hidden rounded-xl border border-neutral-800 bg-[#0d0d10] flex flex-col">
               {/* Mini Whiteboard Floating Controls */}
@@ -1110,6 +1151,16 @@ export default function WorkspacePage() {
                 setSelectedId={setSelectedObjectId}
                 onCommitAction={(newObjs) => setWhiteboardObjects(newObjs)}
                 hideFloatingBadge={true}
+              />
+            </div>
+          ) : (
+            /* Knowledge Graph View: Interactive Concept Map & Blindspot Detection */
+            <div className="relative w-full h-full min-h-0 overflow-hidden rounded-xl border border-neutral-800 bg-[#09090b] flex flex-col">
+              <KnowledgeGraphView
+                lectureId={lectureId || 1}
+                onJumpToTimestamp={jumpToPhaseTimestamp}
+                onAskTutor={handleAskTutorAboutConcept}
+                className="w-full h-full"
               />
             </div>
           )}
