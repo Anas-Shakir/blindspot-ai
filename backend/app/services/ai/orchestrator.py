@@ -449,7 +449,45 @@ class TeachingSession:
         return events
 
     def handle_question(self, question: str) -> List[SessionEvent]:
-        """Answers a free-form student question using the current phase context."""
+        """Answers a free-form student question using the current phase context.
+
+        The question first passes through the guardrails relevance check:
+        off-topic questions get a warm redirect back to the lecture instead
+        of a full qa.py answer, so unrelated chatter is never treated as
+        lecture content.
+        """
+        from backend.app.services.ai.guardrails import check_question_relevance
+        verdict = check_question_relevance(
+            question=question,
+            current_phase=self.current_phase,
+            transcript_segments=self.transcript_segments,
+        )
+
+        if not verdict.is_relevant:
+            redirect_text = verdict.redirect_message or (
+                "That's a bit outside what this lecture covers. Let's get back to "
+                + (self.current_phase.title if self.current_phase else "the lesson")
+                + "."
+            )
+            spoken_text, audio_url = self._prepare_speech(redirect_text)
+
+            events: List[SessionEvent] = []
+            events.append(
+                self._emit(
+                    SessionEventType.SPEAKING,
+                    {
+                        "text": spoken_text,
+                        "audio_url": audio_url,
+                        "in_response_to": question,
+                        "off_topic": True,
+                        "text_language": self.text_language,
+                        "voice_language": self.voice_language,
+                    },
+                )
+            )
+            events.append(self._emit(SessionEventType.AWAITING_COMMAND))
+            return events
+
         qa_result = _answer_free_question(
             question=question,
             current_phase=self.current_phase,

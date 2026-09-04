@@ -266,3 +266,9 @@ class PipelineResult(BaseModel):
         description="The original transcript segments with embedding "
                     "vectors populated",
     )
+    validation_report: Optional[dict] = Field(
+        default=None,
+        description="Per-step grounding-validation summary produced by the "
+                    "guardrails layer (attempts, items removed, remaining "
+                    "issues) — observability only, never affects output",
+    )

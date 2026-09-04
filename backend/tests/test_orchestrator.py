@@ -104,8 +104,8 @@ def run_orchestrator_tests():
     print("Running Live Session Orchestrator Tests")
     print("==================================================")
 
-    # 1. Custom mock TTS engine
-    def mock_tts(text: str) -> str:
+    # 1. Custom mock TTS engine (signature matches orchestrator's TTSCallable)
+    def mock_tts(text: str, voice=None) -> str:
         return f"https://mock-storage.blindspot.ai/audio/{hash(text) % 10000}.mp3"
 
     set_tts_engine(mock_tts)
