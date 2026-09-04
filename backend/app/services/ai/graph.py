@@ -272,12 +272,14 @@ def build_graph(
     # -----------------------------------------------------------------------
     # Convert NetworkX graph to schemas.py shapes
     # -----------------------------------------------------------------------
+    # Node IDs are namespaced with the lecture_id at output time so the
+    # string PK in graph_nodes stays globally unique across lectures.
     nodes: list[GraphNode] = []
     for node_id, attrs in graph.nodes(data=True):
         ts = attrs.get("source_timestamp")
         nodes.append(
             GraphNode(
-                id=node_id,
+                id=f"{lecture_id}:{node_id}",
                 lecture_id=lecture_id,
                 label=attrs.get("label", node_id),
                 is_gap=attrs.get("is_gap", False),
@@ -290,8 +292,8 @@ def build_graph(
         edges.append(
             GraphEdge(
                 lecture_id=lecture_id,
-                source=src,
-                target=tgt,
+                source=f"{lecture_id}:{src}",
+                target=f"{lecture_id}:{tgt}",
                 relation=attrs.get("relation", "related_to"),
             )
         )

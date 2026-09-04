@@ -15,6 +15,10 @@ instead of:
     from backend.storage import save, get_url
 """
 
+import shutil
+import uuid
+from pathlib import Path
+
 from backend.app.core.paths import STORAGE_DIR
 
 

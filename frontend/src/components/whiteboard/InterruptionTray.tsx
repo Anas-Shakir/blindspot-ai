@@ -23,6 +23,7 @@ import {
   WhiteboardLessonBeat,
 } from '@/lib/whiteboard/types';
 import { SpeechRecognizer } from '@/lib/whiteboard/speechRecognizer';
+import { API_BASE_URL } from '@/lib/api';
 import { AudioSyncEngine } from '@/lib/whiteboard/audioSyncEngine';
 import { applyCommand } from '@/lib/whiteboard/commandInterpreter';
 import { compileDeicticContext } from '@/lib/whiteboard/perceptionEngine';
@@ -172,7 +173,7 @@ export const InterruptionTray: React.FC<InterruptionTrayProps> = ({
         focused_objects: focusedList,
       };
 
-      const res = await fetch('http://localhost:8000/api/whiteboard/interruption', {
+      const res = await fetch(`${API_BASE_URL}/api/whiteboard/interruption`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

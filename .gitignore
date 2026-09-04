@@ -48,6 +48,9 @@ out/
 dist/
 build/
 
+# TypeScript incremental build cache (machine-specific, regenerated on build)
+*.tsbuildinfo
+
 # Next.js
 .vercel/
 

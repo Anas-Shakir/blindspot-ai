@@ -761,15 +761,27 @@ export default function WorkspacePage() {
               transcriptQuote: p.teaching_script.slice(0, 140) + "...",
               speaker: "Prof. Sterling",
               quiz: phaseQuiz
-                ? {
-                    question: phaseQuiz.question,
-                    options: phaseQuiz.options.map((opt, oIdx) => ({
-                      id: String.fromCharCode(97 + oIdx),
-                      text: opt,
-                    })),
-                    correctId: "a",
-                    explanation: `Correct answer: ${phaseQuiz.correct_answer}`,
-                  }
+                ? (() => {
+                    let correctIdx = phaseQuiz.options.indexOf(phaseQuiz.correct_answer);
+                    if (correctIdx < 0) {
+                      const normalizedAnswer = phaseQuiz.correct_answer.trim().toLowerCase();
+                      correctIdx = phaseQuiz.options.findIndex(
+                        (opt) => opt.trim().toLowerCase() === normalizedAnswer
+                      );
+                    }
+                    if (correctIdx < 0) {
+                      correctIdx = 0;
+                    }
+                    return {
+                      question: phaseQuiz.question,
+                      options: phaseQuiz.options.map((opt, oIdx) => ({
+                        id: String.fromCharCode(97 + oIdx),
+                        text: opt,
+                      })),
+                      correctId: String.fromCharCode(97 + correctIdx),
+                      explanation: `Correct answer: ${phaseQuiz.correct_answer}`,
+                    };
+                  })()
                 : defaultMockPhases[0].quiz,
             };
           });

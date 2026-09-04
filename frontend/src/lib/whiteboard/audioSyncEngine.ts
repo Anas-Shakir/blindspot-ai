@@ -7,6 +7,7 @@
  */
 
 import { TimingMark, TTSWithTimingResponse } from './types';
+import { API_BASE_URL } from '@/lib/api';
 
 export interface AudioSyncCallbacks {
   onTimeUpdate?: (timeMs: number) => void;
@@ -207,7 +208,7 @@ export async function fetchSpeechWithTiming(
   text: string,
   voice?: string
 ): Promise<TTSWithTimingResponse> {
-  const res = await fetch('http://localhost:8000/api/whiteboard/tts', {
+  const res = await fetch(`${API_BASE_URL}/api/whiteboard/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, voice }),

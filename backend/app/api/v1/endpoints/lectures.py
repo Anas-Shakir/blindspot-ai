@@ -135,7 +135,15 @@ def _transcribe_and_plan_background(
             print(f"[pipeline] Successfully stored planning data for lecture {lecture_id}")
 
         except Exception as plan_err:
+            # A failed commit leaves the session in pending-rollback state —
+            # roll back first so the status update below can actually run.
+            db.rollback()
             print(f"[warning] Planning pipeline failed for lecture {lecture_id}: {plan_err}")
+            lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
+            if lecture:
+                lecture.status = LectureStatus.FAILED
+                db.commit()
+            return
 
         # 4. Mark lecture ready
         lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
@@ -144,6 +152,7 @@ def _transcribe_and_plan_background(
             db.commit()
 
     except Exception as e:
+        db.rollback()
         lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
         if lecture:
             lecture.status = LectureStatus.FAILED
@@ -166,12 +175,17 @@ async def upload_lecture(
     """
     try:
         import tempfile
+        from pathlib import Path
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             contents = await file.read()
             tmp.write(contents)
             tmp_path = tmp.name
 
-        stored_ref = save(tmp_path, file.filename)
+        try:
+            stored_ref = save(tmp_path, file.filename)
+        finally:
+            # The temp file is only needed for the upload — always remove it.
+            Path(tmp_path).unlink(missing_ok=True)
         audio_url = stored_ref
 
         # Create lecture row with PROCESSING status

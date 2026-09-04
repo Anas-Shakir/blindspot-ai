@@ -32,6 +32,7 @@ Requires: openai, sentence-transformers, pydantic >= 2
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Optional
@@ -150,6 +151,42 @@ def _format_plan_summary(plan: LearningPlan) -> str:
     return "\n".join(lines)
 
 
+def _chunk_transcript(
+    segments: list[TranscriptSegment],
+    max_chars: int = 8000,
+) -> list[list[TranscriptSegment]]:
+    """Splits transcript segments into consecutive windows whose
+    _format_transcript output stays under max_chars.
+
+    Splits on segment boundaries only. The estimate counts each segment's
+    text plus a "[123.4s - 567.8s] " timestamp prefix; since
+    _format_transcript merges contiguous segments onto shared lines, its
+    actual output is always at or below this estimate, so no window is
+    ever truncated. A single returned window means the whole transcript
+    fits in one LLM call.
+    """
+    if not segments:
+        return []
+
+    windows: list[list[TranscriptSegment]] = []
+    current: list[TranscriptSegment] = []
+    current_chars = 0
+
+    for seg in segments:
+        seg_chars = len(seg.text) + 24
+        if current and current_chars + seg_chars > max_chars:
+            windows.append(current)
+            current = []
+            current_chars = 0
+        current.append(seg)
+        current_chars += seg_chars
+
+    if current:
+        windows.append(current)
+
+    return windows
+
+
 # ---------------------------------------------------------------------------
 # 1. Learning Plan Generation
 # ---------------------------------------------------------------------------
@@ -191,6 +228,59 @@ Respond with a JSON object in this exact shape:
 """
 
 
+_PLAN_REDUCE_SYSTEM_PROMPT = """\
+You are an expert instructional designer. You are given teaching phases that
+were planned independently from consecutive parts of ONE lecture. Merge them
+into a single coherent Learning Plan:
+
+- Merge phases that cover the same or heavily overlapping concept into one
+  phase (combine their teaching scripts; the merged phase's source_timestamps
+  is the union of the merged phases' source_timestamps).
+- Keep distinct phases as-is and preserve the overall teaching order.
+- Re-number "order" sequentially starting from 0.
+- CRITICAL: copy every source_timestamps entry VERBATIM from the input.
+  Never invent, alter, or drop timestamps.
+
+Respond with a JSON object in this exact shape:
+{
+  "phases": [
+    {
+      "order": 0,
+      "title": "short descriptive title",
+      "teaching_script": "what the voice agent says, 2-4 sentences",
+      "source_timestamps": [{"start": 12.5, "end": 45.0}],
+      "prerequisite_note": "null or a short note",
+      "difficulty": "beginner"
+    }
+  ]
+}
+"""
+
+
+def _reduce_plan_phases(partial_phases: list[_LLMPhase]) -> list[_LLMPhase]:
+    """Single LLM call that merges independently planned phases into one plan.
+
+    Raises ValueError if the LLM output cannot be parsed — the caller falls
+    back to the concatenated phases so the pipeline never fails on this step.
+    """
+    phases_json = json.dumps([p.model_dump() for p in partial_phases], indent=2)
+    user_prompt = (
+        "Below are teaching phases planned independently from consecutive "
+        "parts of one lecture, in order. Merge them into the final Learning "
+        "Plan.\n\n"
+        f"PHASES:\n{phases_json}"
+    )
+
+    llm_response = chat_completion(
+        system_prompt=_PLAN_REDUCE_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        temperature=0.3,
+        max_tokens=4096,
+        response_model=_LLMPlanResponse,
+    )
+    return llm_response.phases
+
+
 def generate_plan(
     transcript: list[TranscriptSegment],
     lecture_id: int = 0,
@@ -211,21 +301,64 @@ def generate_plan(
         A LearningPlan with ordered Phase objects, all normalized into
         schemas.py shapes.
     """
-    formatted = _format_transcript(transcript)
+    windows = _chunk_transcript(transcript)
 
-    user_prompt = (
-        f"Below is the full transcript of a lecture with timestamps. "
-        f"Analyze it and produce a Learning Plan.\n\n"
-        f"TRANSCRIPT:\n{formatted}"
-    )
+    # Fast path — the whole transcript fits in a single LLM call. This is
+    # byte-for-byte the previous behavior, so short lectures are unaffected.
+    if len(windows) <= 1:
+        formatted = _format_transcript(transcript)
 
-    llm_response = chat_completion(
-        system_prompt=_PLAN_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        temperature=0.3,
-        max_tokens=4096,
-        response_model=_LLMPlanResponse,
-    )
+        user_prompt = (
+            f"Below is the full transcript of a lecture with timestamps. "
+            f"Analyze it and produce a Learning Plan.\n\n"
+            f"TRANSCRIPT:\n{formatted}"
+        )
+
+        llm_response = chat_completion(
+            system_prompt=_PLAN_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            temperature=0.3,
+            max_tokens=4096,
+            response_model=_LLMPlanResponse,
+        )
+        merged_phases = llm_response.phases
+    else:
+        # Map: plan each transcript window independently.
+        n = len(windows)
+        partial_phases: list[_LLMPhase] = []
+        for i, window in enumerate(windows, start=1):
+            formatted = _format_transcript(window)
+
+            user_prompt = (
+                f"Below is the full transcript of a lecture with timestamps. "
+                f"Analyze it and produce a Learning Plan.\n\n"
+                f"TRANSCRIPT:\n{formatted}"
+            )
+
+            llm_response = chat_completion(
+                system_prompt=(
+                    _PLAN_SYSTEM_PROMPT
+                    + f"\nThis is part {i} of {n} of the lecture; plan only this part."
+                ),
+                user_prompt=user_prompt,
+                temperature=0.3,
+                max_tokens=4096,
+                response_model=_LLMPlanResponse,
+            )
+            partial_phases.extend(llm_response.phases)
+
+        # Concatenate in window order and re-number sequentially from 0.
+        for idx, p in enumerate(partial_phases):
+            p.order = idx
+
+        # Reduce: one LLM call to merge duplicate/overlapping phases. If it
+        # fails, fall back to the concatenated phases — never fail the
+        # pipeline because of the reduce step.
+        try:
+            merged_phases = _reduce_plan_phases(partial_phases)
+        except ValueError as reduce_err:
+            print(f"[planning] Plan reduce step failed, using concatenated phases: {reduce_err}")
+            merged_phases = partial_phases
 
     # Convert internal LLM response to canonical schemas.py shapes
     phases = [
@@ -239,7 +372,7 @@ def generate_plan(
             prerequisite_note=p.prerequisite_note,
             difficulty=p.difficulty,
         )
-        for p in llm_response.phases
+        for p in merged_phases
     ]
 
     return LearningPlan(lecture_id=lecture_id, phases=phases)
@@ -308,24 +441,42 @@ def detect_gaps(
     Returns:
         A list of GapConcept objects per schemas.py.
     """
-    formatted_transcript = _format_transcript(transcript)
     formatted_plan = _format_plan_summary(plan)
+    windows = _chunk_transcript(transcript)
 
-    user_prompt = (
-        f"Below is the lecture transcript and the learning plan derived "
-        f"from it. Identify concepts that are mentioned but NOT adequately "
-        f"explained.\n\n"
-        f"TRANSCRIPT:\n{formatted_transcript}\n\n"
-        f"LEARNING PLAN:\n{formatted_plan}"
-    )
+    all_gaps: list[_LLMGap] = []
+    for window in windows:
+        formatted_transcript = _format_transcript(window)
 
-    llm_response = chat_completion(
-        system_prompt=_GAP_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        temperature=0.3,
-        max_tokens=2048,
-        response_model=_LLMGapResponse,
-    )
+        user_prompt = (
+            f"Below is the lecture transcript and the learning plan derived "
+            f"from it. Identify concepts that are mentioned but NOT adequately "
+            f"explained.\n\n"
+            f"TRANSCRIPT:\n{formatted_transcript}\n\n"
+            f"LEARNING PLAN:\n{formatted_plan}"
+        )
+
+        llm_response = chat_completion(
+            system_prompt=_GAP_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            temperature=0.3,
+            max_tokens=2048,
+            response_model=_LLMGapResponse,
+        )
+        all_gaps.extend(llm_response.gaps)
+
+    # Multiple windows can flag the same concept — deduplicate
+    # case-insensitively on name, keeping the first occurrence.
+    if len(windows) > 1:
+        seen: set[str] = set()
+        unique_gaps: list[_LLMGap] = []
+        for g in all_gaps:
+            key = g.name.strip().lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_gaps.append(g)
+        all_gaps = unique_gaps
 
     return [
         GapConcept(
@@ -338,7 +489,7 @@ def detect_gaps(
                 if g.source_timestamp else None
             ),
         )
-        for g in llm_response.gaps
+        for g in all_gaps
     ]
 
 
@@ -402,23 +553,33 @@ def generate_quizzes(
     Returns:
         A list of QuizItem objects per schemas.py.
     """
-    formatted_transcript = _format_transcript(transcript)
     formatted_plan = _format_plan_summary(plan)
+    windows = _chunk_transcript(transcript)
 
-    user_prompt = (
-        f"Below is the lecture transcript and its learning plan. Generate "
-        f"multiple-choice quiz questions.\n\n"
-        f"TRANSCRIPT:\n{formatted_transcript}\n\n"
-        f"LEARNING PLAN:\n{formatted_plan}"
-    )
+    all_questions: list[_LLMQuiz] = []
+    for window in windows:
+        formatted_transcript = _format_transcript(window)
 
-    llm_response = chat_completion(
-        system_prompt=_QUIZ_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        temperature=0.4,
-        max_tokens=4096,
-        response_model=_LLMQuizResponse,
-    )
+        user_prompt = (
+            f"Below is the lecture transcript and its learning plan. Generate "
+            f"multiple-choice quiz questions.\n\n"
+            f"TRANSCRIPT:\n{formatted_transcript}\n\n"
+            f"LEARNING PLAN:\n{formatted_plan}"
+        )
+
+        llm_response = chat_completion(
+            system_prompt=_QUIZ_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            temperature=0.4,
+            max_tokens=4096,
+            response_model=_LLMQuizResponse,
+        )
+        all_questions.extend(llm_response.questions)
+
+    # Cap the total bank size for long, multi-window lectures (window order
+    # is preserved, so earlier lecture content keeps its questions).
+    if len(windows) > 1:
+        all_questions = all_questions[:25]
 
     return [
         QuizItem(
@@ -431,7 +592,7 @@ def generate_quizzes(
                 if q.source_timestamp else None
             ),
         )
-        for q in llm_response.questions
+        for q in all_questions
     ]
 
 
@@ -527,23 +688,19 @@ def run_full_pipeline(
         and transcript with embeddings — everything the AI Orchestrator
         needs at runtime.
     """
-    print("[pipeline] Step 1/5: Generating learning plan...")
+    print("[pipeline] Step 1/4: Generating learning plan...")
     plan = generate_plan(transcript, lecture_id=lecture_id)
     print(f"[pipeline]   -> {len(plan.phases)} phases generated")
 
-    print("[pipeline] Step 2/5: Detecting explanatory gaps...")
+    print("[pipeline] Step 2/4: Detecting explanatory gaps...")
     gaps = detect_gaps(transcript, plan, lecture_id=lecture_id)
     print(f"[pipeline]   -> {len(gaps)} gaps detected")
 
-    print("[pipeline] Step 3/5: Generating quiz bank...")
+    print("[pipeline] Step 3/4: Generating quiz bank...")
     quizzes = generate_quizzes(transcript, plan, lecture_id=lecture_id)
     print(f"[pipeline]   -> {len(quizzes)} quiz questions generated")
 
-    print("[pipeline] Step 4/5: Computing transcript embeddings...")
-    enriched_transcript = generate_embeddings(transcript)
-    print(f"[pipeline]   -> {len(enriched_transcript)} segments embedded")
-
-    print("[pipeline] Step 5/5: Building knowledge graph...")
+    print("[pipeline] Step 4/4: Building knowledge graph...")
     from backend.app.services.ai.graph import build_graph
     graph_nodes, graph_edges = build_graph(gaps, plan, transcript, lecture_id=lecture_id)
     print(f"[pipeline]   -> {len(graph_nodes)} nodes, {len(graph_edges)} edges")
@@ -555,5 +712,5 @@ def run_full_pipeline(
         quizzes=quizzes,
         graph_nodes=graph_nodes,
         graph_edges=graph_edges,
-        transcript_with_embeddings=enriched_transcript,
+        transcript_with_embeddings=transcript,
     )

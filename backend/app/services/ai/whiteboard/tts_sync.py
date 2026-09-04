@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from backend.app.core.paths import TTS_STORAGE_DIR
 
+logger = logging.getLogger(__name__)
+
 
 DEFAULT_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-ChristopherNeural")
 
@@ -90,7 +92,7 @@ async def synthesize_speech_with_timing(
     cache_key = _get_cache_key(clean_text, selected_voice)
     audio_filename = f"whiteboard_{cache_key}.mp3"
     audio_path = TTS_STORAGE_DIR / audio_filename
-    audio_url = f"http://localhost:8000/storage/tts/{audio_filename}"
+    audio_url = f"{os.getenv('BACKEND_PUBLIC_URL', 'http://localhost:8000')}/storage/tts/{audio_filename}"
 
     boundaries: List[Dict[str, Any]] = []
     audio_chunks: List[bytes] = []

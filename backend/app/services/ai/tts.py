@@ -34,6 +34,8 @@ from typing import Optional
 
 from backend.app.core.paths import TTS_STORAGE_DIR as TTS_CACHE_DIR
 
+logger = logging.getLogger(__name__)
+
 
 # Default voices
 DEFAULT_EDGE_VOICE = os.getenv("EDGE_TTS_VOICE", "en-US-ChristopherNeural")

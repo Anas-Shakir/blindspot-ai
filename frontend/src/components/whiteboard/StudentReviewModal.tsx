@@ -20,6 +20,7 @@ import {
 import { extractStudentWorkDiff, StudentWorkDiff } from '@/lib/whiteboard/studentInputAnalyzer';
 import { AudioSyncEngine } from '@/lib/whiteboard/audioSyncEngine';
 import { applyCommand } from '@/lib/whiteboard/commandInterpreter';
+import { API_BASE_URL } from '@/lib/api';
 
 interface StudentReviewModalProps {
   isOpen: boolean;
@@ -89,7 +90,7 @@ export const StudentReviewModal: React.FC<StudentReviewModalProps> = ({
         },
       };
 
-      const res = await fetch('http://localhost:8000/api/whiteboard/review', {
+      const res = await fetch(`${API_BASE_URL}/api/whiteboard/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
