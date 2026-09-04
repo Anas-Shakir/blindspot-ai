@@ -1138,3 +1138,5 @@ function distanceToSegment(p: Point, a: Point, b: Point): number {
   t = Math.max(0, Math.min(1, t));
   return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
 }
+
+export default WhiteboardCanvas;
