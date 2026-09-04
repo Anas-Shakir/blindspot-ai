@@ -27,6 +27,7 @@ import {
 } from '@/lib/whiteboard/types';
 import { AudioSyncEngine } from '@/lib/whiteboard/audioSyncEngine';
 import { applyCommand } from '@/lib/whiteboard/commandInterpreter';
+import { API_BASE_URL } from '@/lib/api';
 
 interface MultiStageCoursePlayerProps {
   course: MultiStageCourseRecord | null;
@@ -78,7 +79,7 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
         if (course && !course.stages[sIdx]) {
           try {
             const res = await fetch(
-              `http://localhost:8000/api/whiteboard/course/${syllabus.courseId}/stage/${sIdx}`
+              `${API_BASE_URL}/api/whiteboard/course/${syllabus.courseId}/stage/${sIdx}`
             );
             if (res.ok) {
               const stageData: CourseStageBeat = await res.json();
@@ -211,7 +212,7 @@ export const MultiStageCoursePlayer: React.FC<MultiStageCoursePlayerProps> = ({
       try {
         attempts++;
         const res = await fetch(
-          `http://localhost:8000/api/whiteboard/course/${syllabus.courseId}/stage/${targetStageIndex}`
+          `${API_BASE_URL}/api/whiteboard/course/${syllabus.courseId}/stage/${targetStageIndex}`
         );
         if (res.ok) {
           const stageData: CourseStageBeat = await res.json();

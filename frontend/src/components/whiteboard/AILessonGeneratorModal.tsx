@@ -15,6 +15,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { MultiStageCourseRecord, WhiteboardLessonBeat } from '@/lib/whiteboard/types';
+import { API_BASE_URL } from '@/lib/api';
 
 interface AILessonGeneratorModalProps {
   isOpen: boolean;
@@ -73,7 +74,7 @@ export const AILessonGeneratorModal: React.FC<AILessonGeneratorModalProps> = ({
 
       if (generationType === 'multi_stage') {
         setGenerationStep('Planning 3-4 stage masterclass curriculum & layout...');
-        const res = await fetch('http://localhost:8000/api/whiteboard/course/start', {
+        const res = await fetch(`${API_BASE_URL}/api/whiteboard/course/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ topic: prompt }),
@@ -101,7 +102,7 @@ export const AILessonGeneratorModal: React.FC<AILessonGeneratorModalProps> = ({
         }, 400);
       } else {
         setGenerationStep('Designing vector layout & teaching narrative with LLM...');
-        const res = await fetch('http://localhost:8000/api/whiteboard/generate', {
+        const res = await fetch(`${API_BASE_URL}/api/whiteboard/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt }),

@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional
 
 from backend.app.core.paths import SESSION_STORAGE_DIR
 
+logger = logging.getLogger(__name__)
+
 
 
 def save_session(session_data: Dict[str, Any]) -> Dict[str, Any]:

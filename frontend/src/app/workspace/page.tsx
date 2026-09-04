@@ -127,7 +127,7 @@ export default function WorkspacePage() {
 
   // Live session state
   const [sessionId] = useState<string>(() => `sess_${Math.random().toString(36).substring(2, 10)}`);
-  const [phasesList, setPhasesList] = useState<PhaseData[]>(defaultMockPhases);
+  const [phasesList, setPhasesList] = useState<PhaseData[]>([]);
   const [transcripts, setTranscripts] = useState<TranscriptSegment[]>([]);
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState<number>(0);
 
@@ -378,8 +378,25 @@ export default function WorkspacePage() {
                   { id: "d", text: "None of the above" },
                 ];
 
+            // Map correct_answer to an option id: exact match first, then a
+            // trimmed case-insensitive match, and only then default to "a".
+            let correctIdx = quizItem
+              ? quizItem.options.indexOf(quizItem.correct_answer)
+              : -1;
+            if (quizItem && correctIdx < 0) {
+              const normalizedAnswer = quizItem.correct_answer.trim().toLowerCase();
+              correctIdx = quizItem.options.findIndex(
+                (opt) => opt.trim().toLowerCase() === normalizedAnswer
+              );
+            }
+            if (quizItem && correctIdx < 0) {
+              console.warn(
+                `Quiz correct_answer did not match any option (lecture ${lectureId}, question: "${quizItem.question}") — defaulting to option "a".`
+              );
+              correctIdx = 0;
+            }
             const correctId = quizItem
-              ? String.fromCharCode(97 + Math.max(0, quizItem.options.indexOf(quizItem.correct_answer)))
+              ? String.fromCharCode(97 + correctIdx)
               : "a";
 
             // Find matching transcript quote
@@ -446,7 +463,8 @@ export default function WorkspacePage() {
     };
   }, [lectureId, sessionId, processEvents]);
 
-  const currentPhase = phasesList[currentPhaseIndex] || phasesList[0] || defaultMockPhases[0];
+  const currentPhase: PhaseData | null =
+    phasesList[currentPhaseIndex] || phasesList[0] || null;
 
   // Progress timer for audio playback
   useEffect(() => {
@@ -454,7 +472,7 @@ export default function WorkspacePage() {
     if (isPlayingAudio) {
       interval = setInterval(() => {
         setPlaybackSeconds((prev) => {
-          if (prev >= currentPhase.durationSec) {
+          if (prev >= (currentPhase?.durationSec ?? 0)) {
             setIsPlayingAudio(false);
             setIsSpeaking(false);
             return 0;
@@ -464,7 +482,7 @@ export default function WorkspacePage() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPlayingAudio, currentPhase.durationSec]);
+  }, [isPlayingAudio, currentPhase?.durationSec]);
 
   // When phase changes
   const handlePhaseChange = async (newIndex: number) => {
@@ -609,7 +627,7 @@ export default function WorkspacePage() {
 
   // Play lecture recording audio from specific timestamp
   const handlePlayLectureAudio = useCallback((startSec?: number) => {
-    const targetTime = typeof startSec === "number" ? startSec : (currentPhase.startSec ?? 0);
+    const targetTime = typeof startSec === "number" ? startSec : (currentPhase?.startSec ?? 0);
     setPlaybackSeconds(Math.floor(targetTime));
     setIsSourceDrawerOpen(true);
 
@@ -669,7 +687,7 @@ export default function WorkspacePage() {
       lectureAudioRef.current.pause();
       setIsPlayingLectureAudio(false);
     } else {
-      handlePlayLectureAudio(playbackSeconds > 0 ? playbackSeconds : (currentPhase.startSec ?? 0));
+      handlePlayLectureAudio(playbackSeconds > 0 ? playbackSeconds : (currentPhase?.startSec ?? 0));
     }
   }, [isPlayingLectureAudio, playbackSeconds, currentPhase, handlePlayLectureAudio]);
 
@@ -678,8 +696,8 @@ export default function WorkspacePage() {
     const clickX = e.clientX - rect.left;
     const width = rect.width;
     const percentage = Math.max(0, Math.min(1, clickX / width));
-    const phaseStart = currentPhase.startSec ?? 0;
-    const phaseDur = currentPhase.durationSec || 60;
+    const phaseStart = currentPhase?.startSec ?? 0;
+    const phaseDur = currentPhase?.durationSec || 60;
     const targetSec = phaseStart + Math.floor(percentage * phaseDur);
 
     setPlaybackSeconds(targetSec);
@@ -696,11 +714,42 @@ export default function WorkspacePage() {
     100,
     Math.max(
       0,
-      (((playbackSeconds || currentPhase.startSec) - (currentPhase.startSec ?? 0)) /
-        Math.max(1, currentPhase.durationSec)) *
+      (((playbackSeconds || (currentPhase?.startSec ?? 0)) - (currentPhase?.startSec ?? 0)) /
+        Math.max(1, currentPhase?.durationSec ?? 0)) *
         100
     )
   );
+
+  // Honest empty/failed state — never fabricate lesson content for a real lecture
+  if (!currentPhase) {
+    const fallbackMessage =
+      lecture?.status === "failed"
+        ? "Processing failed for this lecture. Please re-upload it from the home page."
+        : lecture?.status === "processing"
+        ? "Your lecture is still being processed…"
+        : "No learning plan is available for this lecture.";
+
+    return (
+      <div className="flex h-screen w-full bg-[#09090b] text-neutral-100 selection:bg-[#701a24]/40 selection:text-white font-sans overflow-hidden">
+        <Sidebar currentPathOverride="/workspace" onNavigate={() => {}} />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
+          {lecture?.status === "processing" ? (
+            <Loader2 className="w-6 h-6 text-neutral-500 animate-spin" />
+          ) : (
+            <BookOpen className="w-6 h-6 text-neutral-500" />
+          )}
+          <p className="text-sm text-neutral-300 font-medium max-w-sm">{fallbackMessage}</p>
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-white transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to home</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full bg-[#09090b] text-neutral-100 selection:bg-[#701a24]/40 selection:text-white font-sans overflow-hidden">

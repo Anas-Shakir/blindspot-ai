@@ -13,9 +13,10 @@ import {
   ViewportTransform,
   WhiteboardSessionRecord,
 } from './types';
+import { API_BASE_URL as APP_API_BASE_URL } from '@/lib/api';
 
 const LOCAL_STORAGE_KEY = 'blindspot_active_whiteboard_session';
-const API_BASE_URL = 'http://localhost:8000/api/whiteboard';
+const API_BASE_URL = `${APP_API_BASE_URL}/api/whiteboard`;
 
 export class WhiteboardSessionManager {
   private static saveTimeout: NodeJS.Timeout | null = null;

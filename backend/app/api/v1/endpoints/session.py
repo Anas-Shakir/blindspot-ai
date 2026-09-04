@@ -12,6 +12,7 @@ Live interactive teaching session API endpoints and WebSocket handler:
 Derived strictly from backend/schemas.py (SessionEvent, SessionCommand, SessionEventType).
 """
 
+import asyncio
 import json
 import logging
 from typing import List, Optional
@@ -160,8 +161,10 @@ async def websocket_teaching_session(
     """
     await websocket.accept()
 
-    session = load_session_from_db(lecture_id=lecture_id, session_id=session_id)
-    start_events = session.start()
+    # Session loading and command handling are blocking (DB + LLM calls) —
+    # run them in a worker thread so the event loop stays responsive.
+    session = await asyncio.to_thread(load_session_from_db, lecture_id=lecture_id, session_id=session_id)
+    start_events = await asyncio.to_thread(session.start)
 
     # Stream start events to client
     for event in start_events:
@@ -177,7 +180,7 @@ async def websocket_teaching_session(
                     command=msg.get("command", ""),
                     argument=msg.get("argument"),
                 )
-                events = session.handle_command(cmd)
+                events = await asyncio.to_thread(session.handle_command, cmd)
 
                 for event in events:
                     await websocket.send_text(event.model_dump_json())

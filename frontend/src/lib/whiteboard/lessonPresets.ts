@@ -7,6 +7,7 @@
  */
 
 import { WhiteboardLessonBeat } from './types';
+import { API_BASE_URL } from '@/lib/api';
 
 export const LESSON_CIRCUIT_SYNCHRONIZED: WhiteboardLessonBeat = {
   id: 'lesson-circuit-sync',
@@ -14,7 +15,7 @@ export const LESSON_CIRCUIT_SYNCHRONIZED: WhiteboardLessonBeat = {
   description: 'Synchronized live teaching session explaining DC voltage, resistance, and current flow.',
   speechScript:
     "Let's build a circuit. First, we place a 9-volt DC battery on the left. Next, we connect a 100-ohm resistor on the right. Now, let's draw a wire from the battery to the resistor. Watch how the current flows at 90 milliamps.",
-  audioUrl: 'http://localhost:8000/storage/tts/whiteboard_8e86de1ae80afe69.mp3',
+  audioUrl: `${API_BASE_URL}/storage/tts/whiteboard_8e86de1ae80afe69.mp3`,
   durationMs: 18087.5,
   initialViewport: { x: 90, y: 70, scale: 1.0 },
   timingMarks: [
@@ -163,7 +164,7 @@ export const LESSON_BST_SYNCHRONIZED: WhiteboardLessonBeat = {
   description: 'Synchronized live teaching session demonstrating root comparison and recursive branching.',
   speechScript:
     'Let us examine binary search tree insertion. We begin with our root node 50. When inserting 30, since 30 is less than 50, it branches left. When inserting 70, it branches right.',
-  audioUrl: 'http://localhost:8000/storage/tts/whiteboard_e23fcf82f11cdf59.mp3',
+  audioUrl: `${API_BASE_URL}/storage/tts/whiteboard_e23fcf82f11cdf59.mp3`,
   durationMs: 15050.0,
   initialViewport: { x: 120, y: 50, scale: 1.0 },
   timingMarks: [

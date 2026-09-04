@@ -131,6 +131,7 @@ class TeachingSession:
         self.current_phase_index: int = 0
         self.is_ended: bool = False
         self.active_quiz_item: Optional[QuizItem] = None
+        self.next_quiz_index: int = 0
         self.history: List[dict] = []
 
     @property
@@ -225,7 +226,10 @@ class TeachingSession:
             self.is_ended = True
             return [self._emit(SessionEventType.SESSION_ENDED, {"reason": "Plan has no phases"})]
 
-        self.current_phase_index = 0
+        # Only reset for fresh/exhausted sessions — a reused in-memory session
+        # resumes at its current phase instead of restarting from the top.
+        if self.current_phase_index >= len(self.plan.phases):
+            self.current_phase_index = 0
         self.is_ended = False
         return self._teach_current_phase()
 
@@ -364,7 +368,8 @@ class TeachingSession:
         quiz: Optional[QuizItem] = None
 
         if self.quizzes:
-            quiz = self.quizzes[0]
+            quiz = self.quizzes[self.next_quiz_index % len(self.quizzes)]
+            self.next_quiz_index += 1
 
         if not quiz:
             phase_title = self.current_phase.title if self.current_phase else "the lecture"

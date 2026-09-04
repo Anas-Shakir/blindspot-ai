@@ -14,6 +14,7 @@ Requires: faster-whisper, ffmpeg-python, boto3
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -49,7 +50,7 @@ def _is_video(file_path: str) -> bool:
 
 def _is_local_path(ref: str) -> bool:
     """Checks if the reference string is a local file system path vs an R2 object key."""
-    return ref.startswith(("/", "\\", "C:\\")) or Path(ref).exists()
+    return bool(re.match(r"^[A-Za-z]:[\\/]", ref)) or ref.startswith(("/", "\\")) or Path(ref).exists()
 
 
 def _download_from_r2(object_key: str) -> str:
@@ -60,7 +61,7 @@ def _download_from_r2(object_key: str) -> str:
     account_id = os.getenv("R2_ACCOUNT_ID", "").strip()
     access_key = os.getenv("R2_ACCESS_KEY_ID", "").strip()
     secret_key = os.getenv("R2_SECRET_KEY", "").strip()
-    bucket_name = os.getenv("R2_BUCKET_NAME", "blindspot-ai").strip()
+    bucket_name = os.getenv("R2_BUCKET_NAME", "blindspot-storage").strip()
 
     if not account_id or not access_key or not secret_key:
         raise RuntimeError(
