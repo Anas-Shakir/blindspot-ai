@@ -4,14 +4,29 @@ import React, { useState, useEffect } from "react";
 
 export interface RobotCompanionWrapperProps {
   isFast?: boolean;
+  showIntroButton?: boolean;
+  externalSubtitle?: string | null;
+  isExternalPlaying?: boolean;
+  onIntroPlay?: () => void;
+  stopIntroSignal?: number;
 }
 
 export default function RobotCompanionWrapper({
   isFast = false,
+  showIntroButton = true,
+  externalSubtitle,
+  isExternalPlaying = false,
+  onIntroPlay,
+  stopIntroSignal,
 }: RobotCompanionWrapperProps) {
   const [Component, setComponent] = useState<React.ComponentType<{
     isFast?: boolean;
     className?: string;
+    showIntroButton?: boolean;
+    externalSubtitle?: string | null;
+    isExternalPlaying?: boolean;
+    onIntroPlay?: () => void;
+    stopIntroSignal?: number;
   }> | null>(null);
 
   useEffect(() => {
@@ -35,8 +50,16 @@ export default function RobotCompanionWrapper({
   }
 
   return (
-    <div className="w-full h-full min-h-[300px] flex items-center justify-center">
-      <Component isFast={isFast} className="w-full h-full min-h-[300px]" />
+    <div className="w-full h-full min-h-[300px] flex items-center justify-center pointer-events-auto">
+      <Component
+        isFast={isFast}
+        showIntroButton={showIntroButton}
+        externalSubtitle={externalSubtitle}
+        isExternalPlaying={isExternalPlaying}
+        onIntroPlay={onIntroPlay}
+        stopIntroSignal={stopIntroSignal}
+        className="w-full h-full min-h-[300px]"
+      />
     </div>
   );
 }

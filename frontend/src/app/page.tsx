@@ -148,7 +148,7 @@ export default function BlindspotLandingPage() {
           {/* Right Column (The Action & 3D Robot Companion) */}
           <div className="lg:col-span-6 flex flex-col items-center justify-center relative w-full">
             {/* 3D Floating Robot AI Companion */}
-            <div className="relative w-full h-[320px] sm:h-[360px] flex items-center justify-center -mb-10 sm:-mb-14 z-10 pointer-events-none">
+            <div className="relative w-full h-[320px] sm:h-[360px] flex items-center justify-center -mb-10 sm:-mb-14 z-10 pointer-events-auto">
               <RobotCompanionWrapper isFast={isDropzoneActive} />
             </div>
 

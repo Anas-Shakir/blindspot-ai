@@ -30,7 +30,7 @@ export interface Lecture {
 
 export interface TranscriptSegment {
   id?: number;
-  lecture_id: number;
+  lecture_id?: number;
   start: number;
   end: number;
   text: string;
