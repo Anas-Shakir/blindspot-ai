@@ -2,8 +2,9 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Cpu, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const steps = [
   {
@@ -34,7 +35,7 @@ const steps = [
 
 export const HowItWorksSection: React.FC = () => {
   return (
-    <section id="how-it-works" className="relative py-24 sm:py-32 w-full border-t border-white/[0.07] bg-[#09090b]/80">
+    <section id="how-it-works" className="relative py-24 sm:py-32 w-full border-t border-white/5 bg-neutral-950/80">
       <div className="max-w-7xl mx-auto px-6 sm:px-8">
         {/* Section Header */}
         <div className="flex flex-col items-center text-center mb-16 sm:mb-20">
@@ -53,7 +54,7 @@ export const HowItWorksSection: React.FC = () => {
         </div>
 
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 relative">
           {steps.map((item, idx) => (
             <motion.div
               key={item.step}
@@ -67,38 +68,42 @@ export const HowItWorksSection: React.FC = () => {
                 delay: idx * 0.1,
               }}
               whileHover={{ y: -4 }}
-              className={cn(
-                "relative rounded-3xl p-8 bg-zinc-900/60 border border-white/[0.07] backdrop-blur-md",
-                "flex flex-col justify-between hover:border-[#701a24]/50 transition-colors duration-200",
-                "shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
-              )}
+              className="h-full"
             >
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <span className="font-mono text-2xl font-bold text-stone-200">
-                    {item.step}
-                  </span>
-                  <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-500">
-                    {item.tag}
-                  </span>
+              <Card className="group relative h-full rounded-lg p-6 sm:p-8 bg-neutral-900/40 border-white/5 backdrop-blur-md flex flex-col justify-between hover:border-primary/40 hover:bg-neutral-900/60 transition-all duration-300 shadow-lg overflow-hidden">
+                {/* Subtle card hover glow */}
+                <div className="pointer-events-none absolute -inset-px rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(350px_circle_at_top_right,rgba(112,26,36,0.12),transparent_80%)]" />
+
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="font-mono text-2xl font-bold text-neutral-200 group-hover:text-rose-300 transition-colors">
+                      {item.step}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="rounded-md font-mono text-[10px] uppercase text-neutral-400 border-white/10 bg-white/[0.02] px-2 py-0.5"
+                    >
+                      {item.tag}
+                    </Badge>
+                  </div>
+
+                  <h3 className="text-lg font-semibold tracking-tight text-neutral-100 mb-1.5">
+                    {item.title}
+                  </h3>
+                  <h4 className="text-xs font-medium text-rose-300/80 mb-3 tracking-tight">
+                    {item.subtitle}
+                  </h4>
+
+                  <p className="text-sm text-neutral-400 leading-relaxed font-normal tracking-tight">
+                    {item.description}
+                  </p>
                 </div>
 
-                <h3 className="text-xl font-bold tracking-tight text-white mb-1.5">
-                  {item.title}
-                </h3>
-                <h4 className="text-xs font-medium text-stone-400 mb-4 tracking-tight">
-                  {item.subtitle}
-                </h4>
-
-                <p className="text-sm text-neutral-400 leading-relaxed font-normal tracking-tight">
-                  {item.description}
-                </p>
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-white/[0.05] flex items-center text-xs text-neutral-500 gap-2">
-                <Check className="w-3.5 h-3.5 text-stone-300" />
-                <span>Autonomous orchestration</span>
-              </div>
+                <div className="mt-6 pt-4 border-t border-white/5 flex items-center text-xs text-neutral-500 gap-2 font-medium">
+                  <Check className="w-3.5 h-3.5 text-primary" />
+                  <span>Autonomous orchestration</span>
+                </div>
+              </Card>
             </motion.div>
           ))}
         </div>
@@ -108,4 +113,3 @@ export const HowItWorksSection: React.FC = () => {
 };
 
 export default HowItWorksSection;
-

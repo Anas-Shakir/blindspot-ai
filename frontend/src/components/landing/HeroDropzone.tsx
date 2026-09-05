@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn, formatFileSize } from "@/lib/utils";
 import { api, Lecture } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 export interface HeroDropzoneProps {
   onActiveStateChange?: (isActive: boolean) => void;
@@ -302,8 +303,8 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
           damping: 22,
         }}
         className={cn(
-          "relative w-full rounded-2xl p-6 sm:p-8",
-          "backdrop-blur-md bg-zinc-900/60 border border-white/[0.07]",
+          "relative w-full rounded-lg p-6 sm:p-8",
+          "backdrop-blur-md bg-neutral-900/50 border border-white/10",
           "transition-all duration-300 overflow-hidden select-none",
           isActive
             ? "shadow-[0_0_50px_-10px_rgba(112,26,36,0.3)]"
@@ -312,7 +313,7 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
       >
         {/* Dynamic Trailing Mouse Radial Glow */}
         <motion.div
-          className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-300"
+          className="pointer-events-none absolute -inset-px rounded-lg opacity-0 transition-opacity duration-300"
           style={{
             background: radialBackground,
             opacity: isHovered && !isDragOver ? 1 : 0,
@@ -321,7 +322,7 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
 
         {/* Dynamic Border Spotlight Glow on Hover */}
         <motion.div
-          className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-300"
+          className="pointer-events-none absolute -inset-px rounded-lg opacity-0 transition-opacity duration-300"
           style={{
             background: borderGlow,
             opacity: isHovered && !isDragOver ? 0.6 : 0,
@@ -336,10 +337,10 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
         {/* Dashed Border -> Solid Burgundy Line on Drag/Active */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 rounded-2xl transition-all duration-300",
+            "pointer-events-none absolute inset-0 rounded-lg transition-all duration-300",
             isActive
-              ? "border border-solid border-[#701a24] shadow-[inset_0_0_20px_rgba(112,26,36,0.2)]"
-              : "border border-dashed border-white/[0.08]"
+              ? "border border-solid border-primary shadow-[inset_0_0_20px_rgba(112,26,36,0.2)]"
+              : "border border-dashed border-white/10"
           )}
         />
 
@@ -367,17 +368,17 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                   transition={{ type: "spring", stiffness: 320, damping: 20 }}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    "group relative mb-4 flex h-13 w-13 cursor-pointer items-center justify-center rounded-xl",
-                    "bg-white/[0.04] border border-white/[0.07]",
-                    "transition-all duration-200 hover:border-[#701a24]/60 hover:bg-[#701a24]/10"
+                    "group relative mb-4 flex h-12 w-12 cursor-pointer items-center justify-center rounded-md",
+                    "bg-primary/10 border border-primary/20",
+                    "transition-all duration-200 hover:border-primary/50 hover:bg-primary/20"
                   )}
                 >
                   <Upload
                     className={cn(
                       "h-5 w-5 transition-colors duration-200",
                       isActive
-                        ? "text-stone-200"
-                        : "text-zinc-400 group-hover:text-stone-200"
+                        ? "text-neutral-200"
+                        : "text-neutral-400 group-hover:text-neutral-200"
                     )}
                     strokeWidth={1.8}
                   />
@@ -402,19 +403,16 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                 />
 
                 {/* Manual File Select Action Button */}
-                <motion.button
+                <Button
                   type="button"
-                  whileTap={{ scale: 0.97 }}
-                  whileHover={{ scale: 1.01 }}
+                  variant="outline"
+                  size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold tracking-tight cursor-pointer",
-                    "bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white transition-colors duration-150"
-                  )}
+                  className="rounded-md border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:text-white text-xs font-medium text-neutral-300 gap-2 cursor-pointer h-8"
                 >
                   <Upload className="h-3.5 w-3.5" />
                   <span>Choose local file</span>
-                </motion.button>
+                </Button>
 
                 {/* Minimal Subtle Divider */}
                 <div className="relative w-full max-w-xs flex items-center justify-center my-5">
@@ -455,25 +453,29 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
                     {/* Quick submit button */}
                     <div className="absolute right-0 flex items-center">
                       {mediaUrl.trim().length > 0 && (
-                        <motion.button
+                        <motion.div
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.8 }}
-                          type="submit"
-                          disabled={isUrlSubmitting}
-                          className={cn(
-                            "flex h-6 w-6 items-center justify-center rounded-md",
-                            "bg-[#701a24] text-white shadow-none",
-                            "hover:bg-[#881337] active:scale-95 transition-colors duration-150 cursor-pointer"
-                          )}
-                          aria-label="Submit URL"
                         >
-                          {isUrlSubmitting ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <ArrowRight className="h-3 w-3" />
-                          )}
-                        </motion.button>
+                          <Button
+                            type="submit"
+                            size="icon"
+                            disabled={isUrlSubmitting}
+                            className={cn(
+                              "h-6 w-6 rounded-md",
+                              "bg-[#701a24] text-white shadow-none",
+                              "hover:bg-[#881337] active:scale-95 transition-colors duration-150 cursor-pointer"
+                            )}
+                            aria-label="Submit URL"
+                          >
+                            {isUrlSubmitting ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <ArrowRight className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </motion.div>
                       )}
                     </div>
                   </div>
@@ -554,41 +556,41 @@ export const HeroDropzone: React.FC<HeroDropzoneProps> = ({
 
                 {/* Buttons */}
                 <div className="flex items-center gap-2.5">
-                  <motion.button
+                  <Button
                     type="button"
-                    whileTap={{ scale: 0.96 }}
+                    variant="outline"
+                    size="sm"
                     onClick={handleReset}
                     disabled={isBusy}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight bg-white/[0.04] border border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer disabled:opacity-50"
+                    className="h-8 rounded-md border-white/10 bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] text-xs font-medium cursor-pointer disabled:opacity-50 gap-1.5"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3.5 w-3.5" />
                     <span>Cancel</span>
-                  </motion.button>
+                  </Button>
 
-                  <motion.button
+                  <Button
                     type="button"
-                    whileTap={{ scale: isBusy ? 1 : 0.96 }}
+                    size="sm"
                     disabled={isBusy}
                     onClick={() => handleFileProcess(selectedFile)}
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium tracking-tight cursor-pointer",
-                      "bg-[#701a24] text-white",
-                      "hover:bg-[#881337] transition-colors duration-150",
+                      "h-8 rounded-md text-xs font-medium cursor-pointer gap-1.5",
+                      "bg-primary text-primary-foreground hover:bg-[#881337] transition-colors duration-150",
                       isBusy && "opacity-75 cursor-not-allowed shadow-none"
                     )}
                   >
                     {isBusy ? (
                       <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         <span>Uploading...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-3 w-3" />
+                        <Sparkles className="h-3.5 w-3.5" />
                         <span>Process Lecture</span>
                       </>
                     )}
-                  </motion.button>
+                  </Button>
                 </div>
               </motion.div>
             )}

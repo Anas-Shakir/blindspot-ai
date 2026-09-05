@@ -6,6 +6,26 @@
   :root {
     --background: 8 9 12;
     --foreground: 244 244 245;
+    --background: 240 10% 4%;
+    --foreground: 240 5% 96%;
+    --card: 240 8% 6%;
+    --card-foreground: 240 5% 96%;
+    --popover: 240 8% 6%;
+    --popover-foreground: 240 5% 96%;
+    --primary: 353 62% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 240 5% 90%;
+    --muted: 240 4% 12%;
+    --muted-foreground: 240 4% 65%;
+    --accent: 353 62% 27%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 344 76% 30%;
+    --radius: 0.5rem;
   }
 
   * {

@@ -17,6 +17,11 @@ import Sidebar from "@/components/common/Sidebar";
 import CustomSelect, { SelectOption } from "@/components/common/CustomSelect";
 import { cn } from "@/lib/utils";
 import { api, VoiceOption } from "@/lib/api";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 const TEXT_LANGUAGES = [
   { id: "English", name: "English", flag: "🌐" },
@@ -229,32 +234,37 @@ export default function SettingsPage() {
       {/* Main Settings Frame */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-14 px-6 border-b border-white/[0.07] flex items-center justify-between shrink-0 bg-[#09090b]/80 backdrop-blur-md z-20">
+        <header className="h-14 px-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-[#09090b]/80 backdrop-blur-md z-20">
           <div className="flex items-center gap-3">
-            <Link
-              href="/workspace"
-              className="flex items-center gap-2 text-xs text-neutral-400 hover:text-white transition-colors cursor-pointer group px-2.5 py-1.5 rounded-lg hover:bg-white/[0.04]"
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="h-8 px-2.5 text-xs text-neutral-400 hover:text-white hover:bg-white/5 gap-2 rounded-md"
             >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Back to Workspace</span>
-            </Link>
+              <Link href="/workspace">
+                <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                <span>Back to Workspace</span>
+              </Link>
+            </Button>
           </div>
 
           {/* Save Status Toast & Button */}
           <div className="flex items-center gap-2">
             {savedToast && (
-              <span className="text-xs text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+              <Badge variant="success" className="text-xs flex items-center gap-1 py-1 px-2.5">
                 <Check className="w-3.5 h-3.5" />
                 <span>Preferences synced</span>
-              </span>
+              </Badge>
             )}
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={handleManualSave}
-              className="px-3.5 py-1.5 rounded-lg bg-[#701a24] hover:bg-[#8b2330] text-white text-xs font-semibold transition-all shadow-sm cursor-pointer"
+              className="h-8 px-3.5 rounded-md bg-primary hover:bg-[#881337] text-white text-xs font-medium transition-colors shadow-none cursor-pointer"
             >
               Save Changes
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -263,135 +273,130 @@ export default function SettingsPage() {
           {/* Header Title Section */}
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-[#701a24]/20 border border-[#701a24]/40 text-[#e05364]">
-                <Sliders className="w-4 h-4" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/20 border border-primary/30 text-rose-300">
+                <Sliders className="w-3.5 h-3.5" />
               </div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Preferences</h1>
+              <h1 className="text-xl font-medium text-neutral-100 tracking-tight">Preferences</h1>
             </div>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-neutral-400 font-normal">
               Customize your AI model engines, voice synthesis, dialogue languages, and playback options.
             </p>
           </div>
 
-          {/* Tab Switcher: General First, AI & Voice Second */}
-          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("general")}
-              className={cn(
-                "px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
-                activeTab === "general"
-                  ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08] font-semibold"
-                  : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
-              )}
-            >
-              General
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("ai")}
-              className={cn(
-                "px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5",
-                activeTab === "ai"
-                  ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08] font-semibold"
-                  : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
-              )}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#701a24]" />
-              <span>AI & Voice</span>
-            </button>
-          </div>
+          {/* Tabs: General & AI */}
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => setActiveTab(val as "general" | "ai")}
+            className="w-full space-y-6"
+          >
+            <TabsList className="bg-neutral-900/60 border border-white/5 p-1 rounded-md h-9 gap-1">
+              <TabsTrigger
+                value="general"
+                className="text-xs px-3.5 py-1 text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-neutral-800 rounded-sm cursor-pointer"
+              >
+                General
+              </TabsTrigger>
+              <TabsTrigger
+                value="ai"
+                className="text-xs px-3.5 py-1 text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-neutral-800 rounded-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                <span>AI & Voice</span>
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Tab 1: General Settings (First) */}
-          {activeTab === "general" && (
-            <div className="space-y-4">
-              <div className="p-5 rounded-2xl bg-[#121216]/90 border border-white/[0.07] space-y-5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Lecture Playback
-                </h3>
-
-                {/* Toggle: Autoplay Audio */}
-                <div className="flex items-center justify-between py-1">
-                  <div>
-                    <span className="text-xs font-medium text-neutral-200 block">
-                      Autoplay Lecture Audio
-                    </span>
-                    <span className="text-[11px] text-neutral-500">
-                      Automatically start playing lesson audio when opening a lecture
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setAutoplayAudio((prev) => !prev)}
-                    className={cn(
-                      "w-10 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none",
-                      autoplayAudio ? "bg-[#701a24]" : "bg-zinc-700"
-                    )}
-                  >
-                    <div
+            {/* Tab 1: General Settings */}
+            <TabsContent value="general" className="mt-0 space-y-4 focus-visible:outline-none">
+              <Card className="bg-neutral-900/40 border-white/5 shadow-none rounded-lg">
+                <CardHeader className="p-5 pb-3">
+                  <CardTitle className="text-xs font-medium uppercase tracking-wider text-neutral-400">
+                    Lecture Playback
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 pt-0 space-y-4">
+                  {/* Toggle: Autoplay Audio */}
+                  <div className="flex items-center justify-between py-1">
+                    <div>
+                      <span className="text-xs font-medium text-neutral-200 block">
+                        Autoplay Lecture Audio
+                      </span>
+                      <span className="text-[11px] text-neutral-500">
+                        Automatically start playing lesson audio when opening a lecture
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAutoplayAudio((prev) => !prev)}
                       className={cn(
-                        "w-4 h-4 rounded-full bg-white transition-transform absolute top-1",
-                        autoplayAudio ? "translate-x-5" : "translate-x-1"
+                        "w-10 h-5.5 rounded-full transition-colors relative cursor-pointer focus:outline-none",
+                        autoplayAudio ? "bg-primary" : "bg-neutral-800"
                       )}
-                    />
-                  </button>
-                </div>
-
-                <div className="h-[1px] bg-white/[0.05]" />
-
-                {/* Toggle: Subtitles */}
-                <div className="flex items-center justify-between py-1">
-                  <div>
-                    <span className="text-xs font-medium text-neutral-200 block">
-                      Interactive Subtitles
-                    </span>
-                    <span className="text-[11px] text-neutral-500">
-                      Show synced transcript text during playback
-                    </span>
+                    >
+                      <div
+                        className={cn(
+                          "w-4 h-4 rounded-full bg-white transition-transform absolute top-[3px]",
+                          autoplayAudio ? "translate-x-5" : "translate-x-1"
+                        )}
+                      />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSubtitlesEnabled((prev) => !prev)}
-                    className={cn(
-                      "w-10 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none",
-                      subtitlesEnabled ? "bg-[#701a24]" : "bg-zinc-700"
-                    )}
-                  >
-                    <div
+
+                  <Separator className="bg-white/5" />
+
+                  {/* Toggle: Subtitles */}
+                  <div className="flex items-center justify-between py-1">
+                    <div>
+                      <span className="text-xs font-medium text-neutral-200 block">
+                        Interactive Subtitles
+                      </span>
+                      <span className="text-[11px] text-neutral-500">
+                        Show synced transcript text during playback
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSubtitlesEnabled((prev) => !prev)}
                       className={cn(
-                        "w-4 h-4 rounded-full bg-white transition-transform absolute top-1",
-                        subtitlesEnabled ? "translate-x-5" : "translate-x-1"
+                        "w-10 h-5.5 rounded-full transition-colors relative cursor-pointer focus:outline-none",
+                        subtitlesEnabled ? "bg-primary" : "bg-neutral-800"
                       )}
-                    />
-                  </button>
-                </div>
-
-                <div className="h-[1px] bg-white/[0.05]" />
-
-                {/* Select: Default Playback Speed */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <span className="text-xs font-medium text-neutral-200 block">
-                      Default Playback Speed
-                    </span>
-                    <span className="text-[11px] text-neutral-500">
-                      Preferred audio playback speed for lectures
-                    </span>
+                    >
+                      <div
+                        className={cn(
+                          "w-4 h-4 rounded-full bg-white transition-transform absolute top-[3px]",
+                          subtitlesEnabled ? "translate-x-5" : "translate-x-1"
+                        )}
+                      />
+                    </button>
                   </div>
 
-                  <CustomSelect
-                    value={playbackSpeed}
-                    onChange={setPlaybackSpeed}
-                    options={speedOptions}
-                    className="w-full sm:w-60 shrink-0"
-                  />
-                </div>
-              </div>
+                  <Separator className="bg-white/5" />
+
+                  {/* Select: Default Playback Speed */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                    <div>
+                      <span className="text-xs font-medium text-neutral-200 block">
+                        Default Playback Speed
+                      </span>
+                      <span className="text-[11px] text-neutral-500">
+                        Preferred audio playback speed for lectures
+                      </span>
+                    </div>
+
+                    <CustomSelect
+                      value={playbackSpeed}
+                      onChange={setPlaybackSpeed}
+                      options={speedOptions}
+                      className="w-full sm:w-60 shrink-0"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Theme Note */}
-              <div className="p-4 rounded-2xl bg-[#121216]/90 border border-white/[0.07] flex items-center justify-between">
+              <Card className="bg-neutral-900/40 border-white/5 shadow-none rounded-lg p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-zinc-800 text-neutral-300">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-neutral-300">
                     <Moon className="w-4 h-4" />
                   </div>
                   <div>
@@ -401,128 +406,128 @@ export default function SettingsPage() {
                     </span>
                   </div>
                 </div>
-                <span className="text-[11px] font-mono text-neutral-400 bg-black/40 px-2.5 py-1 rounded-md border border-white/[0.05]">
+                <Badge variant="secondary" className="font-mono text-[11px] border-white/10 bg-black/40">
                   Dark (Default)
-                </span>
-              </div>
-            </div>
-          )}
+                </Badge>
+              </Card>
+            </TabsContent>
 
-          {/* Tab 2: AI & Voice (Second) */}
-          {activeTab === "ai" && (
-            <div className="space-y-4">
-              <div className="p-5 rounded-2xl bg-[#121216]/90 border border-white/[0.07] space-y-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
+            {/* Tab 2: AI & Voice */}
+            <TabsContent value="ai" className="mt-0 space-y-4 focus-visible:outline-none">
+              <Card className="bg-neutral-900/40 border-white/5 shadow-none rounded-lg">
+                <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-xs font-medium uppercase tracking-wider text-neutral-300 flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                     <span>AI Tutor Voice & Model Settings</span>
-                  </h3>
+                  </CardTitle>
                   <span className="text-[10px] font-mono text-neutral-500">
                     Synced with Workspace Top Bar & Backend
                   </span>
-                </div>
+                </CardHeader>
 
-                {/* 1. AI Reasoning Model Selection */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <Cpu className="w-3.5 h-3.5 text-purple-400" />
-                      <span className="text-xs font-medium text-neutral-200">
-                        AI Reasoning Model
+                <CardContent className="p-5 pt-0 space-y-4">
+                  {/* 1. AI Reasoning Model Selection */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Cpu className="w-3.5 h-3.5 text-purple-400" />
+                        <span className="text-xs font-medium text-neutral-200">
+                          AI Reasoning Model
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-neutral-400 block mt-0.5">
+                        Select the primary foundation LLM engine for curriculum breakdown and tutoring
                       </span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block mt-0.5">
-                      Select the primary foundation LLM engine for curriculum breakdown and tutoring
-                    </span>
+
+                    <CustomSelect
+                      value={selectedModel}
+                      onChange={handleModelChange}
+                      options={modelOptions}
+                      className="w-full sm:w-80 shrink-0"
+                    />
                   </div>
 
-                  <CustomSelect
-                    value={selectedModel}
-                    onChange={handleModelChange}
-                    options={modelOptions}
-                    className="w-full sm:w-80 shrink-0"
-                  />
-                </div>
+                  <Separator className="bg-white/5" />
 
-                <div className="h-[1px] bg-white/[0.05]" />
-
-                {/* 2. Spoken Neural Voice Selection */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <Volume2 className="w-3.5 h-3.5 text-sky-400" />
-                      <span className="text-xs font-medium text-neutral-200">
-                        AI Spoken Voice & Accent
+                  {/* 2. Spoken Neural Voice Selection */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Volume2 className="w-3.5 h-3.5 text-sky-400" />
+                        <span className="text-xs font-medium text-neutral-200">
+                          AI Spoken Voice & Accent
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-neutral-400 block mt-0.5">
+                        The neural voice and spoken accent used by the AI tutor when speaking and explaining concepts
                       </span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block mt-0.5">
-                      The neural voice and spoken accent used by the AI tutor when speaking and explaining concepts
-                    </span>
+
+                    <CustomSelect
+                      value={selectedVoice}
+                      onChange={handleVoiceChange}
+                      options={voiceOptions}
+                      className="w-full sm:w-72 shrink-0"
+                    />
                   </div>
 
-                  <CustomSelect
-                    value={selectedVoice}
-                    onChange={handleVoiceChange}
-                    options={voiceOptions}
-                    className="w-full sm:w-72 shrink-0"
-                  />
-                </div>
+                  <Separator className="bg-white/5" />
 
-                <div className="h-[1px] bg-white/[0.05]" />
-
-                {/* 3. Text Reading Language Selection */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-xs font-medium text-neutral-200">
-                        Reading Text Language
+                  {/* 3. Text Reading Language Selection */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-xs font-medium text-neutral-200">
+                          Reading Text Language
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-neutral-400 block mt-0.5">
+                        The language used for on-screen dialogue text, whiteboard notes, and subtitles
                       </span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block mt-0.5">
-                      The language used for on-screen dialogue text, whiteboard notes, and subtitles
-                    </span>
+
+                    <CustomSelect
+                      value={selectedTextLanguage}
+                      onChange={handleTextLanguageChange}
+                      options={textLanguageOptions}
+                      className="w-full sm:w-72 shrink-0"
+                    />
                   </div>
 
-                  <CustomSelect
-                    value={selectedTextLanguage}
-                    onChange={handleTextLanguageChange}
-                    options={textLanguageOptions}
-                    className="w-full sm:w-72 shrink-0"
-                  />
-                </div>
+                  <Separator className="bg-white/5" />
 
-                <div className="h-[1px] bg-white/[0.05]" />
+                  {/* 4. Explanation Verbosity */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+                    <div>
+                      <span className="text-xs font-medium text-neutral-200 block">
+                        Explanation Verbosity
+                      </span>
+                      <span className="text-[11px] text-neutral-400">
+                        Depth of explanations when asking questions to the AI tutor
+                      </span>
+                    </div>
 
-                {/* 3. Explanation Verbosity */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                  <div>
-                    <span className="text-xs font-medium text-neutral-200 block">
-                      Explanation Verbosity
-                    </span>
-                    <span className="text-[11px] text-neutral-400">
-                      Depth of explanations when asking questions to the AI tutor
-                    </span>
+                    <CustomSelect
+                      value={tutorVerbosity}
+                      onChange={setTutorVerbosity}
+                      options={verbosityOptions}
+                      className="w-full sm:w-72 shrink-0"
+                    />
                   </div>
-
-                  <CustomSelect
-                    value={tutorVerbosity}
-                    onChange={setTutorVerbosity}
-                    options={verbosityOptions}
-                    className="w-full sm:w-72 shrink-0"
-                  />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
               {/* Sync Note Box */}
-              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.07] flex items-start gap-3 text-xs text-neutral-400">
+              <Card className="bg-neutral-900/20 border-white/5 shadow-none rounded-lg p-4 flex items-start gap-3 text-xs text-neutral-400">
                 <HelpCircle className="w-4 h-4 text-neutral-500 shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
-                  Voice and text languages are independently configurable. Changes made here will immediately update the selectors on the <strong className="text-neutral-200">Workspace top bar</strong> and persist across all upcoming AI teaching steps.
+                  Voice and text languages are independently configurable. Changes made here will immediately update the selectors on the <strong className="text-neutral-200 font-medium">Workspace top bar</strong> and persist across all upcoming AI teaching steps.
                 </p>
-              </div>
-            </div>
-          )}
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -50,6 +50,7 @@ import KnowledgeGraphView from "@/components/player/KnowledgeGraphView";
 import { CanvasObject, ToolType, ViewportTransform } from "@/lib/whiteboard/types";
 import QuizCard, { QuizOption } from "@/components/player/QuizCard";
 import Sidebar from "@/components/common/Sidebar";
+import LecturesModal from "@/components/workspace/LecturesModal";
 
 interface PhaseData {
   id: number;
@@ -352,9 +353,11 @@ const defaultTranscriptSegments: TranscriptSegment[] = [
 type ToolTab = "notes" | "plan" | "summary";
 
 export default function WorkspacePage() {
+  const router = useRouter();
   const params = useParams();
   const rawId = params?.id;
   const lectureId = rawId ? (Array.isArray(rawId) ? rawId[0] : rawId) : null;
+  const [isLecturesModalOpen, setIsLecturesModalOpen] = useState<boolean>(false);
 
   // Lecture & Plan data
   const [lecture, setLecture] = useState<Lecture | null>(null);
@@ -933,7 +936,7 @@ export default function WorkspacePage() {
     : "";
 
   return (
-    <div className="h-screen w-full flex overflow-hidden bg-[#0a0a0a] text-neutral-100 selection:bg-[#701a24]/40 selection:text-white font-sans">
+    <div className="h-screen w-full flex overflow-hidden bg-neutral-950 text-neutral-200 selection:bg-white/10 selection:text-white font-sans">
       {/* Hidden audio element for AI Tutor speech playback */}
       <audio
         ref={audioPlayerRef}
@@ -946,12 +949,14 @@ export default function WorkspacePage() {
       {/* =====================================================================
           1. Left Column: NavBar / Lecture List (Fixed width, w-64, bordered right)
           ===================================================================== */}
-      <div className="w-64 shrink-0 h-full border-r border-neutral-800 bg-[#09090b] flex flex-col overflow-hidden z-20">
+      <div className="w-64 shrink-0 h-full border-r border-white/5 bg-neutral-950 flex flex-col overflow-hidden z-20">
         <Sidebar
           className="h-full border-none w-full"
-          currentPathOverride="/workspace"
+          currentPathOverride={lectureId ? `/workspace/${lectureId}` : "/workspace"}
           onNavigate={(href) => {
-            if (href === "#graph") {
+            if (href === "#lectures") {
+              setIsLecturesModalOpen(true);
+            } else if (href === "#graph") {
               setStageView("graph");
             }
           }}
@@ -961,73 +966,79 @@ export default function WorkspacePage() {
       {/* =====================================================================
           2. Middle Column: Main Stage (Flexible width, flex-1, bordered right)
           ===================================================================== */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-neutral-800 bg-[#0a0a0a] min-w-0">
+      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-white/5 bg-neutral-950 min-w-0">
         {/* Minimal Top Bar with Title, Exit Link, and 3D Robot / Whiteboard View Toggle */}
-        <header className="h-12 px-6 border-b border-neutral-800 flex items-center justify-between shrink-0 bg-[#0a0a0a] z-10">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="h-14 px-8 border-b border-white/5 flex items-center justify-between shrink-0 bg-neutral-950 z-10">
+          <div className="flex items-center gap-3.5 min-w-0">
             <Link
               href="/"
-              className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors cursor-pointer group shrink-0"
+              className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-all duration-300 ease-out cursor-pointer group shrink-0"
             >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform duration-300" />
               <span>Exit</span>
             </Link>
 
-            <div className="h-3.5 w-[1px] bg-neutral-800 shrink-0" />
+            <div className="h-3.5 w-[1px] bg-white/10 shrink-0" />
 
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-semibold text-neutral-200 truncate">
+            <button
+              type="button"
+              onClick={() => setIsLecturesModalOpen(true)}
+              className="flex items-center gap-2 min-w-0 hover:bg-white/5 px-2.5 py-1.5 -mx-2 rounded-md transition-all duration-300 ease-out cursor-pointer group text-left"
+              title="Click to view all lectures or switch lecture"
+            >
+              <span className="text-xs font-medium tracking-tight text-neutral-200 group-hover:text-white truncate">
                 {lecture?.filename || "Dynamic Market Equilibria"}
               </span>
-              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider shrink-0">
-                • Phase {currentPhaseIndex + 1} of {phasesList.length}
+              <span className="text-[10px] font-mono text-neutral-500 group-hover:text-neutral-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                <span>• Phase {currentPhaseIndex + 1} of {phasesList.length}</span>
+                <ChevronDown className="w-3 h-3 text-neutral-500 group-hover:text-neutral-400" />
               </span>
-            </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             {/* 3-Way Stage View Switcher: 3D Robot vs Whiteboard vs Knowledge Graph */}
-            <div className="flex items-center bg-neutral-900 border border-neutral-800 p-0.5 rounded-lg text-xs">
+            <div className="flex items-center bg-neutral-900/50 border border-white/5 p-1 rounded-lg text-xs">
               <button
                 type="button"
                 onClick={() => setStageView("robot")}
                 className={cn(
-                  "px-2.5 sm:px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
+                  "px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all duration-300 ease-out cursor-pointer text-xs font-medium",
                   stageView === "robot"
-                    ? "bg-neutral-800 text-white shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white"
+                    ? "bg-white/10 text-neutral-200 shadow-none"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                 )}
                 title="3D Robot Companion"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#701a24]" />
+                <Sparkles className="w-3.5 h-3.5 text-neutral-400" />
                 <span className="hidden sm:inline">3D Robot</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStageView("whiteboard")}
                 className={cn(
-                  "px-2.5 sm:px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
+                  "px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all duration-300 ease-out cursor-pointer text-xs font-medium",
                   stageView === "whiteboard"
-                    ? "bg-[#701a24]/40 text-[#fca5a5] border border-[#701a24] shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white"
+                    ? "bg-white/10 text-neutral-200 shadow-none"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                 )}
                 title="Interactive Whiteboard"
               >
-                <Presentation className="w-3.5 h-3.5 text-amber-400" />
+                <Presentation className="w-3.5 h-3.5 text-neutral-400" />
                 <span className="hidden sm:inline">Whiteboard</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStageView("graph")}
                 className={cn(
-                  "px-2.5 sm:px-3 py-1 rounded-md flex items-center gap-1.5 transition-all cursor-pointer text-xs font-medium",
+                  "px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all duration-300 ease-out cursor-pointer text-xs font-medium",
                   stageView === "graph"
-                    ? "bg-blue-950/60 text-blue-300 border border-blue-800/80 shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white"
+                    ? "bg-white/10 text-neutral-200 shadow-none"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                 )}
                 title="Concept Knowledge Graph"
               >
-                <Network className="w-3.5 h-3.5 text-blue-400" />
+                <Network className="w-3.5 h-3.5 text-neutral-400" />
                 <span className="hidden sm:inline">Knowledge Graph</span>
                 <span className="sm:hidden">Graph</span>
               </button>
@@ -1035,14 +1046,14 @@ export default function WorkspacePage() {
 
             {/* Audio Indicator */}
             {isPlayingAudio && (
-              <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
+              <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-950/30 px-2.5 py-1 rounded-md border border-emerald-500/20">
                 <Volume2 className="w-3 h-3 animate-pulse" />
                 <span className="hidden sm:inline">AI Speaking</span>
               </div>
             )}
 
-            {/* Lecture Status Indicator */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-[11px] font-mono text-neutral-400">
+            {/* Lecture Status Indicator - crisp rounded-md badge */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-neutral-900/50 border border-white/5 text-[11px] font-mono text-neutral-400">
               <div
                 className={cn(
                   "h-1.5 w-1.5 rounded-full",
@@ -1055,7 +1066,7 @@ export default function WorkspacePage() {
         </header>
 
         {/* Top/Center Stage: Prominent Container for 3D Robot, WhiteboardCanvas, OR KnowledgeGraphView */}
-        <div className="flex-1 relative flex flex-col items-center justify-center p-3 min-h-0 overflow-hidden bg-gradient-to-b from-neutral-950 via-[#0a0a0a] to-[#0a0a0a]">
+        <div className="flex-1 relative flex flex-col items-center justify-center p-6 md:p-8 min-h-0 overflow-hidden bg-neutral-950">
           {stageView === "robot" ? (
             /* 3D Canvas Avatar with unified, minimal luxury subtitle overlay */
             <div className="relative w-full h-full max-h-[460px] flex items-center justify-center pointer-events-auto">
@@ -1069,15 +1080,15 @@ export default function WorkspacePage() {
             </div>
           ) : stageView === "whiteboard" ? (
             /* Whiteboard View: Active Whiteboard Canvas with interactive drawing tools */
-            <div className="relative w-full h-full min-h-0 overflow-hidden rounded-xl border border-neutral-800 bg-[#0d0d10] flex flex-col">
+            <div className="relative w-full h-full min-h-0 overflow-hidden rounded-lg border border-white/5 bg-neutral-900/30 flex flex-col">
               {/* Mini Whiteboard Floating Controls */}
-              <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 p-1 bg-neutral-900/90 backdrop-blur-md rounded-xl border border-neutral-800 shadow-xl">
+              <div className="absolute top-4 left-4 z-30 flex items-center gap-1 p-1 bg-neutral-900/80 backdrop-blur-md rounded-md border border-white/10 shadow-lg">
                 <button
                   type="button"
                   onClick={() => setWhiteboardTool("pen")}
                   className={cn(
-                    "p-1.5 rounded-lg text-xs transition-colors cursor-pointer",
-                    whiteboardTool === "pen" ? "bg-neutral-800 text-white font-bold" : "text-neutral-400 hover:text-white"
+                    "p-1.5 rounded-md text-xs transition-all duration-300 ease-out cursor-pointer",
+                    whiteboardTool === "pen" ? "bg-white/10 text-neutral-200" : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                   )}
                   title="Pen Tool"
                 >
@@ -1087,8 +1098,8 @@ export default function WorkspacePage() {
                   type="button"
                   onClick={() => setWhiteboardTool("select")}
                   className={cn(
-                    "p-1.5 rounded-lg text-xs transition-colors cursor-pointer",
-                    whiteboardTool === "select" ? "bg-neutral-800 text-white font-bold" : "text-neutral-400 hover:text-white"
+                    "p-1.5 rounded-md text-xs transition-all duration-300 ease-out cursor-pointer",
+                    whiteboardTool === "select" ? "bg-white/10 text-neutral-200" : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                   )}
                   title="Select Tool"
                 >
@@ -1098,8 +1109,8 @@ export default function WorkspacePage() {
                   type="button"
                   onClick={() => setWhiteboardTool("rectangle")}
                   className={cn(
-                    "p-1.5 rounded-lg text-xs transition-colors cursor-pointer",
-                    whiteboardTool === "rectangle" ? "bg-neutral-800 text-white font-bold" : "text-neutral-400 hover:text-white"
+                    "p-1.5 rounded-md text-xs transition-all duration-300 ease-out cursor-pointer",
+                    whiteboardTool === "rectangle" ? "bg-white/10 text-neutral-200" : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                   )}
                   title="Rectangle"
                 >
@@ -1109,8 +1120,8 @@ export default function WorkspacePage() {
                   type="button"
                   onClick={() => setWhiteboardTool("circle")}
                   className={cn(
-                    "p-1.5 rounded-lg text-xs transition-colors cursor-pointer",
-                    whiteboardTool === "circle" ? "bg-neutral-800 text-white font-bold" : "text-neutral-400 hover:text-white"
+                    "p-1.5 rounded-md text-xs transition-all duration-300 ease-out cursor-pointer",
+                    whiteboardTool === "circle" ? "bg-white/10 text-neutral-200" : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                   )}
                   title="Circle"
                 >
@@ -1120,18 +1131,18 @@ export default function WorkspacePage() {
                   type="button"
                   onClick={() => setWhiteboardTool("eraser")}
                   className={cn(
-                    "p-1.5 rounded-lg text-xs transition-colors cursor-pointer",
-                    whiteboardTool === "eraser" ? "bg-neutral-800 text-white font-bold" : "text-neutral-400 hover:text-white"
+                    "p-1.5 rounded-md text-xs transition-all duration-300 ease-out cursor-pointer",
+                    whiteboardTool === "eraser" ? "bg-white/10 text-neutral-200" : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
                   )}
                   title="Eraser"
                 >
                   <Eraser className="w-3.5 h-3.5" />
                 </button>
-                <div className="h-4 w-[1px] bg-neutral-800 mx-0.5" />
+                <div className="h-4 w-[1px] bg-white/10 mx-0.5" />
                 <button
                   type="button"
                   onClick={() => setWhiteboardObjects([])}
-                  className="p-1.5 rounded-lg text-xs text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-md text-xs text-neutral-400 hover:text-rose-400 hover:bg-white/5 transition-all duration-300 ease-out cursor-pointer"
                   title="Clear Canvas"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -1155,7 +1166,7 @@ export default function WorkspacePage() {
             </div>
           ) : (
             /* Knowledge Graph View: Interactive Concept Map & Blindspot Detection */
-            <div className="relative w-full h-full min-h-0 overflow-hidden rounded-xl border border-neutral-800 bg-[#09090b] flex flex-col">
+            <div className="relative w-full h-full min-h-0 overflow-hidden rounded-lg border border-white/5 bg-neutral-900/30 flex flex-col">
               <KnowledgeGraphView
                 lectureId={lectureId || 1}
                 onJumpToTimestamp={jumpToPhaseTimestamp}
@@ -1167,19 +1178,19 @@ export default function WorkspacePage() {
         </div>
 
         {/* Action Buttons: Horizontal row of four stylized buttons */}
-        <div className="px-6 py-3 border-t border-neutral-800 bg-[#0a0a0a] shrink-0">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-w-4xl mx-auto">
+        <div className="px-8 py-4 border-t border-white/5 bg-neutral-950 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto">
             {/* Action 1: Explain Again */}
             <motion.button
               type="button"
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.98 }}
               whileHover={{ scale: 1.01 }}
               onClick={handleExplainAgain}
               className={cn(
-                "p-2.5 rounded-xl border text-xs font-medium tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-colors",
+                "px-4 py-2.5 rounded-md border text-xs font-medium tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-all duration-300 ease-out",
                 isAlternativeView
-                  ? "bg-[#701a24]/30 border-[#701a24]/60 text-stone-200"
-                  : "bg-neutral-900/70 hover:bg-neutral-800 border-neutral-800 text-neutral-200"
+                  ? "bg-white/10 border-white/15 text-neutral-100"
+                  : "bg-neutral-900/40 hover:bg-white/5 border-white/5 hover:border-white/10 text-neutral-300 hover:text-neutral-100"
               )}
             >
               <RotateCcw className="w-3.5 h-3.5 text-neutral-400" />
@@ -1189,31 +1200,31 @@ export default function WorkspacePage() {
             {/* Action 2: Quiz Me */}
             <motion.button
               type="button"
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.98 }}
               whileHover={{ scale: 1.01 }}
               onClick={handleToggleQuiz}
               className={cn(
-                "p-2.5 rounded-xl border text-xs font-medium tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-colors",
+                "px-4 py-2.5 rounded-md border text-xs font-medium tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-all duration-300 ease-out",
                 isQuizMode
-                  ? "bg-amber-950/50 border-amber-500/50 text-amber-200 font-semibold"
-                  : "bg-neutral-900/70 hover:bg-neutral-800 border-neutral-800 text-neutral-200"
+                  ? "bg-amber-950/30 border-amber-500/30 text-amber-200"
+                  : "bg-neutral-900/40 hover:bg-white/5 border-white/5 hover:border-white/10 text-neutral-300 hover:text-neutral-100"
               )}
             >
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <Zap className="w-3.5 h-3.5 text-amber-400/90" />
               <span>Quiz Me</span>
             </motion.button>
 
             {/* Action 3: Show Source */}
             <motion.button
               type="button"
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.98 }}
               whileHover={{ scale: 1.01 }}
               onClick={handleToggleSourceDrawer}
               className={cn(
-                "p-2.5 rounded-xl border text-xs font-medium tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-colors",
+                "px-4 py-2.5 rounded-md border text-xs font-medium tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-all duration-300 ease-out",
                 isSourceDrawerOpen
-                  ? "bg-neutral-800 border-neutral-700 text-neutral-100 font-semibold"
-                  : "bg-neutral-900/70 hover:bg-neutral-800 border-neutral-800 text-neutral-200"
+                  ? "bg-white/10 border-white/15 text-neutral-100"
+                  : "bg-neutral-900/40 hover:bg-white/5 border-white/5 hover:border-white/10 text-neutral-300 hover:text-neutral-100"
               )}
             >
               <Search className="w-3.5 h-3.5 text-neutral-400" />
@@ -1223,10 +1234,10 @@ export default function WorkspacePage() {
             {/* Action 4: Next Phase */}
             <motion.button
               type="button"
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.98 }}
               whileHover={{ scale: 1.01 }}
               onClick={handleNextPhase}
-              className="p-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-200 text-neutral-950 text-xs font-semibold tracking-tight flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+              className="px-4 py-2.5 rounded-md bg-neutral-100 hover:bg-white text-neutral-950 text-xs font-medium tracking-tight flex items-center justify-center gap-1.5 cursor-pointer transition-all duration-300 ease-out shadow-sm"
             >
               <span>Next Phase</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -1235,7 +1246,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* 2. Custom Luxury Dark Audio Player matching site theme */}
-        <div className="border-t border-neutral-800 bg-[#0a0a0a] shrink-0">
+        <div className="border-t border-white/5 bg-neutral-950 shrink-0">
           {/* Permanently mounted HTML5 Audio Element so playback continues uninterrupted when drawer collapses or expands */}
           <audio
             ref={lectureAudioRef}
@@ -1282,40 +1293,40 @@ export default function WorkspacePage() {
           {/* Audio Bar Header / Collapsed Controls with mini Play/Pause */}
           <div
             onClick={handleToggleSourceDrawer}
-            className="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer bg-neutral-950/60 hover:bg-neutral-900/50 select-none border-b border-neutral-900/40"
+            className="w-full px-8 py-3 flex items-center justify-between text-xs text-neutral-400 hover:text-neutral-200 transition-all duration-300 ease-out cursor-pointer bg-neutral-950 hover:bg-neutral-900/40 select-none border-b border-white/5"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
               {/* Mini Play/Pause button that works directly while collapsed */}
               <motion.button
                 type="button"
-                whileTap={{ scale: 0.92 }}
+                whileTap={{ scale: 0.94 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleAudioPlay();
                 }}
                 className={cn(
-                  "h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0",
+                  "h-7 w-7 rounded-md flex items-center justify-center transition-all duration-300 ease-out cursor-pointer shadow-sm shrink-0 border border-white/5",
                   isAudioPlaying
-                    ? "bg-[#701a24] hover:bg-[#881337] text-white ring-1 ring-[#881337]/50"
-                    : "bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white"
+                    ? "bg-white/15 text-neutral-100 ring-1 ring-white/10"
+                    : "bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-neutral-100"
                 )}
                 title={isAudioPlaying ? "Pause Lecture Audio" : "Play Lecture Audio"}
               >
                 {isAudioPlaying ? (
-                  <Pause className="w-3 h-3 fill-white text-white" />
+                  <Pause className="w-3 h-3 fill-neutral-200 text-neutral-200" />
                 ) : (
-                  <Play className="w-3 h-3 fill-white text-white ml-0.5" />
+                  <Play className="w-3 h-3 fill-neutral-200 text-neutral-200 ml-0.5" />
                 )}
               </motion.button>
 
               <div
                 className={cn(
-                  "h-2 w-2 rounded-full transition-colors shrink-0",
-                  isAudioPlaying ? "bg-emerald-400 animate-pulse" : "bg-[#701a24]"
+                  "h-1.5 w-1.5 rounded-full transition-colors shrink-0",
+                  isAudioPlaying ? "bg-emerald-400 animate-pulse" : "bg-neutral-600"
                 )}
               />
               <Volume2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-              <span className="font-medium text-neutral-300 truncate">
+              <span className="font-medium tracking-tight text-neutral-200 truncate">
                 Audio bar to listen to source lecture
               </span>
               <span className="text-[10px] font-mono text-neutral-500 shrink-0 hidden sm:inline">
@@ -1342,23 +1353,22 @@ export default function WorkspacePage() {
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="overflow-hidden border-t border-neutral-800/80 px-6 py-3.5 bg-neutral-950/95 space-y-3 shadow-2xl"
+                className="overflow-hidden border-t border-white/5 px-8 py-5 bg-neutral-950 space-y-4"
               >
-
                 {/* Custom Luxury Dark Audio Player Toolbar */}
-                <div className="flex items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-xl bg-neutral-900/70 border border-neutral-800/80 backdrop-blur-md">
+                <div className="flex items-center gap-3 sm:gap-4 p-3 rounded-lg bg-neutral-900/40 border border-white/5 backdrop-blur-md">
                   {/* Play / Pause Toggle Button */}
                   <motion.button
                     type="button"
-                    whileTap={{ scale: 0.94 }}
+                    whileTap={{ scale: 0.96 }}
                     onClick={toggleAudioPlay}
-                    className="h-9 w-9 rounded-lg bg-[#701a24] hover:bg-[#881337] text-white flex items-center justify-center cursor-pointer transition-all shadow-md shrink-0"
+                    className="h-8 w-8 rounded-md bg-neutral-100 hover:bg-white text-neutral-950 flex items-center justify-center cursor-pointer transition-all duration-300 ease-out shadow-sm shrink-0"
                     title={isAudioPlaying ? "Pause Audio" : "Play Audio"}
                   >
                     {isAudioPlaying ? (
-                      <Pause className="w-4 h-4 fill-white" />
+                      <Pause className="w-3.5 h-3.5 fill-current" />
                     ) : (
-                      <Play className="w-4 h-4 fill-white ml-0.5" />
+                      <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                     )}
                   </motion.button>
 
@@ -1367,7 +1377,7 @@ export default function WorkspacePage() {
                     <button
                       type="button"
                       onClick={() => skipAudio(-10)}
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/70 transition-colors cursor-pointer"
+                      className="p-2 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-white/5 transition-all duration-300 ease-out cursor-pointer"
                       title="Rewind 10 seconds"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -1375,7 +1385,7 @@ export default function WorkspacePage() {
                     <button
                       type="button"
                       onClick={() => skipAudio(10)}
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/70 transition-colors cursor-pointer"
+                      className="p-2 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-white/5 transition-all duration-300 ease-out cursor-pointer"
                       title="Fast Forward 10 seconds"
                     >
                       <RotateCw className="w-3.5 h-3.5" />
@@ -1383,16 +1393,16 @@ export default function WorkspacePage() {
                   </div>
 
                   {/* Interactive Scrub Bar / Timeline */}
-                  <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+                  <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
                     <div
                       ref={scrubBarRef}
                       onClick={handleScrubClick}
-                      className="relative w-full h-2 rounded-full bg-neutral-800/90 hover:h-2.5 cursor-pointer transition-all overflow-hidden group"
+                      className="relative w-full h-1.5 rounded-md bg-neutral-800 hover:h-2 cursor-pointer transition-all duration-200 overflow-hidden group"
                       title="Click or drag to seek"
                     >
-                      {/* Played Track in Brand Burgundy */}
+                      {/* Played Track in Linear Subtle Light Fill */}
                       <div
-                        className="h-full bg-gradient-to-r from-[#701a24] to-[#991b1b] rounded-full transition-all duration-75 relative"
+                        className="h-full bg-neutral-200 rounded-md transition-all duration-75 relative"
                         style={{
                           width: `${Math.min(
                             100,
@@ -1419,7 +1429,7 @@ export default function WorkspacePage() {
                     <button
                       type="button"
                       onClick={toggleMute}
-                      className="text-neutral-400 hover:text-neutral-200 p-1 rounded transition-colors cursor-pointer"
+                      className="text-neutral-400 hover:text-neutral-200 p-1.5 rounded-md hover:bg-white/5 transition-all duration-300 ease-out cursor-pointer"
                       title={isMuted ? "Unmute" : "Mute"}
                     >
                       {isMuted || audioVolume === 0 ? (
@@ -1437,16 +1447,16 @@ export default function WorkspacePage() {
                       step="0.05"
                       value={isMuted ? 0 : audioVolume}
                       onChange={handleVolumeChange}
-                      className="w-16 h-1 bg-neutral-800 rounded-full appearance-none cursor-pointer accent-[#701a24]"
+                      className="w-16 h-1 bg-neutral-800 rounded-md appearance-none cursor-pointer accent-neutral-200"
                       title={`Volume: ${Math.round((isMuted ? 0 : audioVolume) * 100)}%`}
                     />
                   </div>
 
-                  {/* Playback Speed Pill Selector */}
+                  {/* Playback Speed Selector */}
                   <button
                     type="button"
                     onClick={cyclePlaybackRate}
-                    className="px-2 py-1 rounded-md bg-neutral-800/80 hover:bg-neutral-800 text-[10px] font-mono text-neutral-300 hover:text-white border border-neutral-700/50 transition-colors shrink-0 cursor-pointer"
+                    className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 text-[10px] font-mono text-neutral-300 hover:text-neutral-100 border border-white/5 transition-all duration-300 ease-out shrink-0 cursor-pointer"
                     title="Cycle Playback Speed"
                   >
                     {playbackRate}x
@@ -1454,9 +1464,9 @@ export default function WorkspacePage() {
                 </div>
 
                 {/* Live Synchronized Transcript Banner */}
-                <div className="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 flex flex-col gap-1.5 shadow-inner">
+                <div className="p-4 rounded-lg bg-neutral-900/40 border border-white/5 flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2 text-[10px] font-mono">
-                    <div className="flex items-center gap-1.5 font-semibold tracking-wider">
+                    <div className="flex items-center gap-2 font-medium tracking-wider">
                       {isAudioPlaying ? (
                         <>
                           <span className="relative flex h-2 w-2">
@@ -1476,10 +1486,10 @@ export default function WorkspacePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-neutral-400">
-                      <span className="px-1.5 py-0.5 rounded bg-neutral-800 text-[10px] text-neutral-300 font-mono">
+                      <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-neutral-400 font-mono border border-white/5">
                         {formatSeconds(activeSegment.start)} - {formatSeconds(activeSegment.end || activeSegment.start + 10)}
                       </span>
-                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <span className="text-emerald-400 font-medium flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         Verified Source
                       </span>
@@ -1487,24 +1497,24 @@ export default function WorkspacePage() {
                   </div>
 
                   {/* Active Spoken Text Highlight */}
-                  <div className="flex items-start gap-2 pt-0.5">
-                    <span className="px-1.5 py-0.5 rounded bg-[#701a24]/30 border border-[#701a24]/60 text-[#fca5a5] text-[10px] font-mono font-medium shrink-0">
+                  <div className="flex items-start gap-2.5 pt-1">
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-neutral-300 text-[10px] font-mono font-medium shrink-0">
                       {activeSegment.speaker || currentPhase.speaker || "Speaker"}
                     </span>
-                    <p className="text-xs sm:text-sm text-neutral-100 font-normal leading-snug">
+                    <p className="text-xs sm:text-sm text-neutral-200 font-normal leading-relaxed">
                       &quot;{activeSegment.text || currentPhase.transcriptQuote}&quot;
                     </p>
                   </div>
                 </div>
 
                 {/* Interactive Synchronized Timeline Transcript Chunks */}
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500 px-1">
                     <span>Synchronized Lecture Chunks ({activeTranscripts.length})</span>
-                    <span className="text-neutral-400">Click any chunk to jump audio</span>
+                    <span className="text-neutral-400">Click any chunk to seek audio</span>
                   </div>
 
-                  <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 text-left scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+                  <div className="max-h-40 overflow-y-auto space-y-2 pr-1 text-left scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                     {activeTranscripts.map((seg, idx) => {
                       const isCurrent = activeSegment?.start === seg.start;
                       return (
@@ -1514,27 +1524,27 @@ export default function WorkspacePage() {
                           type="button"
                           onClick={() => jumpToPhaseTimestamp(seg.start)}
                           className={cn(
-                            "w-full text-left p-2 rounded-lg text-xs transition-all flex items-start gap-2.5 border cursor-pointer",
+                            "w-full text-left p-3 rounded-md text-xs transition-all duration-300 ease-out flex items-start gap-3 border cursor-pointer",
                             isCurrent
-                              ? "bg-[#701a24]/20 border-[#701a24]/80 text-white shadow-md shadow-[#701a24]/10 ring-1 ring-[#701a24]/40"
-                              : "bg-neutral-900/40 hover:bg-neutral-900/90 border-neutral-800/60 text-neutral-400 hover:text-neutral-200"
+                              ? "bg-white/10 border-white/15 text-neutral-100 shadow-none"
+                              : "bg-neutral-900/30 hover:bg-white/5 border-white/5 text-neutral-400 hover:text-neutral-200"
                           )}
                         >
-                          <div className="shrink-0 flex flex-col items-start gap-0.5 font-mono text-[10px]">
-                            <span className={cn("px-1.5 py-0.5 rounded", isCurrent ? "bg-[#701a24] text-white font-bold" : "bg-neutral-800/80 text-neutral-400")}>
+                          <div className="shrink-0 flex flex-col items-start gap-1 font-mono text-[10px]">
+                            <span className={cn("px-2 py-0.5 rounded-md", isCurrent ? "bg-white/15 text-neutral-100 font-medium" : "bg-white/5 text-neutral-400")}>
                               {formatSeconds(seg.start)}
                             </span>
                             {isCurrent && (
-                              <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-wider pl-0.5">
+                              <span className="text-[8px] font-medium text-emerald-400 uppercase tracking-wider pl-0.5">
                                 Spoken Now
                               </span>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <span className="text-[10px] font-mono text-neutral-500 font-semibold mr-1.5">
+                            <span className="text-[10px] font-mono text-neutral-500 font-medium mr-1.5">
                               [{seg.speaker || "Instructor"}]:
                             </span>
-                            <span className={cn("text-xs leading-relaxed", isCurrent ? "text-neutral-100 font-medium" : "text-neutral-300")}>
+                            <span className={cn("text-xs leading-relaxed", isCurrent ? "text-neutral-200 font-medium" : "text-neutral-400")}>
                               {seg.text}
                             </span>
                           </div>
@@ -1552,18 +1562,18 @@ export default function WorkspacePage() {
       {/* =====================================================================
           3. Right Column: Learning Tools (Fixed width, w-96/w-[420px], Tabs + Content)
           ===================================================================== */}
-      <div className="w-96 xl:w-[420px] shrink-0 flex flex-col h-full bg-[#0a0a0a] overflow-hidden z-20">
+      <div className="w-96 xl:w-[420px] shrink-0 flex flex-col h-full bg-neutral-950 border-l border-white/5 overflow-hidden z-20">
         {/* Top Tabs: Horizontal 3-tab navigation bar ("Notes", "Learning plan", "Summary") */}
-        <div className="h-12 border-b border-neutral-800 px-4 flex items-center justify-between shrink-0 bg-[#0a0a0a]">
-          <div className="flex items-center gap-1 w-full bg-neutral-900/60 p-1 rounded-xl border border-neutral-800">
+        <div className="h-14 border-b border-white/5 px-6 flex items-center justify-between shrink-0 bg-neutral-950">
+          <div className="flex items-center gap-1 w-full bg-neutral-900/50 p-1 rounded-lg border border-white/5">
             <button
               type="button"
               onClick={() => setActiveTab("notes")}
               className={cn(
-                "flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all text-center cursor-pointer",
+                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
                 activeTab === "notes"
-                  ? "bg-neutral-800 text-white shadow-sm font-semibold"
-                  : "text-neutral-400 hover:text-neutral-200"
+                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
               )}
             >
               Notes
@@ -1572,10 +1582,10 @@ export default function WorkspacePage() {
               type="button"
               onClick={() => setActiveTab("plan")}
               className={cn(
-                "flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all text-center cursor-pointer",
+                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
                 activeTab === "plan"
-                  ? "bg-neutral-800 text-white shadow-sm font-semibold"
-                  : "text-neutral-400 hover:text-neutral-200"
+                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
               )}
             >
               Learning plan
@@ -1584,10 +1594,10 @@ export default function WorkspacePage() {
               type="button"
               onClick={() => setActiveTab("summary")}
               className={cn(
-                "flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all text-center cursor-pointer",
+                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
                 activeTab === "summary"
-                  ? "bg-neutral-800 text-white shadow-sm font-semibold"
-                  : "text-neutral-400 hover:text-neutral-200"
+                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
               )}
             >
               Summary
@@ -1599,7 +1609,7 @@ export default function WorkspacePage() {
         <div
           className={cn(
             "flex-1 min-h-0",
-            activeTab === "notes" ? "h-full w-full flex flex-col overflow-hidden" : "overflow-y-auto p-5 space-y-6"
+            activeTab === "notes" ? "h-full w-full flex flex-col overflow-hidden" : "overflow-y-auto p-6 md:p-8 space-y-6"
           )}
         >
           {/* TAB 1: FUNCTIONAL NOTES TAB (Working Text Editor with full height & width) */}
@@ -1607,13 +1617,13 @@ export default function WorkspacePage() {
             <div className="h-full w-full flex-1 flex flex-col min-h-0">
               {isQuizMode ? (
                 /* Diagnostic Quiz Check if triggered */
-                <div className="p-4 space-y-4 overflow-y-auto">
-                  <div className="flex items-center justify-between text-xs font-mono text-neutral-400 pb-2 border-b border-neutral-800">
+                <div className="p-6 space-y-4 overflow-y-auto">
+                  <div className="flex items-center justify-between text-xs font-mono text-neutral-400 pb-3 border-b border-white/5">
                     <span>Diagnostic Knowledge Check</span>
                     <button
                       type="button"
                       onClick={() => setIsQuizMode(false)}
-                      className="hover:text-white transition-colors cursor-pointer text-xs"
+                      className="hover:text-neutral-200 transition-colors duration-300 cursor-pointer text-xs"
                     >
                       Return to Notes ×
                     </button>
@@ -1632,9 +1642,9 @@ export default function WorkspacePage() {
                 /* Interactive AI-Assisted Text Editor */
                 <div className="h-full w-full flex-1 flex flex-col min-h-0 relative">
                   {/* Action Header above textarea */}
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-800/80 bg-neutral-950/40 shrink-0">
+                  <div className="flex items-center justify-between px-6 py-3 border-b border-white/5 bg-neutral-950 shrink-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-neutral-400">Notes</span>
+                      <span className="text-xs font-medium tracking-tight text-neutral-400">Notes</span>
                       {isGeneratingNotes && (
                         <span className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
                           <span className="relative flex h-1.5 w-1.5">
@@ -1646,23 +1656,23 @@ export default function WorkspacePage() {
                       )}
                     </div>
 
-                    {/* Small, sleek "✨ Generate Smart Notes" Button */}
+                    {/* Sleek shadcn button "✨ Generate Smart Notes" */}
                     <motion.button
                       type="button"
-                      whileTap={!isGeneratingNotes ? { scale: 0.96 } : undefined}
+                      whileTap={!isGeneratingNotes ? { scale: 0.98 } : undefined}
                       onClick={handleGenerateSmartNotes}
                       disabled={isGeneratingNotes}
                       className={cn(
-                        "px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm border",
+                        "px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all duration-300 ease-out shadow-sm border",
                         isGeneratingNotes
-                          ? "bg-neutral-900 border-neutral-800 text-neutral-500 cursor-not-allowed"
-                          : "bg-[#701a24] hover:bg-[#881337] border-[#881337] text-white hover:shadow-md hover:shadow-[#701a24]/30 cursor-pointer"
+                          ? "bg-neutral-900/50 border-white/5 text-neutral-500 cursor-not-allowed"
+                          : "bg-white/5 hover:bg-white/10 border-white/10 text-neutral-200 hover:text-white cursor-pointer"
                       )}
                       title={isGeneratingNotes ? "Generating smart notes..." : "Generate Smart Notes"}
                     >
                       {isGeneratingNotes ? (
                         <>
-                          <Loader2 className="w-3 h-3 animate-spin text-neutral-400" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400" />
                           <span>Generating...</span>
                         </>
                       ) : (
@@ -1677,7 +1687,7 @@ export default function WorkspacePage() {
                       value={notesText}
                       onChange={(e) => setNotesText(e.target.value)}
                       placeholder="Take notes on this phase here..."
-                      className="w-full h-full resize-none bg-transparent text-gray-200 outline-none p-4 font-mono text-xs sm:text-sm leading-relaxed"
+                      className="w-full h-full resize-none bg-transparent text-neutral-200 placeholder-neutral-500 outline-none p-6 font-mono text-xs sm:text-sm leading-relaxed"
                       spellCheck={false}
                     />
                   </div>
@@ -1688,11 +1698,11 @@ export default function WorkspacePage() {
 
           {/* TAB 2: LEARNING PLAN */}
           {activeTab === "plan" && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
                 <div className="flex items-center gap-2">
-                  <ListOrdered className="w-4 h-4 text-[#701a24]" />
-                  <span className="text-xs font-semibold text-neutral-200">
+                  <ListOrdered className="w-4 h-4 text-neutral-400" />
+                  <span className="text-xs font-medium tracking-tight text-neutral-200">
                     Curriculum Roadmap
                   </span>
                 </div>
@@ -1712,29 +1722,29 @@ export default function WorkspacePage() {
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handlePhaseChange(idx)}
                       className={cn(
-                        "p-4 rounded-xl border text-xs transition-all cursor-pointer relative overflow-hidden",
+                        "p-5 rounded-lg border text-xs transition-all duration-300 ease-out cursor-pointer relative overflow-hidden",
                         isCurrent
-                          ? "bg-neutral-900 border-[#701a24] shadow-md ring-1 ring-[#701a24]/50"
+                          ? "bg-neutral-900/60 border-white/15 shadow-sm"
                           : isCompleted
-                          ? "bg-neutral-900/30 border-neutral-800 hover:border-neutral-700 opacity-80"
-                          : "bg-neutral-900/20 border-neutral-800/80 hover:border-neutral-700 opacity-60"
+                          ? "bg-neutral-900/30 border-white/5 hover:border-white/10 opacity-80 hover:opacity-100"
+                          : "bg-neutral-900/20 border-white/5 hover:border-white/10 opacity-60 hover:opacity-90"
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2.5">
                           <span
                             className={cn(
-                              "h-5 w-5 rounded-full flex items-center justify-center font-mono text-[10px] font-bold",
+                              "h-5 w-5 rounded-md flex items-center justify-center font-mono text-[10px] font-medium",
                               isCurrent
-                                ? "bg-[#701a24] text-white"
+                                ? "bg-white/15 text-neutral-100 border border-white/15"
                                 : isCompleted
-                                ? "bg-emerald-950 text-emerald-400 border border-emerald-500/30"
+                                ? "bg-emerald-950/40 text-emerald-400 border border-emerald-500/20"
                                 : "bg-neutral-800 text-neutral-400"
                             )}
                           >
                             {isCompleted ? "✓" : idx + 1}
                           </span>
-                          <span className="font-semibold text-neutral-200 text-xs truncate max-w-[200px]">
+                          <span className="font-medium tracking-tight text-neutral-200 text-xs truncate max-w-[200px]">
                             {p.title.replace(/^\d+\.\s*/, "")}
                           </span>
                         </div>
@@ -1748,13 +1758,13 @@ export default function WorkspacePage() {
                         {p.subtitle}
                       </p>
 
-                      <div className="flex items-center gap-3 pl-7 pt-2 text-[10px] font-mono text-neutral-500">
+                      <div className="flex items-center gap-3 pl-7 pt-2.5 text-[10px] font-mono text-neutral-500">
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                          <Clock className="w-3 h-3 text-neutral-500" />
                           {p.timestamp}
                         </span>
                         {isCurrent && (
-                          <span className="text-emerald-400 font-semibold">
+                          <span className="text-emerald-400 font-medium">
                             ● Active Phase
                           </span>
                         )}
@@ -1773,11 +1783,11 @@ export default function WorkspacePage() {
 
           {/* TAB 3: SUMMARY */}
           {activeTab === "summary" && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#701a24]" />
-                  <span className="text-xs font-semibold text-neutral-200">
+                  <FileText className="w-4 h-4 text-neutral-400" />
+                  <span className="text-xs font-medium tracking-tight text-neutral-200">
                     Executive Summary & Takeaways
                   </span>
                 </div>
@@ -1787,57 +1797,61 @@ export default function WorkspacePage() {
               </div>
 
               {/* Lecture Overview Card */}
-              <div className="p-4 rounded-xl bg-neutral-900/40 border border-neutral-800 space-y-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 block font-semibold">
+              <div className="p-6 rounded-lg bg-neutral-900/40 border border-white/5 space-y-2.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 block font-medium">
                   Lecture Synthesis
                 </span>
-                <p className="text-xs text-neutral-300 leading-relaxed">
+                <p className="text-xs text-neutral-400 leading-relaxed">
                   This session breaks down how decentralized price signals dynamically clear competitive markets, why elasticity dictates the economic incidence of exogenous shocks, and how artificial price wedges generate allocative deadweight loss.
                 </p>
               </div>
 
               {/* Core High-Yield Takeaways */}
-              <div className="p-4 rounded-xl bg-neutral-900/40 border border-neutral-800 space-y-3">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 block font-semibold">
+              <div className="p-6 rounded-lg bg-neutral-900/40 border border-white/5 space-y-3">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 block font-medium">
                   Key Insights
                 </span>
-                <ul className="space-y-2 text-xs text-neutral-300">
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold shrink-0">•</span>
+                <ul className="space-y-2.5 text-xs text-neutral-400">
+                  <li className="flex items-start gap-2.5 leading-relaxed">
+                    <span className="text-neutral-500 font-bold shrink-0">•</span>
                     <span>Market clearance is dynamic, governed by price signals that balance marginal willingness to pay against marginal cost.</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold shrink-0">•</span>
+                  <li className="flex items-start gap-2.5 leading-relaxed">
+                    <span className="text-neutral-500 font-bold shrink-0">•</span>
                     <span>When PED &gt; 1, price increases contract aggregate revenue due to disproportionate volume reduction.</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-400 font-bold shrink-0">•</span>
+                  <li className="flex items-start gap-2.5 leading-relaxed">
+                    <span className="text-neutral-500 font-bold shrink-0">•</span>
                     <span>Inelastic market sides bear the true economic burden of taxes and regulatory shocks regardless of statutory designation.</span>
                   </li>
                 </ul>
               </div>
 
               {/* Identified Blindspots / Knowledge Gaps */}
-              <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2.5">
-                <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold">
+              <div className="p-6 rounded-lg bg-neutral-900/40 border border-white/5 space-y-3">
+                <div className="flex items-center gap-2 text-amber-400/90 text-xs font-medium tracking-tight">
                   <AlertCircle className="w-3.5 h-3.5" />
                   <span>Detected Knowledge Blindspots</span>
                 </div>
-                <p className="text-xs text-neutral-300 leading-relaxed">
+                <p className="text-xs text-neutral-400 leading-relaxed">
                   Concepts mentioned during the lecture that lacked complete formal proofs:
                 </p>
-                <div className="space-y-1.5 text-[11px] font-mono text-neutral-400">
-                  <div className="p-2 rounded-lg bg-neutral-950/60 border border-neutral-800/80">
-                    <span className="text-amber-300 block font-semibold mb-0.5">
+                <div className="space-y-2 text-[11px] font-mono text-neutral-400">
+                  <div className="p-3.5 rounded-md bg-neutral-950/60 border border-white/5 space-y-1">
+                    <span className="text-amber-300/90 block font-medium mb-0.5 text-xs">
                       1. Cobweb Theorem Latency @ 07:14
                     </span>
-                    <span>Cyclical price oscillations arising when producers make output decisions based on lagged prices.</span>
+                    <span className="text-neutral-400 leading-relaxed block">
+                      Cyclical price oscillations arising when producers make output decisions based on lagged prices.
+                    </span>
                   </div>
-                  <div className="p-2 rounded-lg bg-neutral-950/60 border border-neutral-800/80">
-                    <span className="text-amber-300 block font-semibold mb-0.5">
+                  <div className="p-3.5 rounded-md bg-neutral-950/60 border border-white/5 space-y-1">
+                    <span className="text-amber-300/90 block font-medium mb-0.5 text-xs">
                       2. Giffen Good Substitution Limits @ 18:42
                     </span>
-                    <span>Extreme non-substitutability causing positive sloping demand curve.</span>
+                    <span className="text-neutral-400 leading-relaxed block">
+                      Extreme non-substitutability causing positive sloping demand curve.
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1845,6 +1859,16 @@ export default function WorkspacePage() {
           )}
         </div>
       </div>
+
+      {/* All Lectures Library & Ingestion Switcher Modal */}
+      <LecturesModal
+        isOpen={isLecturesModalOpen}
+        onClose={() => setIsLecturesModalOpen(false)}
+        currentLectureId={lectureId}
+        onSelectLecture={(newId) => {
+          router.push(`/workspace/${newId}`);
+        }}
+      />
     </div>
   );
 }

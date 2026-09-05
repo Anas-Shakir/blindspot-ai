@@ -8,9 +8,9 @@ import {
   Network,
   Headphones,
   CheckCircle2,
-  Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const features = [
   {
@@ -93,45 +93,44 @@ export const FeaturesSection: React.FC = () => {
                 delay: idx * 0.08,
               }}
               whileHover={{ y: -4 }}
-              className={cn(
-                "group relative rounded-3xl p-8 sm:p-10",
-                "bg-zinc-900/60 border border-white/[0.07] backdrop-blur-md",
-                "hover:border-[#701a24]/50 hover:bg-zinc-900/80 transition-colors duration-200",
-                "shadow-[0_10px_30px_rgba(0,0,0,0.4)]",
-                "overflow-hidden flex flex-col justify-between"
-              )}
+              className="group h-full"
             >
-              {/* Subtle card hover glow */}
-              <div className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(400px_circle_at_top_right,rgba(112,26,36,0.12),transparent_80%)]" />
+              <Card className="relative h-full rounded-lg border-white/5 bg-neutral-900/40 p-6 sm:p-8 backdrop-blur-md transition-all duration-300 hover:border-primary/40 hover:bg-neutral-900/60 shadow-lg flex flex-col justify-between overflow-hidden">
+                {/* Subtle card hover glow */}
+                <div className="pointer-events-none absolute -inset-px rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(400px_circle_at_top_right,rgba(112,26,36,0.12),transparent_80%)]" />
 
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200 group-hover:scale-105 transition-transform duration-200">
-                    <item.icon className="h-6 w-6" strokeWidth={1.75} />
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/15 border border-primary/30 text-neutral-200 group-hover:scale-105 transition-transform duration-200">
+                      <item.icon className="h-5 w-5" strokeWidth={1.75} />
+                    </div>
+                    <span className="text-[11px] font-mono text-neutral-500">
+                      {item.stat}
+                    </span>
                   </div>
-                  <span className="text-[11px] font-mono text-neutral-400">
-                    {item.stat}
-                  </span>
+
+                  <Badge
+                    variant="outline"
+                    className="mb-3 rounded-md border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-mono font-medium uppercase tracking-wider text-rose-300"
+                  >
+                    {item.badge}
+                  </Badge>
+
+                  <h3 className="text-lg font-semibold tracking-tight text-neutral-100 mb-2">
+                    {item.title}
+                  </h3>
+
+                  <p className="text-sm text-neutral-400 leading-relaxed tracking-tight font-normal">
+                    {item.description}
+                  </p>
                 </div>
 
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-300 mb-2 block">
-                  {item.badge}
-                </span>
-
-                <h3 className="text-xl font-bold tracking-tight text-white mb-3">
-                  {item.title}
-                </h3>
-
-                <p className="text-sm text-neutral-400 leading-relaxed tracking-tight font-normal">
-                  {item.description}
-                </p>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-white/[0.05] flex items-center justify-between text-xs text-neutral-500 font-medium">
-                <span className="group-hover:text-stone-300 transition-colors flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Built into core engine
-                </span>
-              </div>
+                <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-neutral-500 font-medium">
+                  <span className="group-hover:text-neutral-300 transition-colors flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Built into core engine
+                  </span>
+                </div>
+              </Card>
             </motion.div>
           ))}
         </div>
@@ -141,4 +140,3 @@ export const FeaturesSection: React.FC = () => {
 };
 
 export default FeaturesSection;
-

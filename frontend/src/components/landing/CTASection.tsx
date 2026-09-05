@@ -2,7 +2,8 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight, ArrowUp } from "lucide-react";
+import { ArrowRight, ArrowUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const CTASection: React.FC = () => {
   const scrollToTop = () => {
@@ -10,9 +11,9 @@ export const CTASection: React.FC = () => {
   };
 
   return (
-    <section className="relative py-24 sm:py-32 w-full overflow-hidden border-t border-white/[0.07] bg-gradient-to-b from-[#09090b] via-[#09090b] to-[#09090b]">
+    <section className="relative py-24 sm:py-32 w-full overflow-hidden border-t border-white/5 bg-neutral-950">
       {/* Glow highlight */}
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#701a24]/12 blur-[140px] rounded-full" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-primary/10 blur-[140px] rounded-full" />
 
       <div className="max-w-5xl mx-auto px-6 sm:px-8 relative z-10 text-center flex flex-col items-center">
         <motion.h2
@@ -39,27 +40,30 @@ export const CTASection: React.FC = () => {
           viewport={{ once: true }}
           className="flex flex-col sm:flex-row items-center gap-4"
         >
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: 1.01 }}
+          <Button
+            size="lg"
             onClick={scrollToTop}
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white text-neutral-950 hover:bg-neutral-200 text-sm font-semibold tracking-tight transition-colors shadow-[0_0_30px_rgba(255,255,255,0.2)] cursor-pointer"
+            className="h-11 rounded-md px-6 text-sm font-medium tracking-tight shadow-md shadow-primary/25 transition-all gap-2 cursor-pointer"
           >
             <span>Drop a lecture now</span>
             <ArrowUp className="w-4 h-4" />
-          </motion.button>
+          </Button>
 
-          <motion.a
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: 1.01 }}
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.08] text-white hover:bg-white/[0.08] text-sm font-medium tracking-tight transition-colors"
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="h-11 rounded-md border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:text-white text-neutral-300 px-6 text-sm font-medium tracking-tight gap-2"
           >
-            <span>View Architecture Blueprint</span>
-            <ArrowRight className="w-4 h-4 text-neutral-400" />
-          </motion.a>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>View Architecture Blueprint</span>
+              <ArrowRight className="w-4 h-4 text-neutral-500" />
+            </a>
+          </Button>
         </motion.div>
       </div>
     </section>
@@ -67,4 +71,3 @@ export const CTASection: React.FC = () => {
 };
 
 export default CTASection;
-

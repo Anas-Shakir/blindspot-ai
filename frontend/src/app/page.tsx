@@ -17,6 +17,7 @@ import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import CTASection from "@/components/landing/CTASection";
 import Footer from "@/components/common/Footer";
 import GradientWaves from "@/components/landing/GradientWaves";
+import { Button } from "@/components/ui/button";
 import type { Lecture } from "@/lib/api";
 
 
@@ -184,24 +185,25 @@ export default function BlindspotLandingPage() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-zinc-900/95 border border-[#701a24]/50 px-5 py-3.5 shadow-[0_0_30px_rgba(112,26,36,0.3)] backdrop-blur-xl"
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-lg bg-neutral-900/95 border border-white/10 px-4 py-3 shadow-[0_0_30px_rgba(112,26,36,0.25)] backdrop-blur-xl"
           >
-            <CheckCircle2 className="h-4 w-4 text-stone-200 flex-shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-rose-300 flex-shrink-0" />
             <div className="text-xs">
-              <span className="font-semibold text-white">Lecture queued for analysis: </span>
+              <span className="font-medium text-neutral-200">Lecture queued for analysis: </span>
               <span className="text-neutral-400 font-mono">
                 {ingestedLecture.type === "file"
                   ? ingestedLecture.name
                   : ingestedLecture.url}
               </span>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.92 }}
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setIngestedLecture(null)}
-              className="ml-3 text-[11px] text-neutral-500 hover:text-white transition-colors cursor-pointer"
+              className="ml-2 h-7 px-2 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-white/5 rounded-md cursor-pointer"
             >
               Dismiss
-            </motion.button>
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>
