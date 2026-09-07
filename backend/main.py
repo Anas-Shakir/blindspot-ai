@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.db import init_db
 from backend.app.api import whiteboard
 from backend.app.api.v1.endpoints import lectures, session
+from backend.app.integrations.whatsapp.router import router as whatsapp_router
 
 # Initialize database tables on startup
 init_db()
@@ -47,6 +48,7 @@ app.add_middleware(
 app.include_router(lectures.router, prefix="/api", tags=["lectures"])
 app.include_router(session.router, prefix="/api", tags=["session"])
 app.include_router(whiteboard.router, prefix="/api/whiteboard", tags=["whiteboard"])
+app.include_router(whatsapp_router, prefix="/api", tags=["whatsapp"])
 
 from fastapi.staticfiles import StaticFiles
 from backend.app.core.paths import STORAGE_DIR
