@@ -505,15 +505,8 @@ export default function WorkspacePage() {
             setIsAudioPlaying(true);
           })
           .catch((err) => {
-            console.warn("Audio play failed or blocked, attempting fallback:", err);
-            if (!audio.src.includes("test-audio.mp4")) {
-              audio.src = "/test-audio.mp4";
-              audio.load();
-              audio
-                .play()
-                .then(() => setIsAudioPlaying(true))
-                .catch((e) => console.warn("Fallback play also blocked:", e));
-            }
+            console.warn("Audio play failed or blocked by browser policy:", err);
+            setIsAudioPlaying(false);
           });
       }
     }

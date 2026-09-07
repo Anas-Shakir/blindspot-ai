@@ -33,7 +33,7 @@ export const DEFAULT_INTRO_SUBTITLES: IntroSubtitleCue[] = [
 ];
 
 const INTRO_AUDIO_SRC = "/audio/intro_audio.mp3";
-const INTRO_FALLBACK_DURATION_MS = 8500;
+const INTRO_FALLBACK_DURATION_MS = 15000;
 
 interface RobotModelProps {
   isFast?: boolean;
@@ -191,9 +191,41 @@ export default function RobotCompanionCanvas({
     // Signal parent to pause any playing audio
     onIntroPlay?.();
 
-    // 1. Play intro_audio.mp3 via HTML Audio object
-    const audio = new Audio(INTRO_AUDIO_SRC);
+    // 1. Play intro audio with format support and preload
+    const audio = new Audio();
+    audio.preload = "auto";
+
+    if (audio.canPlayType("audio/mpeg")) {
+      audio.src = "/audio/intro_audio.mp3";
+    } else if (audio.canPlayType("audio/ogg; codecs=vorbis")) {
+      audio.src = "/audio/intro_audio.ogg";
+    } else {
+      audio.src = "/audio/intro_audio.wav";
+    }
+
     audioRef.current = audio;
+
+    // When audio finishes or fails, reset isPlaying and animation to idle
+    audio.onended = () => {
+      stopIntro();
+    };
+
+    audio.onerror = (err) => {
+      console.warn("Audio element error during intro playback:", err);
+      // Give subtitles a moment before stopping if audio fails
+      setTimeout(stopIntro, 4000);
+    };
+
+    // Dynamically adjust safety fallback timeout when audio duration loads
+    audio.onloadedmetadata = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        const dynamicTimeoutMs = Math.ceil(audio.duration * 1000) + 2000;
+        const durTid = setTimeout(() => {
+          stopIntro();
+        }, dynamicTimeoutMs);
+        timeoutIdsRef.current.push(durTid);
+      }
+    };
 
     audio.play().catch((err) => {
       console.warn("Audio autoplay blocked or failed:", err);
@@ -212,12 +244,7 @@ export default function RobotCompanionCanvas({
       timeouts.push(tid);
     });
 
-    // When audio finishes, reset isPlaying and animation to idle
-    audio.onended = () => {
-      stopIntro();
-    };
-
-    // Safety fallback timeout
+    // Absolute safety upper bound fallback timeout (15s) in case onended doesn't trigger
     const endTid = setTimeout(() => {
       stopIntro();
     }, INTRO_FALLBACK_DURATION_MS);

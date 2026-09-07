@@ -7,7 +7,7 @@
  */
 
 import { TimingMark, TTSWithTimingResponse } from './types';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, resolveAudioUrl } from '@/lib/api';
 
 export interface AudioSyncCallbacks {
   onTimeUpdate?: (timeMs: number) => void;
@@ -51,10 +51,12 @@ export class AudioSyncEngine {
     this.stop();
     if (!audioUrl) return;
 
+    const resolvedSrc = resolveAudioUrl(audioUrl) || audioUrl;
+
     this.timingMarks = timingMarks;
     this.lastFiredWordIndex = -1;
 
-    const audio = new Audio(audioUrl);
+    const audio = new Audio(resolvedSrc);
     audio.preload = 'auto';
 
     this.onPlayListener = () => {

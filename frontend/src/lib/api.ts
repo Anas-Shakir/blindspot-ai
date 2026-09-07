@@ -349,6 +349,9 @@ export async function sendCommand(
 export function resolveAudioUrl(pathOrUrl?: string | null): string | null {
   if (!pathOrUrl) return null;
   if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") || pathOrUrl.startsWith("blob:")) {
+    if (pathOrUrl.includes("localhost:8000") && !API_BASE_URL.includes("localhost:8000")) {
+      return pathOrUrl.replace(/http:\/\/localhost:8000/g, API_BASE_URL);
+    }
     return pathOrUrl;
   }
   // If it's a relative storage path or local file path
