@@ -42,12 +42,12 @@ async def verify_webhook(
     return {"status": "ok", "message": "WhatsApp webhook endpoint active"}
 
 
-from .handlers import handle_text_message
+from .handlers import handle_text_message, handle_voice_message
 
 async def _process_incoming_message(msg: NormalizedMessage) -> None:
     """Asynchronously processes a normalized WhatsApp message.
     
-    Routes to appropriate handler based on MessageType (STEPS 6, 7, 8).
+    Routes to appropriate handler based on MessageType (STEPS 6, 7, 8, 9, 10, 11, 12).
     """
     try:
         logger.info(
@@ -62,12 +62,14 @@ async def _process_incoming_message(msg: NormalizedMessage) -> None:
         # Message Type Routing (Step 8)
         if msg.message_type == MessageType.TEXT:
             outgoing = await handle_text_message(msg)
+        elif msg.message_type == MessageType.VOICE:
+            outgoing = await handle_voice_message(msg)
         else:
-            # Voice / Image / Unsupported placeholder until Step 9+
+            # Image / Document placeholder
             outgoing = OutgoingMessage(
                 recipient=msg.user_identifier,
                 message_type=MessageType.TEXT,
-                text_content=f"👋 I received your {msg.message_type.value} message. Audio/media processing is coming up next!",
+                text_content=f"👋 I received your {msg.message_type.value} attachment. Image/document understanding is coming up next!",
             )
 
         dispatch_result = await zernio_provider.send_message(

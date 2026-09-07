@@ -167,3 +167,22 @@ def transcribe(audio_ref: str, lecture_id: int) -> list[TranscriptSegment]:
             Path(downloaded_path).unlink(missing_ok=True)
         if extracted_path is not None:
             Path(extracted_path).unlink(missing_ok=True)
+
+
+def transcribe_audio_snippet(audio_path: str) -> str:
+    """Transcribes a short audio file (e.g. WhatsApp voice note) to clean text.
+    
+    Args:
+        audio_path: Local filesystem path to the audio file.
+        
+    Returns:
+        Transcribed speech text string.
+    """
+    model = _get_model()
+    segments, _info = model.transcribe(
+        audio_path,
+        word_timestamps=False,
+        vad_filter=True,
+    )
+    texts = [seg.text.strip() for seg in segments if seg.text and seg.text.strip()]
+    return " ".join(texts).strip()

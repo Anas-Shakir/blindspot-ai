@@ -7,9 +7,11 @@ Isolates Zernio-specific communication and maps payloads to/from NormalizedMessa
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import httpx
@@ -31,6 +33,7 @@ class ZernioProvider:
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
+        self._last_sent: Dict[str, float] = {}
 
     def normalize_payload(self, data: Dict[str, Any]) -> List[NormalizedMessage]:
         """Converts external provider webhook payloads into Blindspot NormalizedMessage instances.
@@ -277,6 +280,16 @@ class ZernioProvider:
                 "media_url": outgoing.media_url,
             }
 
+        # Rate Limit / Cooldown per recipient (minimum 2.5s between messages)
+        recipient = outgoing.recipient
+        now = time.time()
+        last_time = self._last_sent.get(recipient, 0)
+        cooldown_needed = 2.5 - (now - last_time)
+        if cooldown_needed > 0:
+            logger.info("Throttling outbound message to %s for %.1fs to protect Meta rate limits", recipient, cooldown_needed)
+            await asyncio.sleep(cooldown_needed)
+        self._last_sent[recipient] = time.time()
+
         target_account_id = (account_id or whatsapp_config.whatsapp_phone_number_id).strip()
         text_body = outgoing.text_content or (f"🎙️ Audio: {outgoing.media_url}" if outgoing.media_url else "")
 
@@ -344,6 +357,10 @@ class ZernioProvider:
 
         if not target_url:
             raise ValueError("Cannot download media: neither media_url nor media_id was provided.")
+
+        # If already a local file path, return it directly
+        if Path(target_url).exists():
+            return str(Path(target_url).resolve())
 
         ext = ".ogg" if ("audio" in target_url or "voice" in target_url) else ".bin"
         temp_file = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
