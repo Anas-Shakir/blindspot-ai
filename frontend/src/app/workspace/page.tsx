@@ -33,6 +33,8 @@ import {
   Eraser,
   Trash2,
   Network,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -368,6 +370,7 @@ export default function WorkspacePage() {
 
   // Workspace Tabs State
   const [activeTab, setActiveTab] = useState<ToolTab>("notes");
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(true);
 
   // 1. Functional Notes Tab State (Interactive AI-Assisted Text Editor)
   const [notesText, setNotesText] = useState<string>(
@@ -1053,6 +1056,32 @@ export default function WorkspacePage() {
               />
               <span className="capitalize">{lecture?.status || "Ready"}</span>
             </div>
+
+            {/* Right Tools Panel Collapse/Open Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsRightSidebarOpen((prev) => !prev)}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all duration-200 cursor-pointer flex items-center gap-1.5",
+                isRightSidebarOpen
+                  ? "bg-transparent border-white/5 text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                  : "bg-white/10 border-white/20 text-neutral-100 shadow-sm hover:bg-white/15"
+              )}
+              title={isRightSidebarOpen ? "Collapse Learning Tools Panel" : "Open Learning Tools Panel"}
+              aria-label="Toggle Learning Tools Panel"
+            >
+              {isRightSidebarOpen ? (
+                <>
+                  <PanelRightClose className="w-3.5 h-3.5" />
+                  <span className="hidden xl:inline text-xs">Hide Tools</span>
+                </>
+              ) : (
+                <>
+                  <PanelRightOpen className="w-3.5 h-3.5 text-neutral-200" />
+                  <span className="inline text-xs font-medium">Tools</span>
+                </>
+              )}
+            </button>
           </div>
         </header>
 
@@ -1548,63 +1577,82 @@ export default function WorkspacePage() {
       </div>
 
       {/* =====================================================================
-          3. Right Column: Learning Tools (Fixed width, w-96/w-[420px], Tabs + Content)
+          3. Right Column: Learning Tools (Collapsible, w-96/w-[420px], Tabs + Content)
           ===================================================================== */}
-      <div className="w-96 xl:w-[420px] shrink-0 flex flex-col h-full bg-neutral-950 border-l border-white/5 overflow-hidden z-20">
-        {/* Top Tabs: Horizontal 4-tab navigation bar */}
-        <div className="h-14 border-b border-white/5 px-3 sm:px-4 flex items-center justify-between shrink-0 bg-neutral-950">
-          <div className="grid grid-cols-4 gap-1 w-full bg-neutral-900/60 p-1 rounded-lg border border-white/5">
-            <button
-              type="button"
-              onClick={() => setActiveTab("notes")}
-              className={cn(
-                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
-                activeTab === "notes"
-                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
-              )}
-            >
-              Notes
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("plan")}
-              className={cn(
-                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
-                activeTab === "plan"
-                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
-              )}
-              title="Learning Plan"
-            >
-              Plan
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("summary")}
-              className={cn(
-                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
-                activeTab === "summary"
-                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
-              )}
-            >
-              Summary
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("chat")}
-              className={cn(
-                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
-                activeTab === "chat"
-                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
-              )}
-            >
-              Chat
-            </button>
-          </div>
-        </div>
+      <AnimatePresence initial={false}>
+        {isRightSidebarOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "auto", opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+            className="w-96 xl:w-[420px] shrink-0 flex flex-col h-full bg-neutral-950 border-l border-white/5 overflow-hidden z-20"
+          >
+            {/* Top Tabs: Horizontal 4-tab navigation bar with panel close button */}
+            <div className="h-14 border-b border-white/5 px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 bg-neutral-950">
+              <div className="grid grid-cols-4 gap-1 flex-1 bg-neutral-900/60 p-1 rounded-lg border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("notes")}
+                  className={cn(
+                    "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
+                    activeTab === "notes"
+                      ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                      : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
+                  )}
+                >
+                  Notes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("plan")}
+                  className={cn(
+                    "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
+                    activeTab === "plan"
+                      ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                      : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
+                  )}
+                  title="Learning Plan"
+                >
+                  Plan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("summary")}
+                  className={cn(
+                    "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
+                    activeTab === "summary"
+                      ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                      : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
+                  )}
+                >
+                  Summary
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("chat")}
+                  className={cn(
+                    "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
+                    activeTab === "chat"
+                      ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                      : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
+                  )}
+                >
+                  Chat
+                </button>
+              </div>
+
+              {/* Collapse Button */}
+              <button
+                type="button"
+                onClick={() => setIsRightSidebarOpen(false)}
+                className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+                title="Collapse Tools Panel"
+                aria-label="Collapse Tools Panel"
+              >
+                <PanelRightClose className="w-4 h-4" />
+              </button>
+            </div>
 
         {/* Content Area: Container rendering selected tab content */}
         <div
@@ -1876,7 +1924,9 @@ export default function WorkspacePage() {
             />
           )}
         </div>
-      </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
 
       {/* All Lectures Library & Ingestion Switcher Modal */}
       <LecturesModal
