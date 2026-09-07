@@ -42,34 +42,33 @@ async def verify_webhook(
     return {"status": "ok", "message": "WhatsApp webhook endpoint active"}
 
 
+from .handlers import handle_text_message
+
 async def _process_incoming_message(msg: NormalizedMessage) -> None:
     """Asynchronously processes a normalized WhatsApp message.
     
-    STEP 5 (Milestone 1): Responds with static confirmation to verify two-way path.
-    Subsequent steps will connect text AI, context, and voice pipelines.
+    Routes to appropriate handler based on MessageType (STEPS 6, 7, 8).
     """
     try:
         logger.info(
-            "[WhatsApp Inbound] ID: %s | From: %s (%s) | Type: %s | Text: %s",
+            "[WhatsApp Inbound] ID: %s | From: %s (%s) | Type: %s | Content: %s",
             msg.message_id,
             msg.user_identifier,
             msg.user_name or "Unknown",
             msg.message_type.value,
-            msg.text_content,
+            msg.text_content or msg.media_url,
         )
 
-        # Milestone 1: Step 5 static test response
-        reply_text = (
-            f"Hello {msg.user_name or 'there'}! 👋\n\n"
-            f"Blindspot AI received your message: \"{msg.text_content or ''}\"\n\n"
-            f"Two-way WhatsApp communication is successfully connected!"
-        )
-
-        outgoing = OutgoingMessage(
-            recipient=msg.user_identifier,
-            message_type=MessageType.TEXT,
-            text_content=reply_text,
-        )
+        # Message Type Routing (Step 8)
+        if msg.message_type == MessageType.TEXT:
+            outgoing = await handle_text_message(msg)
+        else:
+            # Voice / Image / Unsupported placeholder until Step 9+
+            outgoing = OutgoingMessage(
+                recipient=msg.user_identifier,
+                message_type=MessageType.TEXT,
+                text_content=f"👋 I received your {msg.message_type.value} message. Audio/media processing is coming up next!",
+            )
 
         dispatch_result = await zernio_provider.send_message(
             outgoing=outgoing,

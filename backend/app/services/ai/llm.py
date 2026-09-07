@@ -172,3 +172,23 @@ def chat_completion(
             f"LLM response could not be parsed as {response_model.__name__}: {exc}\n\n"
             f"Raw response:\n{raw_text}"
         ) from exc
+
+
+def chat_completion_messages(
+    messages: List[Dict[str, str]],
+    *,
+    temperature: float = 0.6,
+    max_tokens: int = 1024,
+    model: Optional[str] = None,
+) -> str:
+    """Sends a chat completion request with a full list of conversational messages."""
+    client = _get_client()
+    target_model = model or get_active_model()
+
+    response = client.chat.completions.create(
+        model=target_model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return response.choices[0].message.content or ""
