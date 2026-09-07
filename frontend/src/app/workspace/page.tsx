@@ -1551,17 +1551,17 @@ export default function WorkspacePage() {
           3. Right Column: Learning Tools (Fixed width, w-96/w-[420px], Tabs + Content)
           ===================================================================== */}
       <div className="w-96 xl:w-[420px] shrink-0 flex flex-col h-full bg-neutral-950 border-l border-white/5 overflow-hidden z-20">
-        {/* Top Tabs: Horizontal 3-tab navigation bar ("Notes", "Learning plan", "Summary") */}
-        <div className="h-14 border-b border-white/5 px-6 flex items-center justify-between shrink-0 bg-neutral-950">
-          <div className="flex items-center gap-1 w-full bg-neutral-900/50 p-1 rounded-lg border border-white/5">
+        {/* Top Tabs: Horizontal 4-tab navigation bar */}
+        <div className="h-14 border-b border-white/5 px-3 sm:px-4 flex items-center justify-between shrink-0 bg-neutral-950">
+          <div className="grid grid-cols-4 gap-1 w-full bg-neutral-900/60 p-1 rounded-lg border border-white/5">
             <button
               type="button"
               onClick={() => setActiveTab("notes")}
               className={cn(
-                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
+                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
                 activeTab === "notes"
-                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
               )}
             >
               Notes
@@ -1570,22 +1570,23 @@ export default function WorkspacePage() {
               type="button"
               onClick={() => setActiveTab("plan")}
               className={cn(
-                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
+                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
                 activeTab === "plan"
-                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
               )}
+              title="Learning Plan"
             >
-              Learning plan
+              Plan
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("summary")}
               className={cn(
-                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
+                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
                 activeTab === "summary"
-                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
               )}
             >
               Summary
@@ -1594,10 +1595,10 @@ export default function WorkspacePage() {
               type="button"
               onClick={() => setActiveTab("chat")}
               className={cn(
-                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
+                "py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200 text-center cursor-pointer truncate",
                 activeTab === "chat"
-                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
-                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                  ? "bg-white/10 text-neutral-100 shadow-none font-medium border border-white/10"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5 border border-transparent"
               )}
             >
               Chat

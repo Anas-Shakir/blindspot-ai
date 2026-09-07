@@ -268,11 +268,11 @@ export default function RobotCompanionCanvas({
   if (!mounted) {
     return (
       <div
-        className={className || "w-full h-full min-h-[300px]"}
-        style={{ width: "100%", height: "100%", minHeight: "300px" }}
+        className={className || "w-full h-full min-h-[220px]"}
+        style={{ width: "100%", height: "100%", minHeight: "220px" }}
       >
         <div className="w-full h-full flex items-center justify-center">
-          <div className="w-24 h-24 rounded-full border border-[#701a24]/30 bg-[#701a24]/10 animate-pulse" />
+          <div className="w-20 h-20 rounded-full border border-[#701a24]/30 bg-[#701a24]/10 animate-pulse" />
         </div>
       </div>
     );
@@ -281,12 +281,12 @@ export default function RobotCompanionCanvas({
   return (
     <div
       className={cn(
-        "relative w-full h-full min-h-[300px] flex flex-col items-center justify-center pointer-events-auto",
+        "relative w-full h-full min-h-[220px] flex flex-col items-center justify-center pointer-events-auto",
         className
       )}
     >
       {/* 3D Canvas Stage */}
-      <div className="relative w-full h-full flex-1 min-h-[260px] overflow-hidden">
+      <div className="relative w-full h-full flex-1 min-h-[190px] overflow-hidden">
         <Canvas
           camera={{ position: [0, 0.42, 3.3], fov: 43 }}
           dpr={[1, 1.5]}
@@ -299,7 +299,7 @@ export default function RobotCompanionCanvas({
             pointerEvents: "none",
             width: "100%",
             height: "100%",
-            minHeight: "260px",
+            minHeight: "190px",
           }}
         >
           {/* Studio Lighting with Deep Oxblood Burgundy Rim */}
@@ -324,9 +324,9 @@ export default function RobotCompanionCanvas({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.97 }}
               transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-              className="absolute bottom-2.5 inset-x-3 sm:inset-x-6 max-w-lg mx-auto z-20 pointer-events-auto"
+              className="absolute bottom-1.5 inset-x-3 sm:inset-x-6 max-w-lg mx-auto z-20 pointer-events-auto"
             >
-              <div className="relative flex items-center gap-3 px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-2xl bg-neutral-950/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_2px_6px_rgba(0,0,0,0.85),inset_0_-1px_1px_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.04]">
+              <div className="relative flex items-center gap-3 px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-neutral-950/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_2px_6px_rgba(0,0,0,0.85),inset_0_-1px_1px_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.04]">
                 {/* Subtle Audio Icon (No blinking neon) */}
                 <Volume2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
 
@@ -342,7 +342,7 @@ export default function RobotCompanionCanvas({
 
       {/* The Trigger: Clean, calm "Play Intro" button placed below the 3D canvas */}
       {showIntroButton && (
-        <div className="pt-2 pb-1 z-20 pointer-events-auto shrink-0 flex items-center justify-center">
+        <div className="pt-2 pb-0.5 z-20 pointer-events-auto shrink-0 flex items-center justify-center">
           <motion.button
             type="button"
             whileTap={{ scale: 0.97 }}

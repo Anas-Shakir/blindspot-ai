@@ -43,14 +43,14 @@ export default function RobotCompanionWrapper({
 
   if (!Component) {
     return (
-      <div className="w-full h-full min-h-[300px] flex items-center justify-center">
-        <div className="w-24 h-24 rounded-full border border-[#701a24]/30 bg-[#701a24]/10 animate-pulse" />
+      <div className="w-full h-full min-h-[220px] flex items-center justify-center">
+        <div className="w-20 h-20 rounded-full border border-[#701a24]/30 bg-[#701a24]/10 animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full min-h-[300px] flex items-center justify-center pointer-events-auto">
+    <div className="w-full h-full min-h-[220px] flex items-center justify-center pointer-events-auto">
       <Component
         isFast={isFast}
         showIntroButton={showIntroButton}
@@ -58,7 +58,7 @@ export default function RobotCompanionWrapper({
         isExternalPlaying={isExternalPlaying}
         onIntroPlay={onIntroPlay}
         stopIntroSignal={stopIntroSignal}
-        className="w-full h-full min-h-[300px]"
+        className="w-full h-full"
       />
     </div>
   );
