@@ -460,6 +460,8 @@ export interface QAResponse {
   key_takeaway?: string | null;
   analogy?: string | null;
   flow_steps?: FlowStep[] | null;
+  visual_intent?: boolean | null;
+  whiteboard_topic?: string | null;
   audio_url?: string | null;
 }
 

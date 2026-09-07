@@ -16,6 +16,7 @@ import {
   RotateCcw,
   BookOpen,
   ArrowRight,
+  Presentation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, QAResponse, FlowStep, resolveAudioUrl } from "@/lib/api";
@@ -33,13 +34,20 @@ interface ChatTabProps {
   currentPhaseOrder?: number;
   currentPhaseTitle?: string;
   onVoiceSpeak?: (text: string, audioUrl?: string | null) => void;
+  onSwitchToVisualLesson?: (
+    topic: string,
+    explanation: string,
+    flowSteps?: FlowStep[],
+    analogy?: string,
+    keyTakeaway?: string
+  ) => void;
 }
 
 const DEFAULT_SUGGESTIONS = [
+  "🎨 Teach me visually on whiteboard",
   "Explain this in simpler terms",
   "Give me a real-world analogy",
   "What are common pitfalls here?",
-  "Break down the step-by-step logic",
 ];
 
 export const ChatTab: React.FC<ChatTabProps> = ({
@@ -47,6 +55,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({
   currentPhaseOrder,
   currentPhaseTitle,
   onVoiceSpeak,
+  onSwitchToVisualLesson,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -193,6 +202,25 @@ export const ChatTab: React.FC<ChatTabProps> = ({
 
       setMessages((prev) => [...prev, assistantMessage]);
 
+      // Check if user requested visual teaching or AI flagged visual intent
+      const isVisualRequest =
+        textToSend.toLowerCase().includes("visual") ||
+        textToSend.toLowerCase().includes("whiteboard") ||
+        textToSend.toLowerCase().includes("draw") ||
+        textToSend.toLowerCase().includes("diagram") ||
+        textToSend.toLowerCase().includes("graph") ||
+        Boolean(qaResult.visual_intent);
+
+      if (isVisualRequest && onSwitchToVisualLesson) {
+        onSwitchToVisualLesson(
+          qaResult.whiteboard_topic || currentPhaseTitle || "Interactive Visual Lesson",
+          qaResult.explanation,
+          qaResult.flow_steps || undefined,
+          qaResult.analogy || undefined,
+          qaResult.key_takeaway || undefined
+        );
+      }
+
       if (onVoiceSpeak && qaResult.explanation) {
         onVoiceSpeak(qaResult.explanation, qaResult.audio_url);
       }
@@ -239,6 +267,13 @@ export const ChatTab: React.FC<ChatTabProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {messages.map((msg) => {
           const isUser = msg.sender === "user";
+          const hasVisualAids = Boolean(
+            msg.data?.visual_intent ||
+            (msg.data?.flow_steps && msg.data.flow_steps.length > 0) ||
+            msg.text.toLowerCase().includes("whiteboard") ||
+            msg.text.toLowerCase().includes("visual")
+          );
+
           return (
             <motion.div
               key={msg.id}
@@ -285,6 +320,35 @@ export const ChatTab: React.FC<ChatTabProps> = ({
                 {/* Structured Rich Aids if returned from qa.py */}
                 {msg.data && (
                   <div className="space-y-3 pt-2 border-t border-white/10 text-left">
+                    {/* Interactive Live Whiteboard Launch Button */}
+                    {hasVisualAids && onSwitchToVisualLesson && (
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() =>
+                          onSwitchToVisualLesson(
+                            msg.data?.whiteboard_topic || currentPhaseTitle || "Interactive Visual Lesson",
+                            msg.text,
+                            msg.data?.flow_steps || undefined,
+                            msg.data?.analogy || undefined,
+                            msg.data?.key_takeaway || undefined
+                          )
+                        }
+                        className="w-full flex items-center justify-between p-2.5 rounded-lg bg-gradient-to-r from-[#701a24]/30 via-neutral-900 to-neutral-900 border border-[#881337]/50 hover:border-[#881337] text-neutral-200 hover:text-white transition-all cursor-pointer shadow-sm group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Presentation className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-semibold text-amber-200">
+                            🎨 Open Live AI Whiteboard Lesson
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] font-mono text-neutral-400 group-hover:text-amber-300">
+                          <span>View Board</span>
+                          <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </motion.button>
+                    )}
+
                     {/* Key Takeaway */}
                     {msg.data.key_takeaway && (
                       <div className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5">

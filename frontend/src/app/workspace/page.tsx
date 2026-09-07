@@ -45,11 +45,13 @@ import {
   TranscriptSegment,
   SessionEvent,
   VoiceOption,
+  FlowStep,
 } from "@/lib/api";
 import RobotCompanionWrapper from "@/components/player/RobotCompanionWrapper";
 import { WhiteboardCanvas } from "@/components/whiteboard/WhiteboardCanvas";
 import KnowledgeGraphView from "@/components/player/KnowledgeGraphView";
 import { CanvasObject, ToolType, ViewportTransform } from "@/lib/whiteboard/types";
+import { generateWhiteboardScene } from "@/lib/whiteboard/visualTeacher";
 import QuizCard, { QuizOption } from "@/components/player/QuizCard";
 import Sidebar from "@/components/common/Sidebar";
 import LecturesModal from "@/components/workspace/LecturesModal";
@@ -918,6 +920,37 @@ export default function WorkspacePage() {
     }
   };
 
+  // Dynamic Visual Whiteboard Lesson Handler
+  const handleSwitchToVisualLesson = useCallback(
+    (
+      topic: string,
+      explanation: string,
+      flowSteps?: FlowStep[],
+      analogy?: string,
+      keyTakeaway?: string
+    ) => {
+      // 1. Switch the primary stage view to Whiteboard
+      setStageView("whiteboard");
+
+      // 2. Generate and set structured pedagogical visual objects
+      const generatedObjects = generateWhiteboardScene(
+        topic || currentPhase.title,
+        explanation,
+        flowSteps,
+        analogy,
+        keyTakeaway
+      );
+      setWhiteboardObjects(generatedObjects);
+
+      // 3. Reset viewport to center the newly drawn visual concept
+      setWhiteboardViewport({ x: 0, y: 0, scale: 1 });
+
+      // 4. Update active spoken subtitle
+      setActiveSpeechText(explanation);
+    },
+    [currentPhase.title]
+  );
+
   // Single Unified Subtitle State (visible ONLY when robot is talking or audio is playing)
   const isSpeakingOrPlaying = isAudioPlaying || isPlayingAudio || isSpeaking || isAnsweringQuery;
   const currentLiveSubtitle = isAnsweringQuery
@@ -1577,16 +1610,16 @@ export default function WorkspacePage() {
       </div>
 
       {/* =====================================================================
-          3. Right Column: Learning Tools (Collapsible, w-96/w-[420px], Tabs + Content)
+          3. Right Column: Learning Tools (Consistent Optimal Width: 420px)
           ===================================================================== */}
       <AnimatePresence initial={false}>
         {isRightSidebarOpen && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: "auto", opacity: 1 }}
+            animate={{ width: 420, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-            className="w-96 xl:w-[420px] shrink-0 flex flex-col h-full bg-neutral-950 border-l border-white/5 overflow-hidden z-20"
+            className="w-[420px] max-w-[420px] min-w-[380px] shrink-0 flex flex-col h-full bg-neutral-950 border-l border-white/5 overflow-hidden z-20"
           >
             {/* Top Tabs: Horizontal 4-tab navigation bar with panel close button */}
             <div className="h-14 border-b border-white/5 px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 bg-neutral-950">
@@ -1646,7 +1679,7 @@ export default function WorkspacePage() {
               <button
                 type="button"
                 onClick={() => setIsRightSidebarOpen(false)}
-                className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-200 hover:bg-white/5 transition-colors cursor-pointer shrink-0"
                 title="Collapse Tools Panel"
                 aria-label="Collapse Tools Panel"
               >
@@ -1654,15 +1687,15 @@ export default function WorkspacePage() {
               </button>
             </div>
 
-        {/* Content Area: Container rendering selected tab content */}
-        <div
-          className={cn(
-            "flex-1 min-h-0",
-            activeTab === "notes" || activeTab === "chat"
-              ? "h-full w-full flex flex-col overflow-hidden"
-              : "overflow-y-auto p-6 md:p-8 space-y-6"
-          )}
-        >
+            {/* Content Area: Container rendering selected tab content with strictly contained width */}
+            <div
+              className={cn(
+                "flex-1 min-h-0 w-full max-w-full overflow-x-hidden",
+                activeTab === "notes" || activeTab === "chat"
+                  ? "h-full w-full flex flex-col overflow-hidden"
+                  : "overflow-y-auto p-5 md:p-6 space-y-6"
+              )}
+            >
           {/* TAB 1: FUNCTIONAL NOTES TAB (Working Text Editor with full height & width) */}
           {activeTab === "notes" && (
             <div className="h-full w-full flex-1 flex flex-col min-h-0">
@@ -1921,6 +1954,7 @@ export default function WorkspacePage() {
                   playAudio(audioUrl);
                 }
               }}
+              onSwitchToVisualLesson={handleSwitchToVisualLesson}
             />
           )}
         </div>

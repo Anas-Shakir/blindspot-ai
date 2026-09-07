@@ -51,6 +51,14 @@ class QAResult(BaseModel):
         default=None,
         description="Optional sequence of 2 to 4 clear logical steps when answering a process, algorithm, or workflow question."
     )
+    visual_intent: Optional[bool] = Field(
+        default=False,
+        description="True if the student explicitly asks to be taught visually/on the whiteboard, or if drawing visual diagrams provides superior pedagogical intuition."
+    )
+    whiteboard_topic: Optional[str] = Field(
+        default=None,
+        description="Short conceptual title for the visual diagram illustrated on the whiteboard."
+    )
 
 
 _QA_SYSTEM_PROMPT = """\
@@ -62,6 +70,7 @@ Your goal is to provide:
 2. A memorable real-world analogy if applicable.
 3. A punchy 1-sentence key takeaway.
 4. If the question is about an algorithm, workflow, mechanism, or process: provide a structured sequence of 2-4 visual flow steps.
+5. If the student asks to be taught visually (e.g., "teach me visually", "draw this", "show on whiteboard") or if the concept is highly visual (curves, diagrams, flows), set "visual_intent": true and provide "whiteboard_topic".
 
 Output Format:
 You MUST respond with valid JSON matching this schema:
@@ -73,7 +82,9 @@ You MUST respond with valid JSON matching this schema:
     { "step_number": 1, "title": "Initialize State", "detail": "Set up initial boundaries or starting conditions." },
     { "step_number": 2, "title": "Evaluate & Branch", "detail": "Test condition and decide next action." },
     { "step_number": 3, "title": "Terminate or Loop", "detail": "Return final result or repeat for next interval." }
-  ]
+  ],
+  "visual_intent": false,
+  "whiteboard_topic": "Market Clearing Mechanism"
 }
 """
 
