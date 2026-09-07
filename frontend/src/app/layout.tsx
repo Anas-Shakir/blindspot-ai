@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: "Blindspot AI — Turn Passive Lectures into Active Teachers",
   description:
     "Your lecture recording, taught properly — with receipts. Turn passive audio into structured pedagogical phases, concept graphs, and verifiable source timestamps.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
