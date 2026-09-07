@@ -17,7 +17,8 @@ endpoint returns immediately (status=PROCESSING) and flips to READY once done.
 
 from fastapi import APIRouter, BackgroundTasks, File, UploadFile, HTTPException, Depends
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel
 
 from backend.app.core.db import get_db, SessionLocal
 from backend.app.model.models import (
@@ -415,3 +416,88 @@ def stream_lecture(lecture_id: int, db: Session = Depends(get_db)):
     from fastapi.responses import RedirectResponse
     res = get_lecture_audio_url(lecture_id, db)
     return RedirectResponse(url=res["url"])
+
+
+class QARequest(BaseModel):
+    question: str
+    phase_order: Optional[int] = None
+    voice: Optional[str] = None
+    text_language: Optional[str] = None
+
+
+@router.post("/lectures/{lecture_id}/qa")
+def ask_lecture_question(
+    lecture_id: int,
+    req: QARequest,
+    db: Session = Depends(get_db),
+):
+    """Answers a question about a lecture or specific phase using backend/app/services/ai/qa.py.
+    Provides structured explanations, analogies, key takeaways, and visual flow steps.
+    """
+    from backend.app.services.ai.qa import answer_phase_question
+    from backend.app.services.ai.tts import speak
+
+    # 1. Fetch Phase if phase_order specified or default to first phase
+    current_phase_schema = None
+    plan = db.query(LearningPlanModel).filter(LearningPlanModel.lecture_id == lecture_id).first()
+    if plan:
+        target_phase = None
+        if req.phase_order is not None:
+            target_phase = db.query(PhaseModel).filter(
+                PhaseModel.plan_id == plan.id,
+                PhaseModel.order == req.phase_order
+            ).first()
+        if not target_phase:
+            target_phase = db.query(PhaseModel).filter(PhaseModel.plan_id == plan.id).order_by(PhaseModel.order.asc()).first()
+
+        if target_phase:
+            current_phase_schema = PhaseSchema(
+                order=target_phase.order,
+                title=target_phase.title,
+                teaching_script=target_phase.teaching_script,
+                source_timestamps=[
+                    TimeRange(start=t["start"], end=t["end"])
+                    for t in (target_phase.source_timestamps or [])
+                ],
+                prerequisite_note=target_phase.prerequisite_note,
+                difficulty=target_phase.difficulty,
+            )
+
+    # 2. Fetch transcript segments for context grounding
+    db_chunks = db.query(TranscriptChunk).filter(TranscriptChunk.lecture_id == lecture_id).all()
+    transcript_segments = [
+        TranscriptSegment(
+            id=c.id,
+            lecture_id=c.lecture_id,
+            start=c.start,
+            end=c.end,
+            text=c.text,
+            speaker=c.speaker,
+        )
+        for c in db_chunks
+    ]
+
+    # 3. Call qa.py engine
+    qa_result = answer_phase_question(
+        question=req.question,
+        current_phase=current_phase_schema,
+        transcript_segments=transcript_segments,
+    )
+
+    # 4. Optional TTS audio synthesis
+    audio_url = None
+    if qa_result.explanation:
+        try:
+            audio_url = speak(qa_result.explanation, voice=req.voice or "en-US-ChristopherNeural")
+        except Exception as tts_err:
+            print(f"TTS synthesis notice: {tts_err}")
+
+    return {
+        "question": req.question,
+        "phase_order": req.phase_order,
+        "explanation": qa_result.explanation,
+        "key_takeaway": qa_result.key_takeaway,
+        "analogy": qa_result.analogy,
+        "flow_steps": [s.model_dump() for s in qa_result.flow_steps] if qa_result.flow_steps else None,
+        "audio_url": audio_url,
+    }

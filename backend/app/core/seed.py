@@ -22,7 +22,48 @@ from backend.app.model.models import (
 
 
 def seed_default_lectures(db: Session) -> None:
-    """Seed starter lecture records if the lectures table is empty."""
+    """Seed starter lecture records if empty, and ensure any existing lecture has a valid plan."""
+    now = datetime.now(timezone.utc)
+
+    # 0. Ensure any existing lectures have at least one LearningPlan
+    existing_lectures = db.query(Lecture).all()
+    for lec in existing_lectures:
+        has_plan = db.query(LearningPlan).filter(LearningPlan.lecture_id == lec.id).first()
+        if not has_plan:
+            new_plan = LearningPlan(lecture_id=lec.id)
+            db.add(new_plan)
+            db.flush()
+            db.add_all([
+                Phase(
+                    plan_id=new_plan.id,
+                    order=0,
+                    title=f"1. Core Principles of {lec.filename.replace('.mp4', '').replace('.mp3', '')}",
+                    teaching_script="This lesson covers the fundamental concepts, governing equations, and key relationships.",
+                    source_timestamps=[{"start": 0.0, "end": 180.0}],
+                    prerequisite_note="Foundational topic overview",
+                    difficulty="Foundational",
+                ),
+                Phase(
+                    plan_id=new_plan.id,
+                    order=1,
+                    title="2. Applied Mechanics & Synthesis",
+                    teaching_script="Here we synthesize the core theory into applied problem solving and real-world mechanisms.",
+                    source_timestamps=[{"start": 180.0, "end": 360.0}],
+                    prerequisite_note="Phase 1 concepts",
+                    difficulty="Intermediate",
+                ),
+            ])
+            # Add sample transcript chunks if none exist
+            if db.query(TranscriptChunk).filter(TranscriptChunk.lecture_id == lec.id).count() == 0:
+                db.add(TranscriptChunk(
+                    lecture_id=lec.id,
+                    start=0.0,
+                    end=30.0,
+                    text=f"Welcome to this lecture on {lec.filename}.",
+                    speaker="Instructor",
+                ))
+            db.commit()
+
     if db.query(Lecture).count() > 0:
         return
 

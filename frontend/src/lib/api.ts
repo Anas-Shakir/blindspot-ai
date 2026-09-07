@@ -447,6 +447,43 @@ export async function setPreferences(
   });
 }
 
+export interface FlowStep {
+  step_number: number;
+  title: string;
+  detail: string;
+}
+
+export interface QAResponse {
+  question: string;
+  phase_order?: number | null;
+  explanation: string;
+  key_takeaway?: string | null;
+  analogy?: string | null;
+  flow_steps?: FlowStep[] | null;
+  audio_url?: string | null;
+}
+
+/**
+ * Ask a free-form question grounded in the lecture context via qa.py engine.
+ */
+export async function askLectureQuestion(
+  lectureId: number | string,
+  question: string,
+  phaseOrder?: number | null,
+  voice?: string,
+  textLanguage?: string
+): Promise<QAResponse> {
+  return fetchJson<QAResponse>(`/api/lectures/${lectureId}/qa`, {
+    method: "POST",
+    body: JSON.stringify({
+      question,
+      phase_order: phaseOrder ?? null,
+      voice: voice || null,
+      text_language: textLanguage || null,
+    }),
+  });
+}
+
 /**
  * Check backend health status from GET /health.
  */
@@ -471,6 +508,7 @@ export const api = {
   getGraph,
   startSession,
   sendCommand,
+  askLectureQuestion,
   resolveAudioUrl,
   getLectureStreamUrl,
   getVoices,
@@ -480,3 +518,4 @@ export const api = {
 };
 
 export default api;
+

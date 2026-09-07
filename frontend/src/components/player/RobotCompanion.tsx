@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState, useCallback, Suspense } from "react
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, useAnimations, Float } from "@react-three/drei";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Square } from "lucide-react";
+import { Play, Square, Volume2 } from "lucide-react";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 
@@ -288,7 +288,7 @@ export default function RobotCompanionCanvas({
       {/* 3D Canvas Stage */}
       <div className="relative w-full h-full flex-1 min-h-[260px] overflow-hidden">
         <Canvas
-          camera={{ position: [0, 0.3, 3.2], fov: 45 }}
+          camera={{ position: [0, 0.42, 3.3], fov: 43 }}
           dpr={[1, 1.5]}
           gl={{
             antialias: true,
@@ -316,52 +316,58 @@ export default function RobotCompanionCanvas({
           </Suspense>
         </Canvas>
 
-        {/* Minimal Luxury Subtitle: Box removed, larger text, luxury font, visible ONLY when talking or playing */}
+        {/* Inward Sunken Speech Capsule with Optimal Clearance from the Robot */}
         <AnimatePresence>
           {isVisible && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="absolute bottom-4 sm:bottom-6 inset-x-4 sm:inset-x-8 max-w-2xl mx-auto z-20 pointer-events-none text-center px-4"
+              initial={{ opacity: 0, y: 10, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.97 }}
+              transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+              className="absolute bottom-2.5 inset-x-3 sm:inset-x-6 max-w-lg mx-auto z-20 pointer-events-auto"
             >
-              <p className="text-base sm:text-lg md:text-xl text-neutral-100 font-serif tracking-wide leading-relaxed drop-shadow-[0_2px_14px_rgba(0,0,0,0.95)] select-none">
-                &ldquo;{activeText}&rdquo;
-              </p>
+              <div className="relative flex items-center gap-3 px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-2xl bg-neutral-950/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_2px_6px_rgba(0,0,0,0.85),inset_0_-1px_1px_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.04]">
+                {/* Subtle Audio Icon (No blinking neon) */}
+                <Volume2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+
+                {/* Speech Quote Text */}
+                <p className="text-xs sm:text-sm text-neutral-200 font-sans tracking-normal leading-relaxed select-none min-w-0 flex-1 font-normal text-left">
+                  &ldquo;{activeText}&rdquo;
+                </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* The Trigger: Sleek "Play Intro" button below the 3D Canvas */}
+      {/* The Trigger: Clean, calm "Play Intro" button placed below the 3D canvas */}
       {showIntroButton && (
         <div className="pt-2 pb-1 z-20 pointer-events-auto shrink-0 flex items-center justify-center">
           <motion.button
             type="button"
-            whileTap={{ scale: 0.96 }}
+            whileTap={{ scale: 0.97 }}
             whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
             onClick={handlePlayIntro}
             className={cn(
-              "px-3.5 py-1.5 rounded-xl border text-xs font-semibold tracking-tight flex items-center gap-2 cursor-pointer transition-all shadow-md",
+              "group inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium tracking-tight cursor-pointer select-none",
+              "transition-[background-color,border-color,box-shadow,color] duration-150 ease-out",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#881337] focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
               isPlaying
-                ? "bg-[#701a24] hover:bg-[#881337] border-[#881337] text-white shadow-[#701a24]/30 ring-1 ring-[#701a24]/50"
-                : "bg-neutral-900/90 hover:bg-neutral-800 border-neutral-800 hover:border-neutral-700 text-neutral-200 hover:text-white"
+                ? "bg-[#701a24] hover:bg-[#881337] border border-[#881337] text-white shadow-sm"
+                : "bg-neutral-900/85 hover:bg-neutral-800 border border-white/[0.08] hover:border-white/[0.18] text-neutral-300 hover:text-white shadow-sm"
             )}
             title={isPlaying ? "Stop Intro" : "Play Intro"}
+            aria-label={isPlaying ? "Stop Intro" : "Play Intro"}
           >
             {isPlaying ? (
               <>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <Square className="w-3 h-3 fill-current text-white/90" />
+                <Square className="w-2.5 h-2.5 fill-current text-white" />
                 <span>Stop Intro</span>
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5 fill-current text-neutral-300" />
+                <Play className="w-3 h-3 fill-current text-neutral-300 group-hover:text-white transition-colors" />
                 <span>Play Intro</span>
               </>
             )}

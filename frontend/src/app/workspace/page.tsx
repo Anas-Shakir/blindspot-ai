@@ -51,6 +51,7 @@ import { CanvasObject, ToolType, ViewportTransform } from "@/lib/whiteboard/type
 import QuizCard, { QuizOption } from "@/components/player/QuizCard";
 import Sidebar from "@/components/common/Sidebar";
 import LecturesModal from "@/components/workspace/LecturesModal";
+import ChatTab from "@/components/workspace/ChatTab";
 
 interface PhaseData {
   id: number;
@@ -350,7 +351,7 @@ const defaultTranscriptSegments: TranscriptSegment[] = [
   },
 ];
 
-type ToolTab = "notes" | "plan" | "summary";
+type ToolTab = "notes" | "plan" | "summary" | "chat";
 
 export default function WorkspacePage() {
   const router = useRouter();
@@ -1589,6 +1590,18 @@ export default function WorkspacePage() {
             >
               Summary
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("chat")}
+              className={cn(
+                "flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all duration-300 ease-out text-center cursor-pointer",
+                activeTab === "chat"
+                  ? "bg-white/10 text-neutral-200 shadow-none font-medium"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+              )}
+            >
+              Chat
+            </button>
           </div>
         </div>
 
@@ -1596,7 +1609,9 @@ export default function WorkspacePage() {
         <div
           className={cn(
             "flex-1 min-h-0",
-            activeTab === "notes" ? "h-full w-full flex flex-col overflow-hidden" : "overflow-y-auto p-6 md:p-8 space-y-6"
+            activeTab === "notes" || activeTab === "chat"
+              ? "h-full w-full flex flex-col overflow-hidden"
+              : "overflow-y-auto p-6 md:p-8 space-y-6"
           )}
         >
           {/* TAB 1: FUNCTIONAL NOTES TAB (Working Text Editor with full height & width) */}
@@ -1843,6 +1858,21 @@ export default function WorkspacePage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* TAB 4: INTERACTIVE Q&A / CHAT TAB (Grounding in qa.py) */}
+          {activeTab === "chat" && (
+            <ChatTab
+              lectureId={lectureId ? Number(lectureId) : null}
+              currentPhaseOrder={currentPhaseIndex}
+              currentPhaseTitle={currentPhase.title}
+              onVoiceSpeak={(text, audioUrl) => {
+                setActiveSpeechText(text);
+                if (audioUrl) {
+                  playAudio(audioUrl);
+                }
+              }}
+            />
           )}
         </div>
       </div>

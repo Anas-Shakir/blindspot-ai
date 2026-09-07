@@ -32,7 +32,7 @@ init_db()
 app = FastAPI(
     title="Blindspot AI",
     description="Turn recorded lectures into active learning",
-    version="0.1.0",
+    version="0.1.2",
 )
 
 # Allow frontend (will be on a different port during dev) to call the API
@@ -65,4 +65,4 @@ def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

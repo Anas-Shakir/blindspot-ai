@@ -295,3 +295,7 @@ def speak(
             return future.result()
     else:
         return asyncio.run(async_speak(clean_text, voice, output_path))
+
+
+# Compatibility alias
+synthesize_speech = speak

@@ -13,9 +13,11 @@ Example Postgres URL once you're ready to switch:
 """
 
 import os
-
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./blindspot.db")
 
@@ -47,13 +49,34 @@ def get_db():
 
 def init_db():
     """Creates all tables if they don't exist yet and seeds starter lectures."""
+    global engine, SessionLocal
     from backend.app.model import models  # noqa: F401 — import so models register on Base
-    Base.metadata.create_all(bind=engine)
+
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logger.warning(
+            "Primary database connection failed (%s). Falling back to local SQLite database: %s",
+            DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL,
+            e,
+        )
+        # Fallback to local SQLite
+        fallback_url = "sqlite:///./blindspot.db"
+        engine = create_engine(
+            fallback_url,
+            connect_args={"check_same_thread": False},
+            pool_pre_ping=True,
+        )
+        SessionLocal.configure(bind=engine)
+        Base.metadata.create_all(bind=engine)
 
     # Seed starter lectures if table is empty
     from backend.app.core.seed import seed_default_lectures
     db = SessionLocal()
     try:
         seed_default_lectures(db)
+    except Exception as seed_err:
+        logger.warning("Database seeding notice: %s", seed_err)
     finally:
         db.close()
+
