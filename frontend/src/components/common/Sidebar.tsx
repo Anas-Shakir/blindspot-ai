@@ -72,6 +72,27 @@ const defaultNavItems: NavItem[] = [
   },
 ];
 
+const DEFAULT_DEMO_LECTURES: Lecture[] = [
+  {
+    id: 1,
+    filename: "Economics-101-Supply-Demand.mp3",
+    status: "ready",
+    uploaded_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
+  },
+  {
+    id: 2,
+    filename: "Physics-Ohm-Law-Circuits.mp3",
+    status: "ready",
+    uploaded_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+  },
+  {
+    id: 3,
+    filename: "Macroeconomics-Monetary-Policy.mp3",
+    status: "ready",
+    uploaded_at: new Date(Date.now() - 3600000 * 3).toISOString(),
+  },
+];
+
 export const Sidebar: React.FC<SidebarProps> = ({
   initialCollapsed = false,
   className,
@@ -79,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [lectures, setLectures] = useState<Lecture[]>([]);
+  const [lectures, setLectures] = useState<Lecture[]>(DEFAULT_DEMO_LECTURES);
   const [isLoadingLectures, setIsLoadingLectures] = useState<boolean>(false);
   const pathname = usePathname();
   const activePath = currentPathOverride || pathname || "/workspace";
@@ -100,10 +121,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setIsLoadingLectures(true);
     try {
       const data = await api.listLectures();
-      setLectures(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setLectures(data);
+      } else {
+        setLectures(DEFAULT_DEMO_LECTURES);
+      }
     } catch {
-      // Graceful fallback if backend is offline or empty
-      setLectures([]);
+      // Graceful fallback to starter lectures if backend is offline or empty
+      setLectures(DEFAULT_DEMO_LECTURES);
     } finally {
       setIsLoadingLectures(false);
     }

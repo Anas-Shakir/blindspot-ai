@@ -46,6 +46,14 @@ def get_db():
 
 
 def init_db():
-    """Creates all tables if they don't exist yet. Safe to call repeatedly."""
+    """Creates all tables if they don't exist yet and seeds starter lectures."""
     from backend.app.model import models  # noqa: F401 — import so models register on Base
     Base.metadata.create_all(bind=engine)
+
+    # Seed starter lectures if table is empty
+    from backend.app.core.seed import seed_default_lectures
+    db = SessionLocal()
+    try:
+        seed_default_lectures(db)
+    finally:
+        db.close()
