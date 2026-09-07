@@ -15,6 +15,10 @@ import {
   Pause,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Focus,
   Volume2,
   Volume1,
   VolumeX,
@@ -442,6 +446,19 @@ export default function WorkspacePage() {
     scale: 1,
   });
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+
+  // Dynamic Whiteboard Highlighting & Progressive Focus States
+  const [activeHighlights, setActiveHighlights] = useState<Record<string, string>>({});
+  const [activeHighlightStep, setActiveHighlightStep] = useState<number>(0);
+  const [isAutoHighlighting, setIsAutoHighlighting] = useState<boolean>(false);
+  const highlightTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+
+  // Cleanup highlight timeouts on unmount
+  useEffect(() => {
+    return () => {
+      highlightTimeoutsRef.current.forEach(clearTimeout);
+    };
+  }, []);
 
   // Multi-Phase state
   const [phasesList, setPhasesList] = useState<PhaseData[]>(defaultMockPhases);
@@ -920,6 +937,126 @@ export default function WorkspacePage() {
     }
   };
 
+  // Step-Semantic Highlight mapper
+  const getHighlightsForStep = useCallback(
+    (stepIdx: number, objs: CanvasObject[]): Record<string, string> => {
+      const highlights: Record<string, string> = {};
+
+      if (stepIdx === 0) {
+        // Step 1 / Demand Curve & Foundational Setup: Sky Cyan (#38bdf8)
+        objs.forEach((o) => {
+          if (
+            o.id.includes("step-box-0") ||
+            o.id.includes("step-num-0") ||
+            o.id.includes("step-title-0") ||
+            o.id.includes("curve-d") ||
+            o.id.includes("lbl-d") ||
+            o.id.includes("cs-shade") ||
+            o.id.includes("cs-lbl") ||
+            o.id.includes("axis-y") ||
+            o.id.includes("lbl-y")
+          ) {
+            highlights[o.id] = "#38bdf8";
+          }
+        });
+      } else if (stepIdx === 1) {
+        // Step 2 / Equilibrium Intersection E* & Projections: Warm Amber (#fbbf24)
+        objs.forEach((o) => {
+          if (
+            o.id.includes("step-box-1") ||
+            o.id.includes("step-num-1") ||
+            o.id.includes("step-title-1") ||
+            o.id.includes("eq-pt") ||
+            o.id.includes("eq-txt") ||
+            o.id.includes("eq-proj-") ||
+            o.id.includes("lbl-p-star") ||
+            o.id.includes("lbl-q-star") ||
+            o.id.includes("curve-s") ||
+            o.id.includes("lbl-s")
+          ) {
+            highlights[o.id] = "#fbbf24";
+          }
+        });
+      } else if (stepIdx === 2) {
+        // Step 3 / Efficiency Clearance & Takeaway: Mint Emerald (#34d399)
+        objs.forEach((o) => {
+          if (
+            o.id.includes("step-box-2") ||
+            o.id.includes("step-num-2") ||
+            o.id.includes("step-title-2") ||
+            o.id.includes("btm-card") ||
+            o.id.includes("btm-hdr") ||
+            o.id.includes("btm-txt") ||
+            o.id.includes("exp-card") ||
+            o.id.includes("exp-b3-")
+          ) {
+            highlights[o.id] = "#34d399";
+          }
+        });
+      }
+
+      return highlights;
+    },
+    []
+  );
+
+  // Trigger progressive sequential auto-highlighting walkthrough
+  const triggerAutoHighlightSequence = useCallback(
+    (objs: CanvasObject[]) => {
+      highlightTimeoutsRef.current.forEach(clearTimeout);
+      highlightTimeoutsRef.current = [];
+
+      setIsAutoHighlighting(true);
+
+      // Step 0: Immediate Focus on Demand / Setup
+      setActiveHighlightStep(0);
+      setActiveHighlights(getHighlightsForStep(0, objs));
+
+      // Step 1: Equilibrium Focus at 3.0s
+      const t1 = setTimeout(() => {
+        setActiveHighlightStep(1);
+        setActiveHighlights(getHighlightsForStep(1, objs));
+      }, 3000);
+
+      // Step 2: Clearance & Takeaway Focus at 6.0s
+      const t2 = setTimeout(() => {
+        setActiveHighlightStep(2);
+        setActiveHighlights(getHighlightsForStep(2, objs));
+      }, 6000);
+
+      // Settle at 9.0s: Ambient gentle multi-accent illumination
+      const t3 = setTimeout(() => {
+        setIsAutoHighlighting(false);
+        const settled: Record<string, string> = {};
+        objs.forEach((o) => {
+          if (o.id.includes("eq-pt")) settled[o.id] = "#fbbf24";
+          else if (o.id.includes("curve-d")) settled[o.id] = "#38bdf8";
+          else if (o.id.includes("curve-s")) settled[o.id] = "#f43f5e";
+          else if (o.id.includes("step-box-0")) settled[o.id] = "#38bdf8";
+          else if (o.id.includes("step-box-1")) settled[o.id] = "#fbbf24";
+          else if (o.id.includes("step-box-2")) settled[o.id] = "#34d399";
+        });
+        setActiveHighlights(settled);
+      }, 9000);
+
+      highlightTimeoutsRef.current.push(t1, t2, t3);
+    },
+    [getHighlightsForStep]
+  );
+
+  // Manual Step Selection via Floating Controller
+  const handleStepHighlight = useCallback(
+    (stepIdx: number) => {
+      highlightTimeoutsRef.current.forEach(clearTimeout);
+      highlightTimeoutsRef.current = [];
+      setIsAutoHighlighting(false);
+
+      setActiveHighlightStep(stepIdx);
+      setActiveHighlights(getHighlightsForStep(stepIdx, whiteboardObjects));
+    },
+    [getHighlightsForStep, whiteboardObjects]
+  );
+
   // Dynamic Visual Whiteboard Lesson Handler
   const handleSwitchToVisualLesson = useCallback(
     (
@@ -947,8 +1084,11 @@ export default function WorkspacePage() {
 
       // 4. Update active spoken subtitle
       setActiveSpeechText(explanation);
+
+      // 5. Trigger automated progressive highlighting sequence
+      triggerAutoHighlightSequence(generatedObjects);
     },
-    [currentPhase.title]
+    [currentPhase.title, triggerAutoHighlightSequence]
   );
 
   // Single Unified Subtitle State (visible ONLY when robot is talking or audio is playing)
@@ -1134,8 +1274,8 @@ export default function WorkspacePage() {
           ) : stageView === "whiteboard" ? (
             /* Whiteboard View: Active Whiteboard Canvas with interactive drawing tools */
             <div className="relative w-full h-full min-h-0 overflow-hidden rounded-lg border border-white/5 bg-neutral-900/30 flex flex-col">
-              {/* Mini Whiteboard Floating Controls */}
-              <div className="absolute top-4 left-4 z-30 flex items-center gap-1 p-1 bg-neutral-900/80 backdrop-blur-md rounded-md border border-white/10 shadow-lg">
+              {/* Whiteboard Floating Action Toolbar (Top-Right Docked to Prevent Header Collisions) */}
+              <div className="absolute top-3.5 right-4 z-30 flex items-center gap-1 p-1 bg-neutral-900/85 backdrop-blur-md rounded-lg border border-white/10 shadow-xl">
                 <button
                   type="button"
                   onClick={() => setWhiteboardTool("pen")}
@@ -1194,6 +1334,14 @@ export default function WorkspacePage() {
                 <div className="h-4 w-[1px] bg-white/10 mx-0.5" />
                 <button
                   type="button"
+                  onClick={() => setWhiteboardViewport({ x: 0, y: 0, scale: 1 })}
+                  className="p-1.5 rounded-md text-xs text-neutral-400 hover:text-neutral-200 hover:bg-white/5 transition-all duration-300 ease-out cursor-pointer"
+                  title="Reset View / Recenter Canvas"
+                >
+                  <Focus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setWhiteboardObjects([])}
                   className="p-1.5 rounded-md text-xs text-neutral-400 hover:text-rose-400 hover:bg-white/5 transition-all duration-300 ease-out cursor-pointer"
                   title="Clear Canvas"
@@ -1214,8 +1362,71 @@ export default function WorkspacePage() {
                 selectedId={selectedObjectId}
                 setSelectedId={setSelectedObjectId}
                 onCommitAction={(newObjs) => setWhiteboardObjects(newObjs)}
+                activeHighlights={activeHighlights}
                 hideFloatingBadge={true}
               />
+
+              {/* Floating Progressive Step-Through & Highlight Focus Controller */}
+              {whiteboardObjects.length > 0 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 p-1.5 px-3.5 bg-neutral-900/90 backdrop-blur-md rounded-full border border-white/10 shadow-2xl">
+                  <button
+                    type="button"
+                    onClick={() => handleStepHighlight((activeHighlightStep - 1 + 3) % 3)}
+                    className="p-1 text-neutral-400 hover:text-neutral-100 hover:bg-white/10 rounded-full transition-all cursor-pointer"
+                    title="Previous Concept Step"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="flex items-center gap-2 px-2">
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full transition-colors",
+                        isAutoHighlighting
+                          ? "animate-ping bg-amber-400"
+                          : activeHighlightStep === 0
+                          ? "bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.6)]"
+                          : activeHighlightStep === 1
+                          ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
+                          : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                      )}
+                    />
+                    <span className="text-xs font-mono font-medium text-neutral-200 select-none">
+                      {activeHighlightStep === 0
+                        ? "1. Demand & Foundation"
+                        : activeHighlightStep === 1
+                        ? "2. Market Equilibrium (E*)"
+                        : "3. Clearance & Key Takeaway"}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStepHighlight((activeHighlightStep + 1) % 3)}
+                    className="p-1 text-neutral-400 hover:text-neutral-100 hover:bg-white/10 rounded-full transition-all cursor-pointer"
+                    title="Next Concept Step"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="h-3.5 w-[1px] bg-white/10 mx-0.5" />
+
+                  <button
+                    type="button"
+                    onClick={() => triggerAutoHighlightSequence(whiteboardObjects)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-full font-medium transition-all cursor-pointer",
+                      isAutoHighlighting
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        : "bg-white/5 text-neutral-300 hover:bg-white/10 hover:text-white"
+                    )}
+                    title="Replay Auto Visual Tour"
+                  >
+                    <RotateCcw className={cn("w-3 h-3", isAutoHighlighting && "animate-spin")} />
+                    <span>{isAutoHighlighting ? "Touring..." : "Replay Tour"}</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             /* Knowledge Graph View: Interactive Concept Map & Blindspot Detection */

@@ -499,15 +499,17 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           </linearGradient>
         </defs>
 
-        {/* Existing Canvas Objects */}
-        {objects.map((obj) => (
-          <RenderCanvasObject
-            key={obj.id}
-            object={obj}
-            isSelected={obj.id === selectedId}
-            highlightColor={activeHighlights[obj.id]}
-          />
-        ))}
+        {/* Existing Canvas Objects (Sorted by zIndex so background shading renders first) */}
+        {[...objects]
+          .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+          .map((obj) => (
+            <RenderCanvasObject
+              key={obj.id}
+              object={obj}
+              isSelected={obj.id === selectedId}
+              highlightColor={activeHighlights[obj.id]}
+            />
+          ))}
 
         {/* In-progress Pen Stroke */}
         {draftStroke && draftStroke.length > 0 && (
@@ -676,6 +678,48 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
 // ---------------------------------------------------------------------------
 // Helper Render Subcomponents
 // ---------------------------------------------------------------------------
+// Smart SVG word-wrapping helper
+// ---------------------------------------------------------------------------
+
+function wrapSvgText(
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+  charWidthRatio = 0.58
+): string[] {
+  if (!text) return [];
+  if (maxWidth <= 0) return [text];
+
+  const maxCharsPerLine = Math.max(8, Math.floor(maxWidth / (fontSize * charWidthRatio)));
+  const rawParagraphs = text.split('\n');
+  const resultLines: string[] = [];
+
+  for (const paragraph of rawParagraphs) {
+    if (!paragraph.trim()) {
+      resultLines.push('');
+      continue;
+    }
+
+    const words = paragraph.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+      if (!currentLine) {
+        currentLine = word;
+      } else if ((currentLine.length + 1 + word.length) <= maxCharsPerLine) {
+        currentLine += ' ' + word;
+      } else {
+        resultLines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine) {
+      resultLines.push(currentLine);
+    }
+  }
+
+  return resultLines.length > 0 ? resultLines : [text];
+}
 
 const RenderShapeLabel: React.FC<{
   label?: string;
@@ -688,25 +732,25 @@ const RenderShapeLabel: React.FC<{
 }> = ({ label, cx, cy, maxWidth, maxHeight, color, baseFontSize = 14 }) => {
   if (!label) return null;
 
-  // Split multi-line labels if present
-  const lines = label.split('\n');
-  const maxLineLen = Math.max(...lines.map((l) => l.length));
-
-  // Ensure healthy internal breathing margins (24px horizontal, 16px vertical)
-  const usableWidth = Math.max(20, maxWidth - 24);
+  // Ensure healthy internal breathing margins (20px horizontal, 14px vertical)
+  const usableWidth = Math.max(20, maxWidth - 20);
   const usableHeight = Math.max(16, maxHeight - 14);
 
-  // Approximate character width ratio in sans-serif
-  const charWidthRatio = 0.58;
-  const estWidth = maxLineLen * baseFontSize * charWidthRatio;
-  const estHeight = lines.length * baseFontSize * 1.25;
-
+  // Wrap text into lines based on usable width
+  let lines = wrapSvgText(label, usableWidth, baseFontSize);
   let fontSize = baseFontSize;
+
+  const charWidthRatio = 0.58;
+  const maxLineLen = Math.max(...lines.map((l) => l.length), 1);
+  const estWidth = maxLineLen * fontSize * charWidthRatio;
+  const estHeight = lines.length * fontSize * 1.25;
+
   if (estWidth > usableWidth) {
-    fontSize = Math.min(fontSize, Math.max(10, Math.floor(usableWidth / (maxLineLen * charWidthRatio))));
+    fontSize = Math.min(fontSize, Math.max(9, Math.floor(usableWidth / (maxLineLen * charWidthRatio))));
+    lines = wrapSvgText(label, usableWidth, fontSize);
   }
   if (estHeight > usableHeight) {
-    fontSize = Math.min(fontSize, Math.max(10, Math.floor(usableHeight / (lines.length * 1.25))));
+    fontSize = Math.min(fontSize, Math.max(9, Math.floor(usableHeight / (lines.length * 1.25))));
   }
 
   const lineHeight = fontSize * 1.25;
@@ -785,18 +829,21 @@ const RenderCanvasObject: React.FC<{
       return (
         <g className="animate-shape-in">
           {highlightColor && (
-            <rect
-              x={geo.x - 8}
-              y={geo.y - 8}
-              width={geo.width + 16}
-              height={geo.height + 16}
-              rx={(geo.borderRadius || 8) + 4}
-              fill="none"
-              stroke={highlightColor}
-              strokeWidth="4"
-              opacity={0.8}
-              className="animate-pulse"
-            />
+            <g>
+              <rect
+                x={geo.x - 6}
+                y={geo.y - 6}
+                width={geo.width + 12}
+                height={geo.height + 12}
+                rx={(geo.borderRadius || 8) + 4}
+                fill={highlightColor}
+                fillOpacity={0.08}
+                stroke={highlightColor}
+                strokeWidth={2.5}
+                strokeDasharray="6 4"
+                className="animate-pulse"
+              />
+            </g>
           )}
           <rect
             x={geo.x}
@@ -806,8 +853,8 @@ const RenderCanvasObject: React.FC<{
             rx={geo.borderRadius || 8}
             ry={geo.borderRadius || 8}
             fill={style.fillColor || 'rgba(30, 41, 59, 0.5)'}
-            stroke={isSelected ? '#818CF8' : style.strokeColor}
-            strokeWidth={isSelected ? style.strokeWidth + 1 : style.strokeWidth}
+            stroke={isSelected ? '#818CF8' : highlightColor || style.strokeColor}
+            strokeWidth={isSelected ? style.strokeWidth + 1 : highlightColor ? style.strokeWidth + 1 : style.strokeWidth}
             className="transition-colors"
           />
           <RenderShapeLabel
@@ -838,17 +885,28 @@ const RenderCanvasObject: React.FC<{
       return (
         <g className="animate-shape-in">
           {highlightColor && (
-            <ellipse
-              cx={cx}
-              cy={cy}
-              rx={rx + 8}
-              ry={ry + 8}
-              fill="none"
-              stroke={highlightColor}
-              strokeWidth="4"
-              opacity={0.8}
-              className="animate-pulse"
-            />
+            <g>
+              <circle
+                cx={cx}
+                cy={cy}
+                r={rx + 8}
+                fill="none"
+                stroke={highlightColor}
+                strokeWidth={2}
+                opacity={0.8}
+                strokeDasharray="4 4"
+                className="animate-spin"
+                style={{ transformOrigin: `${cx}px ${cy}px`, animationDuration: '6s' }}
+              />
+              <circle
+                cx={cx}
+                cy={cy}
+                r={rx + 4}
+                fill={highlightColor}
+                fillOpacity={0.2}
+                className="animate-pulse"
+              />
+            </g>
           )}
           <ellipse
             cx={cx}
@@ -856,8 +914,8 @@ const RenderCanvasObject: React.FC<{
             rx={rx}
             ry={ry}
             fill={style.fillColor || 'rgba(30, 41, 59, 0.5)'}
-            stroke={isSelected ? '#818CF8' : style.strokeColor}
-            strokeWidth={isSelected ? style.strokeWidth + 1 : style.strokeWidth}
+            stroke={isSelected ? '#818CF8' : highlightColor || style.strokeColor}
+            strokeWidth={isSelected ? style.strokeWidth + 1 : highlightColor ? style.strokeWidth + 1 : style.strokeWidth}
           />
           <RenderShapeLabel
             label={geo.label}
@@ -917,6 +975,7 @@ const RenderCanvasObject: React.FC<{
           stroke={isSelected ? '#818CF8' : style.strokeColor}
           strokeWidth={style.strokeWidth}
           strokeLinecap="round"
+          strokeDasharray={style.strokeStyle === 'dashed' ? '5 5' : undefined}
           className="animate-draw-stroke"
         />
         {geo.arrowheadEnd && (
@@ -937,19 +996,48 @@ const RenderCanvasObject: React.FC<{
 
   if (type === 'text') {
     const geo = geometry as TextGeometry;
-    const estW = (geo.text.length * (style.fontSize || 18) * 0.6) + 8;
-    const estH = (style.fontSize || 18) + 10;
+    const fontSize = style.fontSize || 16;
+    const lineHeight = fontSize * 1.35;
+    const maxWidth = geo.width || 320;
+    const lines = wrapSvgText(geo.text, maxWidth, fontSize);
+    const maxLineLength = Math.max(...lines.map((l) => l.length), 1);
+    const estW = Math.min(maxWidth + 12, (maxLineLength * fontSize * 0.58) + 12);
+    const estH = (lines.length * lineHeight) + 6;
+
     return (
       <g className="animate-shape-in">
+        {highlightColor && (
+          <rect
+            x={geo.x - 6}
+            y={geo.y - 4}
+            width={estW + 12}
+            height={estH + 8}
+            rx={6}
+            fill={highlightColor}
+            fillOpacity={0.12}
+            stroke={highlightColor}
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+            className="animate-pulse"
+          />
+        )}
         <text
           x={geo.x}
-          y={geo.y + 16}
+          y={geo.y + fontSize * 0.9}
           fill={style.strokeColor}
-          fontSize={style.fontSize || 18}
-          fontFamily={style.fontFamily || 'sans-serif'}
+          fontSize={fontSize}
+          fontFamily={style.fontFamily || 'system-ui, -apple-system, sans-serif'}
           fontWeight="500"
         >
-          {geo.text}
+          {lines.map((line, idx) => (
+            <tspan
+              key={idx}
+              x={geo.x}
+              dy={idx === 0 ? 0 : lineHeight}
+            >
+              {line}
+            </tspan>
+          ))}
         </text>
         {isSelected && (
           <SelectionBoundingHalo
@@ -1103,8 +1191,12 @@ function hitTest(obj: CanvasObject, p: Point): boolean {
 
   if (obj.type === 'text') {
     const geo = obj.geometry as TextGeometry;
-    const estimatedWidth = geo.text.length * (obj.style.fontSize || 18) * 0.6;
-    const estimatedHeight = (obj.style.fontSize || 18) + 8;
+    const fontSize = obj.style.fontSize || 16;
+    const maxWidth = geo.width || 320;
+    const lines = wrapSvgText(geo.text, maxWidth, fontSize);
+    const maxLineLen = Math.max(...lines.map((l) => l.length), 1);
+    const estimatedWidth = Math.min(maxWidth, maxLineLen * fontSize * 0.58) + 8;
+    const estimatedHeight = (lines.length * fontSize * 1.35) + 8;
     return (
       p.x >= geo.x - tolerance &&
       p.x <= geo.x + estimatedWidth + tolerance &&
