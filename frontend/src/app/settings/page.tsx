@@ -373,8 +373,8 @@ export default function SettingsPage() {
                   <Separator className="bg-white/5" />
 
                   {/* Select: Default Playback Speed */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+                    <div className="flex-1 min-w-0">
                       <span className="text-xs font-medium text-neutral-200 block">
                         Default Playback Speed
                       </span>
@@ -383,12 +383,14 @@ export default function SettingsPage() {
                       </span>
                     </div>
 
-                    <CustomSelect
-                      value={playbackSpeed}
-                      onChange={setPlaybackSpeed}
-                      options={speedOptions}
-                      className="w-full sm:w-60 shrink-0"
-                    />
+                    <div className="w-full sm:w-80 shrink-0">
+                      <CustomSelect
+                        value={playbackSpeed}
+                        onChange={setPlaybackSpeed}
+                        options={speedOptions}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -427,8 +429,8 @@ export default function SettingsPage() {
 
                 <CardContent className="p-5 pt-0 space-y-4">
                   {/* 1. AI Reasoning Model Selection */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <Cpu className="w-3.5 h-3.5 text-purple-400" />
                         <span className="text-xs font-medium text-neutral-200">
@@ -440,19 +442,21 @@ export default function SettingsPage() {
                       </span>
                     </div>
 
-                    <CustomSelect
-                      value={selectedModel}
-                      onChange={handleModelChange}
-                      options={modelOptions}
-                      className="w-full sm:w-80 shrink-0"
-                    />
+                    <div className="w-full sm:w-80 shrink-0">
+                      <CustomSelect
+                        value={selectedModel}
+                        onChange={handleModelChange}
+                        options={modelOptions}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
 
                   <Separator className="bg-white/5" />
 
                   {/* 2. Spoken Neural Voice Selection */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <Volume2 className="w-3.5 h-3.5 text-sky-400" />
                         <span className="text-xs font-medium text-neutral-200">
@@ -464,19 +468,21 @@ export default function SettingsPage() {
                       </span>
                     </div>
 
-                    <CustomSelect
-                      value={selectedVoice}
-                      onChange={handleVoiceChange}
-                      options={voiceOptions}
-                      className="w-full sm:w-72 shrink-0"
-                    />
+                    <div className="w-full sm:w-80 shrink-0">
+                      <CustomSelect
+                        value={selectedVoice}
+                        onChange={handleVoiceChange}
+                        options={voiceOptions}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
 
                   <Separator className="bg-white/5" />
 
                   {/* 3. Text Reading Language Selection */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-emerald-400" />
                         <span className="text-xs font-medium text-neutral-200">
@@ -488,19 +494,21 @@ export default function SettingsPage() {
                       </span>
                     </div>
 
-                    <CustomSelect
-                      value={selectedTextLanguage}
-                      onChange={handleTextLanguageChange}
-                      options={textLanguageOptions}
-                      className="w-full sm:w-72 shrink-0"
-                    />
+                    <div className="w-full sm:w-80 shrink-0">
+                      <CustomSelect
+                        value={selectedTextLanguage}
+                        onChange={handleTextLanguageChange}
+                        options={textLanguageOptions}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
 
                   <Separator className="bg-white/5" />
 
                   {/* 4. Explanation Verbosity */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+                    <div className="flex-1 min-w-0">
                       <span className="text-xs font-medium text-neutral-200 block">
                         Explanation Verbosity
                       </span>
@@ -509,12 +517,14 @@ export default function SettingsPage() {
                       </span>
                     </div>
 
-                    <CustomSelect
-                      value={tutorVerbosity}
-                      onChange={setTutorVerbosity}
-                      options={verbosityOptions}
-                      className="w-full sm:w-72 shrink-0"
-                    />
+                    <div className="w-full sm:w-80 shrink-0">
+                      <CustomSelect
+                        value={tutorVerbosity}
+                        onChange={setTutorVerbosity}
+                        options={verbosityOptions}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

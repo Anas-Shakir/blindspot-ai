@@ -940,21 +940,18 @@ export default function WorkspacePage() {
       />
 
       {/* =====================================================================
-          1. Left Column: NavBar / Lecture List (Fixed width, w-64, bordered right)
+          1. Left Column: Dynamic Collapsible Sidebar
           ===================================================================== */}
-      <div className="w-64 shrink-0 h-full border-r border-white/5 bg-neutral-950 flex flex-col overflow-hidden z-20">
-        <Sidebar
-          className="h-full border-none w-full"
-          currentPathOverride={lectureId ? `/workspace/${lectureId}` : "/workspace"}
-          onNavigate={(href) => {
-            if (href === "#lectures") {
-              setIsLecturesModalOpen(true);
-            } else if (href === "#graph") {
-              setStageView("graph");
-            }
-          }}
-        />
-      </div>
+      <Sidebar
+        currentPathOverride={lectureId ? `/workspace/${lectureId}` : "/workspace"}
+        onNavigate={(href) => {
+          if (href === "#lectures") {
+            setIsLecturesModalOpen(true);
+          } else if (href === "#graph") {
+            setStageView("graph");
+          }
+        }}
+      />
 
       {/* =====================================================================
           2. Middle Column: Main Stage (Flexible width, flex-1, bordered right)
@@ -1275,11 +1272,8 @@ export default function WorkspacePage() {
               setAudioCurrentTime(0);
             }}
             onError={() => {
-              console.warn("Lecture stream error, falling back to /test-audio.mp4");
-              if (lectureAudioRef.current && !lectureAudioRef.current.src.includes("test-audio.mp4")) {
-                lectureAudioRef.current.src = "/test-audio.mp4";
-                lectureAudioRef.current.load();
-              }
+              console.warn("Lecture stream audio currently unavailable or pending upload.");
+              setIsAudioPlaying(false);
             }}
           />
 

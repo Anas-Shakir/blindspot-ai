@@ -117,12 +117,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <motion.aside
       initial={false}
       animate={{
-        width: isCollapsed ? 72 : 264,
+        width: isCollapsed ? 68 : 260,
       }}
       transition={springTransition}
       className={cn(
         "relative flex flex-col justify-between h-screen shrink-0 z-40 select-none",
-        "bg-[#09090b]/90 backdrop-blur-xl border-r border-white/[0.07]",
+        "bg-[#09090b]/95 backdrop-blur-xl border-r border-white/[0.07]",
         "text-stone-300 font-sans overflow-hidden",
         className
       )}
@@ -130,87 +130,74 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Top Section: Brand Header, Main Nav & History */}
       <div className="flex flex-col flex-1 min-h-0">
         {/* Brand Header */}
-        <div
-          className={cn(
-            "border-b border-white/[0.07] shrink-0 transition-all duration-200",
-            isCollapsed
-              ? "py-3 px-2 flex flex-col items-center gap-2"
-              : "h-16 px-4 flex items-center justify-between"
-          )}
-        >
-          <Link
-            href="/"
-            title="Blindspot AI"
-            className={cn(
-              "flex items-center gap-3 overflow-hidden group focus:outline-none",
-              isCollapsed && "justify-center"
-            )}
-          >
-            {/* Minimalist Logo Mark with Oxblood Burgundy Tone */}
-            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200 group-hover:border-[#701a24] transition-colors duration-200">
-              <span className="font-bold text-sm tracking-tighter">B</span>
-              <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#701a24]" />
+        <div className="h-14 px-3.5 border-b border-white/[0.07] shrink-0 flex items-center justify-between transition-all duration-200">
+          {isCollapsed ? (
+            <div className="flex items-center justify-between w-full gap-1">
+              <Link
+                href="/"
+                title="Blindspot AI"
+                className="flex items-center justify-center focus:outline-none shrink-0"
+              >
+                <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200 hover:border-[#701a24] transition-colors duration-200">
+                  <span className="font-bold text-xs tracking-tighter">B</span>
+                  <div className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[#701a24]" />
+                </div>
+              </Link>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.92 }}
+                onClick={toggleSidebar}
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer focus:outline-none shrink-0"
+              >
+                <PanelLeftOpen className="w-3.5 h-3.5" />
+              </motion.button>
             </div>
-
-            {/* App Title with animated crossfade on collapse */}
-            <AnimatePresence mode="wait">
-              {!isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -6 }}
-                  transition={{ duration: 0.15 }}
-                  className="flex items-baseline gap-1.5 whitespace-nowrap overflow-hidden"
-                >
+          ) : (
+            <div className="flex items-center justify-between w-full">
+              <Link
+                href="/"
+                title="Blindspot AI"
+                className="flex items-center gap-3 overflow-hidden group focus:outline-none"
+              >
+                <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#701a24]/20 border border-[#701a24]/40 text-stone-200 group-hover:border-[#701a24] transition-colors duration-200">
+                  <span className="font-bold text-sm tracking-tighter">B</span>
+                  <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#701a24]" />
+                </div>
+                <div className="flex items-baseline gap-1.5 whitespace-nowrap overflow-hidden">
                   <span className="text-sm font-semibold tracking-tight text-white group-hover:text-stone-200 transition-colors">
                     Blindspot
                   </span>
                   <span className="text-[10px] font-mono font-medium uppercase tracking-widest text-stone-400">
                     AI
                   </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Link>
+                </div>
+              </Link>
 
-          {/* Collapsible toggle trigger */}
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.95 }}
-            onClick={toggleSidebar}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-lg text-stone-400 hover:text-white",
-              "hover:bg-white/[0.08] transition-colors cursor-pointer focus:outline-none",
-              isCollapsed && "bg-white/[0.03] border border-white/[0.06] text-stone-300"
-            )}
-          >
-            {isCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4" />
-            )}
-          </motion.button>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleSidebar}
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer focus:outline-none"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </motion.button>
+            </div>
+          )}
         </div>
 
         {/* Section Label: Navigation */}
-        <div className="px-4 pt-4 pb-1.5 shrink-0">
-          <AnimatePresence mode="wait">
-            {!isCollapsed ? (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-                className="text-[10px] font-mono font-semibold uppercase tracking-widest text-stone-500 block px-2"
-              >
-                Menu
-              </motion.span>
-            ) : (
-              <div className="h-[1px] w-6 mx-auto bg-white/[0.08]" />
-            )}
-          </AnimatePresence>
+        <div className="px-4 pt-3.5 pb-1.5 shrink-0">
+          {!isCollapsed ? (
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-stone-500 block px-2">
+              Menu
+            </span>
+          ) : (
+            <div className="h-[1px] w-5 mx-auto bg-white/[0.08]" />
+          )}
         </div>
 
         {/* Navigation Items List */}
@@ -227,12 +214,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Link
                   href={item.href}
                   onClick={() => onNavigate?.(item.href)}
+                  title={isCollapsed ? item.label : undefined}
                   className={cn(
-                    "group relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium tracking-tight",
+                    "group relative flex items-center rounded-xl text-xs font-medium tracking-tight",
                     "transition-colors duration-150 cursor-pointer focus:outline-none",
+                    isCollapsed
+                      ? "justify-center h-9 w-9 mx-auto"
+                      : "gap-3 px-3 py-2 border-l-2",
                     isActive
-                      ? "bg-zinc-900/80 text-stone-100 border-l-2 border-[#701a24]"
-                      : "text-stone-400 hover:text-stone-200 hover:bg-white/[0.04] border-l-2 border-transparent"
+                      ? isCollapsed
+                        ? "bg-[#701a24]/30 text-white ring-1 ring-[#701a24]/50 shadow-sm"
+                        : "bg-zinc-900/80 text-stone-100 border-[#701a24]"
+                      : "text-stone-400 hover:text-stone-200 hover:bg-white/[0.04] border-transparent"
                   )}
                 >
                   {/* Icon */}
@@ -246,29 +239,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
 
                   {/* Label & Badges */}
-                  <AnimatePresence mode="wait">
-                    {!isCollapsed && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -4 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -4 }}
-                        transition={{ duration: 0.14 }}
-                        className="flex items-center justify-between flex-1 whitespace-nowrap overflow-hidden"
-                      >
-                        <span className="truncate">{item.label}</span>
+                  {!isCollapsed && (
+                    <div className="flex items-center justify-between flex-1 whitespace-nowrap overflow-hidden">
+                      <span className="truncate">{item.label}</span>
 
-                        {item.badge && (
-                          <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-[#701a24]/25 text-stone-300 border border-[#701a24]/40">
-                            {item.badge}
-                          </span>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Collapsed Active Indicator */}
-                  {isCollapsed && isActive && (
-                    <div className="absolute right-2 h-1.5 w-1.5 rounded-full bg-[#701a24]" />
+                      {item.badge && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-[#701a24]/25 text-stone-300 border border-[#701a24]/40">
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </Link>
               </motion.div>
@@ -277,32 +257,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* Section Divider & History List Label */}
-        <div className="px-4 pt-5 pb-1.5 flex items-center justify-between shrink-0">
-          <AnimatePresence mode="wait">
-            {!isCollapsed ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-                className="flex items-center justify-between w-full px-2"
-              >
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-stone-500">
-                  Recent Lectures
+        <div className="px-4 pt-4 pb-1.5 flex items-center justify-between shrink-0">
+          {!isCollapsed ? (
+            <div className="flex items-center justify-between w-full px-2">
+              <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-stone-500">
+                Recent Lectures
+              </span>
+              {lectures.length > 0 && (
+                <span className="text-[10px] font-mono text-stone-400 px-1.5 py-0.2 rounded bg-white/[0.04] border border-white/[0.06]">
+                  {lectures.length}
                 </span>
-                {lectures.length > 0 && (
-                  <span className="text-[10px] font-mono text-stone-400 px-1.5 py-0.2 rounded bg-white/[0.04] border border-white/[0.06]">
-                    {lectures.length}
-                  </span>
-                )}
-              </motion.div>
-            ) : (
-              <div className="h-[1px] w-6 mx-auto bg-white/[0.08]" />
-            )}
-          </AnimatePresence>
+              )}
+            </div>
+          ) : (
+            <div className="h-[1px] w-5 mx-auto bg-white/[0.08]" />
+          )}
         </div>
 
-        {/* Dynamic Lecture History List (fetched from GET /api/lectures) */}
+        {/* Dynamic Lecture History List */}
         <div className="px-2 overflow-y-auto overflow-x-hidden flex-1 py-1 space-y-1">
           {isLoadingLectures && lectures.length === 0 ? (
             <div className="flex items-center justify-center py-4 text-stone-500">
@@ -331,11 +303,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onNavigate?.(lectureHref)}
                     title={lecture.filename}
                     className={cn(
-                      "group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-normal tracking-tight",
+                      "group relative flex items-center rounded-xl text-xs font-normal tracking-tight",
                       "transition-colors duration-150 cursor-pointer focus:outline-none",
+                      isCollapsed
+                        ? "justify-center h-8 w-8 mx-auto"
+                        : "gap-2.5 px-3 py-2 border-l-2",
                       isLectureActive
-                        ? "bg-zinc-900/90 text-stone-100 border-l-2 border-[#701a24]"
-                        : "text-stone-400 hover:text-stone-200 hover:bg-white/[0.04] border-l-2 border-transparent"
+                        ? isCollapsed
+                          ? "bg-[#701a24]/20 text-white ring-1 ring-[#701a24]/40"
+                          : "bg-zinc-900/90 text-stone-100 border-[#701a24]"
+                        : "text-stone-400 hover:text-stone-200 hover:bg-white/[0.04] border-transparent"
                     )}
                   >
                     {/* Status Dot / File Icon */}
@@ -351,27 +328,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
 
                     {/* Lecture Filename & Metadata */}
-                    <AnimatePresence mode="wait">
-                      {!isCollapsed && (
-                        <motion.div
-                          initial={{ opacity: 0, x: -4 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -4 }}
-                          transition={{ duration: 0.14 }}
-                          className="flex flex-col flex-1 min-w-0"
-                        >
-                          <span className="truncate text-xs font-medium text-stone-300 group-hover:text-stone-100">
-                            {lecture.filename}
-                          </span>
-                          <span className="text-[10px] font-mono text-stone-500 capitalize truncate">
-                            {lecture.status}
-                          </span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {isCollapsed && isLectureActive && (
-                      <div className="absolute right-2 h-1.5 w-1.5 rounded-full bg-[#701a24]" />
+                    {!isCollapsed && (
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="truncate text-xs font-medium text-stone-300 group-hover:text-stone-100">
+                          {lecture.filename}
+                        </span>
+                        <span className="text-[10px] font-mono text-stone-500 capitalize truncate">
+                          {lecture.status}
+                        </span>
+                      </div>
                     )}
                   </Link>
                 </motion.div>
@@ -382,39 +347,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Section: User Profile Footer */}
-      <div className="p-3 border-t border-white/[0.07] shrink-0">
+      <div className="p-2.5 border-t border-white/[0.07] shrink-0">
         <div
           className={cn(
-            "flex items-center gap-3 p-2 rounded-xl bg-zinc-900/60 border border-white/[0.07]",
-            isCollapsed ? "justify-center" : "justify-between"
+            "flex items-center p-1.5 rounded-xl bg-zinc-900/60 border border-white/[0.07]",
+            isCollapsed ? "justify-center" : "justify-between gap-2.5"
           )}
         >
           <div className="flex items-center gap-2.5 overflow-hidden">
             {/* Minimalist Avatar with Oxblood Tone */}
-            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-[#701a24] to-zinc-800 text-white font-semibold text-xs border border-white/10 shadow-sm">
+            <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-[#701a24] to-zinc-800 text-white font-semibold text-xs border border-white/10 shadow-sm">
               <span>U</span>
-              <div className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 border border-stone-950" />
+              <div className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 border border-stone-950" />
             </div>
 
             {/* Profile Info */}
-            <AnimatePresence mode="wait">
-              {!isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -4 }}
-                  transition={{ duration: 0.14 }}
-                  className="flex flex-col text-left whitespace-nowrap overflow-hidden"
-                >
-                  <span className="text-xs font-semibold text-stone-200 truncate">
-                    Umair
-                  </span>
-                  <span className="text-[10px] text-stone-500 font-mono truncate">
-                    Student Scholar
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {!isCollapsed && (
+              <div className="flex flex-col text-left whitespace-nowrap overflow-hidden">
+                <span className="text-xs font-semibold text-stone-200 truncate">
+                  Umair
+                </span>
+                <span className="text-[10px] text-stone-500 font-mono truncate">
+                  Student Scholar
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Logout / Options Button */}
