@@ -164,6 +164,11 @@ export default function RobotCompanionCanvas({
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current.onerror = null;
+      audioRef.current.onended = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
     }
     timeoutIdsRef.current.forEach(clearTimeout);
     timeoutIdsRef.current = [];
@@ -190,53 +195,102 @@ export default function RobotCompanionCanvas({
 
     // Signal parent to pause any playing audio
     onIntroPlay?.();
+    setIsPlaying(true);
 
-    // 1. Play intro audio with format support and preload
-    const audio = new Audio();
-    audio.preload = "auto";
+    const fullIntroText = DEFAULT_INTRO_SUBTITLES.map((s) => s.text).join(" ");
 
-    if (audio.canPlayType("audio/mpeg")) {
-      audio.src = "/audio/intro_audio.mp3";
-    } else if (audio.canPlayType("audio/ogg; codecs=vorbis")) {
-      audio.src = "/audio/intro_audio.ogg";
-    } else {
-      audio.src = "/audio/intro_audio.wav";
-    }
+    // Web Speech Synthesis Fallback if audio files fail or are blocked
+    const speakWithWebSpeech = () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(fullIntroText);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.05;
 
-    audioRef.current = audio;
+        // Try to select an articulate English voice
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice =
+          voices.find(
+            (v) =>
+              v.lang.startsWith("en") &&
+              (v.name.includes("Natural") ||
+                v.name.includes("Google") ||
+                v.name.includes("Samantha") ||
+                v.name.includes("Daniel") ||
+                v.name.includes("Arthur"))
+          ) || voices.find((v) => v.lang.startsWith("en"));
 
-    // When audio finishes or fails, reset isPlaying and animation to idle
-    audio.onended = () => {
-      stopIntro();
-    };
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
 
-    audio.onerror = (err) => {
-      console.warn("Audio element error during intro playback:", err);
-      // Give subtitles a moment before stopping if audio fails
-      setTimeout(stopIntro, 4000);
-    };
-
-    // Dynamically adjust safety fallback timeout when audio duration loads
-    audio.onloadedmetadata = () => {
-      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-        const dynamicTimeoutMs = Math.ceil(audio.duration * 1000) + 2000;
-        const durTid = setTimeout(() => {
+        utterance.onend = () => {
           stopIntro();
-        }, dynamicTimeoutMs);
-        timeoutIdsRef.current.push(durTid);
+        };
+        utterance.onerror = () => {
+          stopIntro();
+        };
+        window.speechSynthesis.speak(utterance);
+      } else {
+        const fallbackEndTid = setTimeout(stopIntro, INTRO_FALLBACK_DURATION_MS);
+        timeoutIdsRef.current.push(fallbackEndTid);
       }
     };
 
-    audio.play().catch((err) => {
-      console.warn("Audio autoplay blocked or failed:", err);
-    });
+    // Candidate audio URLs in order of preference (absolute origin first, then relative)
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const candidateUrls = [
+      `${origin}/audio/intro_audio.mp3`,
+      `${origin}/audio/intro_audio.wav`,
+      `${origin}/audio/intro_audio.ogg`,
+      "/audio/intro_audio.mp3",
+      "/audio/intro_audio.wav",
+    ];
 
-    // 2. Trigger talking animation
-    setIsPlaying(true);
+    let candidateIndex = 0;
+    const tryNextAudioCandidate = () => {
+      if (candidateIndex >= candidateUrls.length) {
+        // All audio files failed -> Seamless SpeechSynthesis fallback
+        speakWithWebSpeech();
+        return;
+      }
 
-    // 3. Subtitle Sequence: cycle subtitleText state with setTimeout
+      const currentUrl = candidateUrls[candidateIndex];
+      candidateIndex++;
+
+      const audio = new Audio();
+      audio.preload = "auto";
+      audio.src = currentUrl;
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        stopIntro();
+      };
+
+      audio.onerror = () => {
+        tryNextAudioCandidate();
+      };
+
+      audio.onloadedmetadata = () => {
+        if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+          const dynamicTimeoutMs = Math.ceil(audio.duration * 1000) + 1500;
+          const durTid = setTimeout(() => {
+            stopIntro();
+          }, dynamicTimeoutMs);
+          timeoutIdsRef.current.push(durTid);
+        }
+      };
+
+      audio.play().catch(() => {
+        tryNextAudioCandidate();
+      });
+    };
+
+    // Start attempting audio playback
+    tryNextAudioCandidate();
+
+    // Timed subtitle progression sequence
     const timeouts: NodeJS.Timeout[] = [];
-
     DEFAULT_INTRO_SUBTITLES.forEach(({ timeMs, text }) => {
       const tid = setTimeout(() => {
         setSubtitleText(text);
@@ -244,7 +298,7 @@ export default function RobotCompanionCanvas({
       timeouts.push(tid);
     });
 
-    // Absolute safety upper bound fallback timeout (15s) in case onended doesn't trigger
+    // Safety fallback timeout
     const endTid = setTimeout(() => {
       stopIntro();
     }, INTRO_FALLBACK_DURATION_MS);

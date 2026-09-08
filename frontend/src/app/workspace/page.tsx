@@ -650,30 +650,65 @@ export default function WorkspacePage() {
   ];
 
   // Helper to play synthesized voice audio
-  const playAudio = useCallback((audioUrl?: string | null) => {
-    // If lecture audio is playing, pause it so they don't overlap
-    if (lectureAudioRef.current && !lectureAudioRef.current.paused) {
-      lectureAudioRef.current.pause();
-      setIsAudioPlaying(false);
-    }
-    // Also signal robot intro to stop
-    setStopIntroSignal((prev) => prev + 1);
+  const playAudio = useCallback(
+    (audioUrl?: string | null, fallbackText?: string) => {
+      // If lecture audio is playing, pause it so they don't overlap
+      if (lectureAudioRef.current && !lectureAudioRef.current.paused) {
+        lectureAudioRef.current.pause();
+        setIsAudioPlaying(false);
+      }
+      // Also signal robot intro to stop
+      setStopIntroSignal((prev) => prev + 1);
 
-    const resolved = api.resolveAudioUrl(audioUrl);
-    if (resolved && audioPlayerRef.current) {
-      audioPlayerRef.current.src = resolved;
-      audioPlayerRef.current
-        .play()
-        .then(() => {
-          setIsPlayingAudio(true);
-          setIsSpeaking(true);
-        })
-        .catch(() => {
+      const speakWithSynthesis = (textToSpeak?: string) => {
+        const text = textToSpeak || activeSpeechText;
+        if (!text) {
           setIsPlayingAudio(false);
           setIsSpeaking(false);
-        });
-    }
-  }, []);
+          return;
+        }
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.onstart = () => {
+            setIsPlayingAudio(true);
+            setIsSpeaking(true);
+          };
+          utterance.onend = () => {
+            setIsPlayingAudio(false);
+            setIsSpeaking(false);
+          };
+          utterance.onerror = () => {
+            setIsPlayingAudio(false);
+            setIsSpeaking(false);
+          };
+          window.speechSynthesis.speak(utterance);
+        } else {
+          setIsPlayingAudio(false);
+          setIsSpeaking(false);
+        }
+      };
+
+      const resolved = api.resolveAudioUrl(audioUrl);
+      if (resolved && audioPlayerRef.current) {
+        audioPlayerRef.current.src = resolved;
+        audioPlayerRef.current
+          .play()
+          .then(() => {
+            setIsPlayingAudio(true);
+            setIsSpeaking(true);
+          })
+          .catch(() => {
+            speakWithSynthesis(fallbackText);
+          });
+      } else if (fallbackText || activeSpeechText) {
+        speakWithSynthesis(fallbackText);
+      }
+    },
+    [activeSpeechText]
+  );
 
   // Process orchestrator session events
   const processEvents = useCallback((events: SessionEvent[]) => {

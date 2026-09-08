@@ -82,21 +82,35 @@ export const ChatTab: React.FC<ChatTabProps> = ({
   }, [messages, isLoading]);
 
   const handlePlayVoice = (audioUrl?: string | null, messageId?: string, text?: string) => {
-    if (!audioUrl) {
-      if (text && onVoiceSpeak) {
-        onVoiceSpeak(text);
-      }
-      return;
-    }
-
-    const resolved = resolveAudioUrl(audioUrl);
-    if (!resolved) return;
-
     if (playingAudioId === messageId) {
       if (audioRef.current) {
         audioRef.current.pause();
       }
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
       setPlayingAudioId(null);
+      return;
+    }
+
+    const speakWithSynthesis = () => {
+      if (text && typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.onstart = () => setPlayingAudioId(messageId || "audio");
+        utterance.onend = () => setPlayingAudioId(null);
+        utterance.onerror = () => setPlayingAudioId(null);
+        window.speechSynthesis.speak(utterance);
+      } else if (text && onVoiceSpeak) {
+        onVoiceSpeak(text);
+      }
+    };
+
+    const resolved = resolveAudioUrl(audioUrl);
+    if (!resolved) {
+      speakWithSynthesis();
       return;
     }
 
@@ -105,15 +119,21 @@ export const ChatTab: React.FC<ChatTabProps> = ({
     }
 
     audioRef.current.src = resolved;
-    audioRef.current.play().then(() => {
-      setPlayingAudioId(messageId || "audio");
-    }).catch((err) => {
-      console.warn("Audio playback failed:", err);
-      setPlayingAudioId(null);
-    });
+    audioRef.current
+      .play()
+      .then(() => {
+        setPlayingAudioId(messageId || "audio");
+      })
+      .catch((err) => {
+        console.warn("Audio playback failed, attempting SpeechSynthesis fallback:", err);
+        speakWithSynthesis();
+      });
 
     audioRef.current.onended = () => {
       setPlayingAudioId(null);
+    };
+    audioRef.current.onerror = () => {
+      speakWithSynthesis();
     };
   };
 
