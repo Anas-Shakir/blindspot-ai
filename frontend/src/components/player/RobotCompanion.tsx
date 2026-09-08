@@ -13,27 +13,26 @@ import { cn } from "@/lib/utils";
  * Timings (timeMs) and text updates can be dropped in here.
  */
 export interface IntroSubtitleCue {
-  timeMs: number;
+  startSec: number;
   text: string;
 }
 
 export const DEFAULT_INTRO_SUBTITLES: IntroSubtitleCue[] = [
   {
-    timeMs: 0,
+    startSec: 0.0,
     text: "Hi.",
   },
   {
-    timeMs: 1000,
+    startSec: 1.1,
     text: "I'm your Blindspot AI tutor.",
   },
   {
-    timeMs: 2600,
+    startSec: 3.2,
     text: "I can help you visualize complex topics and generate interactive whiteboards on the fly.",
   },
 ];
 
-const INTRO_AUDIO_SRC = "/audio/intro_audio.mp3";
-const INTRO_FALLBACK_DURATION_MS = 15000;
+const INTRO_FALLBACK_DURATION_MS = 12000;
 
 interface RobotModelProps {
   isFast?: boolean;
@@ -82,7 +81,7 @@ function RobotModel({ isFast = false, isPlaying = false }: RobotModelProps) {
         if (!action.isRunning()) {
           action.reset().play();
         }
-        // Full talking animation when playing or fast; subtle living idle rate when idling (maintains exact same height & stance)
+        // Full talking animation when playing or fast; subtle living idle rate when idling
         action.timeScale = isPlaying || isFast ? (isFast ? 1.25 : 1.0) : 0.08;
       }
     }
@@ -166,6 +165,7 @@ export default function RobotCompanionCanvas({
       audioRef.current.currentTime = 0;
       audioRef.current.onerror = null;
       audioRef.current.onended = null;
+      audioRef.current.ontimeupdate = null;
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -183,7 +183,7 @@ export default function RobotCompanionCanvas({
     }
   }, [stopIntroSignal, stopIntro]);
 
-  // The Trigger: Simultaneously play audio, start talking animation, and cycle timed subtitles
+  // The Trigger: Simultaneously play audio, start talking animation, and cycle frame-accurate subtitles
   const handlePlayIntro = useCallback(() => {
     // If already playing, toggle to stop
     if (isPlaying) {
@@ -196,10 +196,21 @@ export default function RobotCompanionCanvas({
     // Signal parent to pause any playing audio
     onIntroPlay?.();
     setIsPlaying(true);
+    setSubtitleText(DEFAULT_INTRO_SUBTITLES[0].text);
+
+    // Sync subtitle strictly to audio playback position
+    const updateSubtitleFromTime = (curSec: number) => {
+      for (let i = DEFAULT_INTRO_SUBTITLES.length - 1; i >= 0; i--) {
+        if (curSec >= DEFAULT_INTRO_SUBTITLES[i].startSec) {
+          setSubtitleText(DEFAULT_INTRO_SUBTITLES[i].text);
+          break;
+        }
+      }
+    };
 
     const fullIntroText = DEFAULT_INTRO_SUBTITLES.map((s) => s.text).join(" ");
 
-    // Web Speech Synthesis Fallback if audio files fail or are blocked
+    // Web Speech Synthesis Fallback if audio files are completely inaccessible
     const speakWithWebSpeech = () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
@@ -207,7 +218,6 @@ export default function RobotCompanionCanvas({
         utterance.rate = 1.0;
         utterance.pitch = 1.05;
 
-        // Try to select an articulate English voice
         const voices = window.speechSynthesis.getVoices();
         const preferredVoice =
           voices.find(
@@ -224,6 +234,15 @@ export default function RobotCompanionCanvas({
           utterance.voice = preferredVoice;
         }
 
+        utterance.onboundary = (e) => {
+          // Progress subtitles on speech word boundaries
+          if (e.charIndex > 45) {
+            setSubtitleText(DEFAULT_INTRO_SUBTITLES[2].text);
+          } else if (e.charIndex > 5) {
+            setSubtitleText(DEFAULT_INTRO_SUBTITLES[1].text);
+          }
+        };
+
         utterance.onend = () => {
           stopIntro();
         };
@@ -237,12 +256,11 @@ export default function RobotCompanionCanvas({
       }
     };
 
-    // Candidate audio URLs in order of preference (absolute origin first, then relative)
+    // Candidate audio URLs in order of preference
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     const candidateUrls = [
       `${origin}/audio/intro_audio.mp3`,
       `${origin}/audio/intro_audio.wav`,
-      `${origin}/audio/intro_audio.ogg`,
       "/audio/intro_audio.mp3",
       "/audio/intro_audio.wav",
     ];
@@ -250,7 +268,6 @@ export default function RobotCompanionCanvas({
     let candidateIndex = 0;
     const tryNextAudioCandidate = () => {
       if (candidateIndex >= candidateUrls.length) {
-        // All audio files failed -> Seamless SpeechSynthesis fallback
         speakWithWebSpeech();
         return;
       }
@@ -262,6 +279,11 @@ export default function RobotCompanionCanvas({
       audio.preload = "auto";
       audio.src = currentUrl;
       audioRef.current = audio;
+
+      // Subtitle progress strictly bound to audio clock
+      audio.ontimeupdate = () => {
+        updateSubtitleFromTime(audio.currentTime);
+      };
 
       audio.onended = () => {
         stopIntro();
@@ -286,25 +308,13 @@ export default function RobotCompanionCanvas({
       });
     };
 
-    // Start attempting audio playback
     tryNextAudioCandidate();
-
-    // Timed subtitle progression sequence
-    const timeouts: NodeJS.Timeout[] = [];
-    DEFAULT_INTRO_SUBTITLES.forEach(({ timeMs, text }) => {
-      const tid = setTimeout(() => {
-        setSubtitleText(text);
-      }, timeMs);
-      timeouts.push(tid);
-    });
 
     // Safety fallback timeout
     const endTid = setTimeout(() => {
       stopIntro();
     }, INTRO_FALLBACK_DURATION_MS);
-    timeouts.push(endTid);
-
-    timeoutIdsRef.current = timeouts;
+    timeoutIdsRef.current.push(endTid);
   }, [isPlaying, stopIntro, onIntroPlay]);
 
   // Clean up audio and active timeouts on component unmount

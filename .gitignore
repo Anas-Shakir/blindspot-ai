@@ -119,6 +119,9 @@ temp/
 *.ogg
 *.webm
 *.mp4
+!frontend/public/audio/**
+!frontend/public/audio/*
+
 
 # =========================
 # Coverage / Test Reports
